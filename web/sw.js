@@ -1,7 +1,7 @@
 /* Fretwise service worker: keeps the app usable offline and shows the daily reminder. */
 const VERSION='__BUILD__';
 const CACHE='fretwise-'+VERSION, RUNTIME='fretwise-runtime';
-const SHELL=['./','index.html','platform.js','firebase-config.js','manifest.webmanifest','puzzles.json','paintings.json','icons/icon-192.png','icons/badge-96.png'];
+const SHELL=['./','index.html','platform.js','account-storage.js','firebase-config.js','manifest.webmanifest','puzzles.json','paintings.json','icons/icon-192.png','icons/badge-96.png'];
 const CDN=/^https:\/\/(cdn\.jsdelivr\.net\/npm\/|fonts\.googleapis\.com\/|fonts\.gstatic\.com\/|www\.gstatic\.com\/firebasejs\/)/;
 
 importScripts('firebase-config.js');

@@ -25,6 +25,7 @@ const page = `<!doctype html>
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <script src="firebase-config.js"></script>
+<script src="account-storage.js"></script>
 <script src="platform.js"></script>
 ${headPart}
 </head>
@@ -43,7 +44,7 @@ for (const f of ['puzzles.json', 'paintings.json']) {
   else console.warn(`data/${f} is missing: that section will say it isn't available yet`);
 }
 // a new service-worker version whenever anything changes, so phones pick up updates
-const hash = createHash('sha256').update(page).update(await readFile(at('web/platform.js'))).update(await readFile(at('web/firebase-config.js'))).digest('hex').slice(0, 12);
+const hash = createHash('sha256').update(page).update(await readFile(at('web/platform.js'))).update(await readFile(at('web/account-storage.js'))).update(await readFile(at('web/firebase-config.js'))).digest('hex').slice(0, 12);
 const sw = await readFile(at('web/sw.js'), 'utf8');
 await writeFile(at('dist/sw.js'), sw.replace('__BUILD__', hash));
 await writeFile(at('dist/.nojekyll'), '');

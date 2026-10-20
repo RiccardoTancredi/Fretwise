@@ -11,8 +11,21 @@ const SDK='https://www.gstatic.com/firebasejs/12.19.0/';
 const ITEMS=[['guitar','Guitar'],['ukulele','Ukulele'],['chess','Chess'],['words','Words'],['paintings','Paintings']];
 window.FW_WEB=true;
 
-let F=null, authKnown=!CONFIGURED;
-const ready=CONFIGURED?init().catch(e=>{ console.warn('Fretwise: Firebase did not start',e); authKnown=true; renderAcct(); return null; }):Promise.resolve(null);
+let F=null, authKnown=!CONFIGURED, sessionUid, active=false, LOCAL;
+function bindSession(uid){
+  sessionUid=uid; active=true;
+  let backend; try{ backend=window.localStorage; }catch(e){}
+  LOCAL=window.fretwiseStorage=window.FretwiseAccountStorage.create(uid,backend);
+}
+function changeSession(){
+  if(!active) return;
+  active=false; LOCAL.deactivate();
+  document.documentElement.inert=true;
+  location.reload();
+}
+if(!CONFIGURED) bindSession(null);
+const ready=CONFIGURED?init().catch(e=>{ F=null; bindSession(null); console.warn('Fretwise: Firebase did not start',e); authKnown=true; renderAcct(); return null; }):Promise.resolve(null);
+window.fretwiseReady=ready;
 
 async function init(){
   const [A,U,D]=await Promise.all([import(SDK+'firebase-app.js'),import(SDK+'firebase-auth.js'),import(SDK+'firebase-firestore.js')]);
@@ -24,22 +37,28 @@ async function init(){
   F={A,U,D,app,auth,db};
   U.getRedirectResult(auth).catch(()=>{});
   await auth.authStateReady();
+  bindSession(auth.currentUser?auth.currentUser.uid:null);
   authKnown=true;
-  U.onAuthStateChanged(auth,u=>{ renderAcct(); if(u) afterSignIn(u); });
+  U.onAuthStateChanged(auth,u=>{
+    if((u?u.uid:null)!==sessionUid){ changeSession(); return; }
+    renderAcct(); if(u&&active) afterSignIn(u);
+  });
   return F;
 }
-const me=()=>F&&F.auth.currentUser;
+const me=()=>active&&F&&F.auth.currentUser&&F.auth.currentUser.uid===sessionUid?F.auth.currentUser:null;
+function requireUser(){ const u=me(); if(!u) throw {code:'signed_out'}; return u; }
 
 /* ---------- the store the app expects: data/users/<uid>/<name> -> users/<uid>/state/<name> ---------- */
 function docRef(path){
   const m=/^data\/users\/([^/]+)\/([A-Za-z0-9_-]+)$/.exec(path);
   if(!m) throw {code:'invalid_argument'};
+  if(m[1]!==requireUser().uid) throw {code:'not_granted'};
   return F.D.doc(F.db,'users',m[1],'state',m[2]);
 }
 const dbShim={ doc(path){ const r=docRef(path); return {
-  async get(){ const s=await F.D.getDoc(r); return {exists:s.exists(),data:()=>s.data()}; },
-  async set(v){ await F.D.setDoc(r,v); },
-  onSnapshot(cb,err){ return F.D.onSnapshot(r,s=>{ if(s.metadata.hasPendingWrites) return; cb({exists:s.exists(),data:()=>s.data()}); },err); }
+  async get(){ requireUser(); const s=await F.D.getDoc(r); requireUser(); return {exists:s.exists(),data:()=>s.data()}; },
+  async set(v){ requireUser(); await F.D.setDoc(r,v); },
+  onSnapshot(cb,err){ requireUser(); return F.D.onSnapshot(r,s=>{ if(!me()||s.metadata.hasPendingWrites) return; cb({exists:s.exists(),data:()=>s.data()}); },e=>{ if(me()&&err) err(e); }); }
 }; } };
 const userShim={ async id(){ const u=me(); return u?u.uid:null; } };
 if(!window.claude) window.claude={ async use(name){ const f=await ready; if(!f||!me()) return null; if(name==='db') return dbShim; if(name==='user') return userShim; return null; } };
@@ -54,6 +73,7 @@ window.fretwiseWordsSource={
     let snap;
     try{ snap=await f.D.getDocs(f.D.collection(f.db,'users',u.uid,'dict')); }
     catch(e){ throw {code:(e&&e.code)||'upstream_error'}; }
+    requireUser();
     if(snap.empty) throw {code:'no_words'};
     const meta={}, parts={};
     snap.forEach(d=>{ const x=d.data(); if(d.id==='_meta') Object.assign(meta,x); else { const k=d.id.lastIndexOf('-'); const lang=d.id.slice(0,k), i=+d.id.slice(k+1); (parts[lang]=parts[lang]||[])[i]=x.rows||[]; } });
@@ -79,18 +99,20 @@ async function signIn(){
 }
 async function signOut(){
   // the words live in the account: take the copy out of this browser too
-  try{ localStorage.removeItem('fretwise.words.data'); }catch(e){}
-  try{ const t=localStorage.getItem('fretwise.pushToken'); if(t) await removeToken(t); }catch(e){}
-  await F.U.signOut(F.auth); location.reload();
+  try{ LOCAL.removeItem('fretwise.words.data'); }catch(e){}
+  try{ const t=LOCAL.getItem('fretwise.pushToken'); if(t) await removeToken(t); }catch(e){}
+  await F.U.signOut(F.auth); changeSession();
 }
 async function afterSignIn(u){
   try{ await F.D.setDoc(F.D.doc(F.db,'users',u.uid),{seen:Date.now()},{merge:true}); }catch(e){}
+  if(!me()||me().uid!==u.uid) return;
   const app=window.fretwiseApp; if(app){ app.reconnect(); app.refreshWords().then(()=>app.wordsChanged()); }
-  refreshToken();
+  await loadPush();
+  if(me()) refreshToken();
 }
 
 /* ---------- daily reminders (Firebase Cloud Messaging) ---------- */
-const pushRef=()=>F.D.doc(F.db,'users',me().uid,'state','push');
+const pushRef=()=>F.D.doc(F.db,'users',requireUser().uid,'state','push');
 const tz=()=>{ try{ return Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/Madrid'; }catch(e){ return 'Europe/Madrid'; } };
 let PUSH={hour:19,items:{guitar:true,ukulele:true,chess:true,words:true,paintings:false},tokens:{}};
 async function loadPush(){ try{ const s=await F.D.getDoc(pushRef()); if(s.exists()) PUSH=Object.assign(PUSH,s.data()); }catch(e){} }
@@ -103,18 +125,21 @@ async function getToken(){
 }
 async function saveToken(token){
   await F.D.setDoc(pushRef(),{hour:PUSH.hour,tz:tz(),items:PUSH.items,goal:10,tokens:{[token]:{t:Date.now(),ua:navigator.userAgent.slice(0,140)}}},{merge:true});
-  try{ localStorage.setItem('fretwise.pushToken',token); }catch(e){}
+  try{ LOCAL.setItem('fretwise.pushToken',token); }catch(e){}
 }
 async function removeToken(token){
   try{ await F.D.updateDoc(pushRef(),new F.D.FieldPath('tokens',token),F.D.deleteField()); }catch(e){}
-  try{ localStorage.removeItem('fretwise.pushToken'); }catch(e){}
+  try{ LOCAL.removeItem('fretwise.pushToken'); }catch(e){}
 }
 async function refreshToken(){
   // tokens change now and then; keep this device's one current
   try{
-    const old=localStorage.getItem('fretwise.pushToken');
-    if(!old||!pushSupported()||Notification.permission!=='granted'||!CFG.vapidKey) return;
-    const t=await getToken(); if(t&&t!==old){ await removeToken(old); await saveToken(t); }
+    const old=LOCAL.getItem('fretwise.pushToken');
+    if(!pushSupported()||Notification.permission!=='granted'||!CFG.vapidKey) return;
+    const t=await getToken();
+    // Recover a pre-isolation reminder only if this account already registered it.
+    if(!old){ if(t&&PUSH.tokens&&PUSH.tokens[t]&&me()) LOCAL.setItem('fretwise.pushToken',t); return; }
+    if(t&&t!==old){ await removeToken(old); await saveToken(t); }
   }catch(e){}
 }
 async function enablePush(){
@@ -127,7 +152,7 @@ async function enablePush(){
   catch(e){ say('Couldn’t turn reminders on: '+((e&&e.message)||e)); }
   renderDialog();
 }
-async function disablePush(){ const t=localStorage.getItem('fretwise.pushToken'); if(t) await removeToken(t); say('Reminders are off on this device.'); renderDialog(); }
+async function disablePush(){ const t=LOCAL.getItem('fretwise.pushToken'); if(t) await removeToken(t); say('Reminders are off on this device.'); renderDialog(); }
 async function savePushSettings(){ try{ await F.D.setDoc(pushRef(),{hour:PUSH.hour,tz:tz(),items:PUSH.items,goal:10},{merge:true}); say('Saved.'); }catch(e){ say('Couldn’t save: '+(e.code||e.message)); } }
 async function testNotification(){
   try{ const reg=await navigator.serviceWorker.ready; await reg.showNotification('Fretwise',{body:'Notifications work on this device.',icon:'icons/icon-192.png',badge:'icons/badge-96.png',tag:'fretwise-test'}); }
@@ -182,7 +207,7 @@ function openDialog(){
 }
 function renderDialog(){
   if(!dlg) return;
-  const u=me(), on=!!localStorage.getItem('fretwise.pushToken')&&pushSupported()&&Notification.permission==='granted';
+  const u=me(), on=!!(LOCAL&&LOCAL.getItem('fretwise.pushToken'))&&pushSupported()&&Notification.permission==='granted';
   let h='<div class="in">';
   if(!CONFIGURED){
     h+='<h2>Fretwise</h2><p class="muted">This copy isn’t connected to Firebase yet, so progress is saved in this browser only. Fill in firebase-config.js to add sign-in, sync and reminders.</p>';
@@ -196,7 +221,7 @@ function renderDialog(){
     h+=`<div class="row" style="margin-top:8px">${ITEMS.map(([k,l])=>`<label><input type="checkbox" data-fw="item" value="${k}" ${PUSH.items[k]?'checked':''}> ${l}</label>`).join('')}</div>`;
     h+=`<div class="row" style="margin-top:8px"><button type="button" class="btn quiet" data-fw="test">Send a test notification</button></div></section>`;
     if(installEvt) h+=`<section><h3>Install</h3><div class="row"><span class="muted">Add Fretwise to your home screen, with its own window and icon.</span><button type="button" class="btn" data-fw="install">Install</button></div></section>`;
-    h+=`<section><h3>Account ID</h3><div class="muted" style="margin-bottom:6px">The word sync on GitHub needs this, as the OWNER_UID secret.</div><div class="row"><code>${esc(u.uid)}</code><button type="button" class="btn quiet" data-fw="copy">Copy</button></div></section>`;
+    h+=`<section><h3>Account ID</h3><div class="muted" style="margin-bottom:6px">Share this ID with the app owner to receive dictionaries.</div><div class="row"><code>${esc(u.uid)}</code><button type="button" class="btn quiet" data-fw="copy">Copy</button></div></section>`;
     h+=`<div class="row"><button type="button" class="btn quiet" data-fw="signout">Sign out</button><span style="flex:1"></span><button type="button" class="btn primary" data-fw="close">Done</button></div>`;
   }
   if(!u) h+='<div class="row"><span style="flex:1"></span><button type="button" class="btn" data-fw="close">Close</button></div>';

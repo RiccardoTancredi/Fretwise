@@ -1,13 +1,16 @@
-// Copies the Notion dictionaries into the owner's private Firestore space (users/<OWNER_UID>/dict).
+// Copies dictionaries into the owner's and explicitly invited accounts' private Firestore spaces.
 // Runs on a schedule in GitHub Actions. Everything sensitive comes from repository secrets:
 //   NOTION_TOKEN              internal integration token, with the four dictionaries shared to it
 //   FIREBASE_SERVICE_ACCOUNT  service-account key JSON for the Firebase project
 //   OWNER_UID                 your Fretwise account ID (shown in the app under your name → Account ID)
+//   SHARED_WITH_UIDS          optional invited Account IDs (comma/newline separated or JSON array)
 // The log only ever prints counts, never words: Actions logs of a public repository are public.
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
+import { recipients, syncDictionaries } from './lib/dictionary-sync.mjs';
 
-const { NOTION_TOKEN, FIREBASE_SERVICE_ACCOUNT, OWNER_UID } = process.env;
+const { NOTION_TOKEN, FIREBASE_SERVICE_ACCOUNT, OWNER_UID, SHARED_WITH_UIDS } = process.env;
 if (!NOTION_TOKEN || !FIREBASE_SERVICE_ACCOUNT || !OWNER_UID) {
   console.log('Skipping: set the NOTION_TOKEN, FIREBASE_SERVICE_ACCOUNT and OWNER_UID secrets to sync your words.');
   process.exit(0);
@@ -21,7 +24,6 @@ const LANGS = [
   { id: 'es', source: '3c0085a6-3e81-817a-adfc-000b0d30c7ca', f: { w: 'Palabra', d: 'Definición', e: 'Ejemplo', s: 'Fuente', date: 'Fecha' } },
   { id: 'ca', source: '3c0085a6-3e81-812b-87a6-000bca20fb65', f: { w: 'Paraula', d: 'Definició', e: 'Exemple', s: 'Font', date: 'Data' } },
 ];
-const CHUNK = 300; // rows per Firestore document, well under the 1 MiB document limit
 
 async function notion(path, body) {
   for (let attempt = 0; ; attempt++) {
@@ -69,32 +71,17 @@ async function readLang(L) {
   return rows;
 }
 
-initializeApp({ credential: cert(JSON.parse(FIREBASE_SERVICE_ACCOUNT)) });
-const db = getFirestore();
-const dict = db.collection('users').doc(OWNER_UID).collection('dict');
-const metaRef = dict.doc('_meta');
-const old = (await metaRef.get()).data() || { langs: {} };
-const meta = { t: Date.now(), langs: { ...(old.langs || {}) } };
-let failed = 0;
-
-for (const L of LANGS) {
-  try {
-    const rows = await readLang(L);
-    const chunks = Math.ceil(rows.length / CHUNK);
-    const batch = db.batch();
-    for (let i = 0; i < chunks; i++) batch.set(dict.doc(`${L.id}-${i}`), { rows: rows.slice(i * CHUNK, (i + 1) * CHUNK) });
-    // remove chunks left over from a bigger dictionary
-    for (let i = chunks; i < ((old.langs || {})[L.id]?.chunks || 0); i++) batch.delete(dict.doc(`${L.id}-${i}`));
-    await batch.commit();
-    meta.langs[L.id] = { chunks, count: rows.length, t: Date.now() };
-    console.log(`${L.id}: ${rows.length} words`);
-  } catch (e) {
-    failed++;
-    // keep the last good copy of this dictionary
-    const why = e.status === 404 || e.status === 403 ? 'not shared with the Notion integration (open the database → ••• → Connections → add it)' : e.message;
-    console.log(`${L.id}: skipped, ${why}`);
+try {
+  const ids = recipients(OWNER_UID, SHARED_WITH_UIDS);
+  initializeApp({ credential: cert(JSON.parse(FIREBASE_SERVICE_ACCOUNT)) });
+  // A mistyped ID must not create an orphan copy of private dictionaries.
+  for (const uid of ids) {
+    const user = await getAuth().getUser(uid);
+    if (user.disabled) throw new Error('Disabled recipient');
   }
+  process.exitCode = (await syncDictionaries({ db: getFirestore(), ids, languages: LANGS, readLang })) ? 1 : 0;
+} catch {
+  // SDK errors can contain account IDs or service-account details; never print them here.
+  console.log('Sync stopped. Check recipient IDs, active Firebase accounts and repository secrets.');
+  process.exitCode = 1;
 }
-await metaRef.set(meta);
-console.log(failed ? `Done with ${failed} dictionaries skipped.` : 'Done.');
-if (failed === LANGS.length) process.exit(1);

@@ -514,8 +514,11 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 
 <script src="https://cdn.jsdelivr.net/npm/chess.js@0.10.3/chess.js"></script>
 <script>
-(function(){
+(async function(){
 'use strict';
+// Resolve the initial identity before reading or uploading any local state.
+if(window.fretwiseReady) await window.fretwiseReady;
+const LOCAL=window.fretwiseStorage||localStorage;
 
 /* ---------- music data ---------- */
 const SHARP=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
@@ -635,7 +638,7 @@ const ST=()=>statsAll[S.inst];
 const STORE='fretwise.v1';
 function load(){
   try{
-    const raw=localStorage.getItem(STORE); if(!raw) return;
+    const raw=LOCAL.getItem(STORE); if(!raw) return;
     const d=JSON.parse(raw); if(!d) return;
     const st=d.settings||{};
     // older versions kept a single (guitar) range and string list at the top level
@@ -650,7 +653,7 @@ function load(){
     if(!INSTRUMENTS[S.inst]) S.inst='guitar';
   }catch(e){}
 }
-function save(){ try{ localStorage.setItem(STORE, JSON.stringify({settings:S, statsAll})); }catch(e){} }
+function save(){ try{ LOCAL.setItem(STORE, JSON.stringify({settings:S, statsAll})); }catch(e){} }
 function setInst(id){ S.inst=id; INST=INSTRUMENTS[id]; STRINGS=INST.strings; NS=STRINGS.length; }
 
 let view='home', Q=null, phase='ask', round=null, qStart=0, advTimer=null;
@@ -1138,9 +1141,9 @@ const RUNS_KEY=STORE+'.runs';
 const cfgKey=()=>`${C().fretStart}-${C().fretEnd}|${C().strings.map(b=>b?1:0).join('')}`;
 const runsFor=(pc,cfg)=>runs.filter(r=>(r.inst||'guitar')===S.inst&&r.pc===pc&&r.cfg===cfg);
 function loadLocalRuns(){
-  try{ const d=JSON.parse(localStorage.getItem(RUNS_KEY)||'null'); if(d&&Array.isArray(d.runs)){ runs=d.runs; resetAt=normReset(d.resetAt); } }catch(e){}
+  try{ const d=JSON.parse(LOCAL.getItem(RUNS_KEY)||'null'); if(d&&Array.isArray(d.runs)){ runs=d.runs; resetAt=normReset(d.resetAt); } }catch(e){}
 }
-function saveLocalRuns(){ try{ localStorage.setItem(RUNS_KEY,JSON.stringify({runs,resetAt})); }catch(e){} }
+function saveLocalRuns(){ try{ LOCAL.setItem(RUNS_KEY,JSON.stringify({runs,resetAt})); }catch(e){} }
 function mergeRuns(remote,remoteReset){
   const rr=normReset(remoteReset); Object.keys(resetAt).forEach(k=>{ resetAt[k]=Math.max(resetAt[k],rr[k]); });
   const byId=new Map(); remote.concat(runs).forEach(r=>{ if(r&&r.id&&r.t>resetAt[r.inst||'guitar']) byId.set(r.id,r); });
@@ -1668,8 +1671,8 @@ const OPENINGS=[{"family":"Italian Game","lines":[{"eco":"C50","name":"Italian G
 const FILES='abcdefgh';
 const CH_STORE='fretwise.chess';
 const CS={tab:'puzzles', theme:'all', diff:0, rating:1200, hist:[], lines:{}, side:'book', fam:0, upd:0};
-function loadChess(){ try{ const d=JSON.parse(localStorage.getItem(CH_STORE)||'null'); if(d) Object.assign(CS,d); }catch(e){} }
-function storeChess(){ try{ localStorage.setItem(CH_STORE,JSON.stringify(CS)); }catch(e){} }
+function loadChess(){ try{ const d=JSON.parse(LOCAL.getItem(CH_STORE)||'null'); if(d) Object.assign(CS,d); }catch(e){} }
+function storeChess(){ try{ LOCAL.setItem(CH_STORE,JSON.stringify(CS)); }catch(e){} }
 function saveChess(){ CS.upd=Date.now(); storeChess(); pushChess(); }
 let chessDoc=null, chessSynced=false, cWriting=false, cAgain=false;
 async function pushChess(){
@@ -2116,14 +2119,14 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const rich=s=>esc(s).replace(/&lt;br\s*\/?&gt;/gi,'<br>');
 const plain=s=>String(s||'').replace(/<br\s*\/?>/gi,' ').replace(/\s+/g,' ').trim();
 function wLoad(){
-  try{ Object.assign(WS,JSON.parse(localStorage.getItem(W_SET_KEY)||'{}')); }catch(e){}
-  try{ WD=JSON.parse(localStorage.getItem(W_DATA_KEY)||'{}')||{}; }catch(e){ WD={}; }
-  try{ const p=JSON.parse(localStorage.getItem(W_PROG_KEY)||'null'); if(p&&p.p) WP=p; }catch(e){}
+  try{ Object.assign(WS,JSON.parse(LOCAL.getItem(W_SET_KEY)||'{}')); }catch(e){}
+  try{ WD=JSON.parse(LOCAL.getItem(W_DATA_KEY)||'{}')||{}; }catch(e){ WD={}; }
+  try{ const p=JSON.parse(LOCAL.getItem(W_PROG_KEY)||'null'); if(p&&p.p) WP=p; }catch(e){}
   LANGS.forEach(l=>{ WP.p[l.id]=WP.p[l.id]||{}; });
 }
-const wSaveSettings=()=>{ try{ localStorage.setItem(W_SET_KEY,JSON.stringify(WS)); }catch(e){} };
-const wSaveData=()=>{ try{ localStorage.setItem(W_DATA_KEY,JSON.stringify(WD)); }catch(e){} };
-function wSaveProgress(){ WP.upd=Date.now(); try{ localStorage.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){} pushWords(); }
+const wSaveSettings=()=>{ try{ LOCAL.setItem(W_SET_KEY,JSON.stringify(WS)); }catch(e){} };
+const wSaveData=()=>{ try{ LOCAL.setItem(W_DATA_KEY,JSON.stringify(WD)); }catch(e){} };
+function wSaveProgress(){ WP.upd=Date.now(); try{ LOCAL.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){} pushWords(); }
 let wordsDoc=null, wordsSynced=false, wWriting=false, wAgain=false;
 async function pushWords(){
   if(!wordsDoc) return; if(wWriting){ wAgain=true; return; } wWriting=true;
@@ -2140,9 +2143,9 @@ function mergeWords(x){
 async function connectWords(db,uid){
   try{
     const ref=db.doc('data/users/'+uid+'/words'); const s=await ref.get(), d=s.exists?s.data():null, localUpd=WP.upd;
-    mergeWords(d); wordsDoc=ref; wordsSynced=true; try{ localStorage.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){}
+    mergeWords(d); wordsDoc=ref; wordsSynced=true; try{ LOCAL.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){}
     if(!d||localUpd>(d.upd||0)) await pushWords();
-    ref.onSnapshot(sn=>{ const x=sn.exists?sn.data():null; if(!x||x.upd===WP.upd) return; mergeWords(x); try{ localStorage.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){} if(view==='words'&&(!WSN||WSN.phase==='done')) renderWords(); else if(view==='home') renderHome(); },()=>{ wordsSynced=false; });
+    ref.onSnapshot(sn=>{ const x=sn.exists?sn.data():null; if(!x||x.upd===WP.upd) return; mergeWords(x); try{ LOCAL.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){} if(view==='words'&&(!WSN||WSN.phase==='done')) renderWords(); else if(view==='home') renderHome(); },()=>{ wordsSynced=false; });
   }catch(e){}
 }
 
@@ -2427,10 +2430,10 @@ function wordsHomeMeta(){
    ===================================================================== */
 const ACT_KEY='fretwise.activity', GOAL_MIN=10, TICK=15000, IDLE=90000;
 let ACT={d:{},upd:0}, actDoc=null, actDirty=false, lastInput=Date.now();
-const DEV=(()=>{ try{ let d=localStorage.getItem('fretwise.device'); if(!d){ d=Math.random().toString(36).slice(2,10); localStorage.setItem('fretwise.device',d); } return d; }catch(e){ return 'dev'; } })();
+const DEV=(()=>{ try{ let d=LOCAL.getItem('fretwise.device'); if(!d){ d=Math.random().toString(36).slice(2,10); LOCAL.setItem('fretwise.device',d); } return d; }catch(e){ return 'dev'; } })();
 const dayKey=t=>{ const d=new Date(t||Date.now()); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
-function actLoad(){ try{ const x=JSON.parse(localStorage.getItem(ACT_KEY)||'null'); if(x&&x.d) ACT=x; }catch(e){} }
-function actStore(){ try{ localStorage.setItem(ACT_KEY,JSON.stringify(ACT)); }catch(e){} }
+function actLoad(){ try{ const x=JSON.parse(LOCAL.getItem(ACT_KEY)||'null'); if(x&&x.d) ACT=x; }catch(e){} }
+function actStore(){ try{ LOCAL.setItem(ACT_KEY,JSON.stringify(ACT)); }catch(e){} }
 function actPrune(){ const keep=new Set(); for(let i=0;i<60;i++) keep.add(dayKey(Date.now()-i*DAY)); Object.keys(ACT.d).forEach(k=>{ if(!keep.has(k)) delete ACT.d[k]; }); }
 function mergeAct(x){
   if(!x||!x.d) return;
@@ -2475,8 +2478,8 @@ const PAINT_ON=!!window.FW_WEB;
 const P_KEY='fretwise.paintings';
 const PS={ask:'mix', fame:'all', p:{}, hist:[], upd:0};   // p: work id -> {n, ok, b (box), last}
 let PDATA=null, pLoading=null, PSN=null, paintDoc=null, pWriting=false, pAgain=false;
-function pLoad(){ try{ const x=JSON.parse(localStorage.getItem(P_KEY)||'null'); if(x) Object.assign(PS,x); }catch(e){} }
-function pStore(){ try{ localStorage.setItem(P_KEY,JSON.stringify(PS)); }catch(e){} }
+function pLoad(){ try{ const x=JSON.parse(LOCAL.getItem(P_KEY)||'null'); if(x) Object.assign(PS,x); }catch(e){} }
+function pStore(){ try{ LOCAL.setItem(P_KEY,JSON.stringify(PS)); }catch(e){} }
 function pSave(){ PS.upd=Date.now(); pStore(); pushPaint(); }
 async function pushPaint(){
   if(!paintDoc) return; if(pWriting){ pAgain=true; return; } pWriting=true;

@@ -21,9 +21,11 @@ The repository is public, but your dictionaries are never in it:
 
 1. A scheduled job ([`sync-words.yml`](.github/workflows/sync-words.yml)) reads the four Notion databases with your Notion token and writes them to Firestore under `users/<your account id>/dict`. The token, the Firebase key and your account ID are repository **secrets**, and the job logs only counts, never words.
 2. [`firestore.rules`](firestore.rules) lets an account read only its own data, and nobody can write the dictionaries from a browser.
-3. The app reads them only after you sign in with Google. Signing out removes the copy from that browser.
+3. The app reads them only after you sign in with Google. Signing out removes the dictionary cache for that account. Local progress and settings are stored separately for each account, including a separate guest session.
 
-Progress (scores, review schedule, practice time) is saved in your browser and, once you sign in, synced through your account.
+Progress (scores, review schedule, practice time) is saved in your browser and, once you sign in, synced through your account. Switching accounts reloads the app before opening the other account’s data. Guest progress is not automatically imported on sign-in.
+
+Older unscoped browser saves are left untouched but are not imported automatically: their owner cannot be established safely. Previously synced progress is restored from the signed-in account; local-only preferences and fretboard accuracy maps start fresh once.
 
 ## Setting it up
 
@@ -88,9 +90,13 @@ The `apiKey` in `firebase-config.js` is not a password, since every Firebase web
 | `NOTION_TOKEN` | the integration secret from step 8 |
 | `OWNER_UID` | the Account ID you just copied |
 
+To share the four dictionaries with a trusted person, have them sign in to Fretwise with their own Google account and copy their **Account ID**. Add an optional repository secret `SHARED_WITH_UIDS` containing the invited Account IDs, separated by commas or newlines (a JSON array also works). Keep `OWNER_UID` unchanged. Run the word sync again.
+
+The job verifies that every recipient is an existing, active Firebase account, then writes the same dictionaries into each account’s own `dict` collection. It never copies scores, review schedules or practice time. Other accounts receive no dictionaries automatically, and recipients need no Notion account or access to the Notion integration. Each future sync updates all configured recipients. Removing an ID stops future updates; it does not delete a copy already shared.
+
 ### 11. First word sync
 1. GitHub → **Actions → Sync words from Notion → Run workflow**.
-2. When it finishes, the log shows how many words each dictionary has (and nothing else). A dictionary that says *not shared with the Notion integration* still needs step 8.2.
+2. When it finishes, the log shows how many words each dictionary has (and how many accounts were synced). A dictionary that says *not shared with the Notion integration* still needs step 8.2.
 3. In the app, open **Words**: your dictionaries are there. From now on the sync runs every 6 hours.
 
 ### 12. Reminders
@@ -112,6 +118,7 @@ GitHub pauses scheduled jobs in a repository with no commits for 60 days. The mo
 ## Working on it
 
 ```sh
+node --test tools/tests/*.test.mjs   # privacy and dictionary sync checks
 node tools/build.mjs                 # builds dist/
 python3 -m http.server -d dist 8000  # then open http://localhost:8000
 node tools/build-paintings.mjs       # refresh the paintings list

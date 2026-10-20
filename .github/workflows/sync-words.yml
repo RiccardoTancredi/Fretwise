@@ -1,10 +1,13 @@
 name: Sync words from Notion
-# Copies the Notion dictionaries into your private Firestore space every 6 hours.
+# Copies the Notion dictionaries into the private Firestore spaces of explicitly selected accounts every 6 hours.
 # Needs the secrets NOTION_TOKEN, FIREBASE_SERVICE_ACCOUNT and OWNER_UID. The log shows counts only.
 on:
   schedule:
     - cron: '23 */6 * * *'
   workflow_dispatch:
+concurrency:
+  group: sync-words
+  cancel-in-progress: false
 permissions:
   contents: read
 jobs:
@@ -17,9 +20,11 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: tools/package-lock.json
+      - run: node --test tools/tests/*.test.mjs
       - run: npm ci --prefix tools --no-audit --no-fund
       - run: node tools/sync-notion.mjs
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           OWNER_UID: ${{ secrets.OWNER_UID }}
+          SHARED_WITH_UIDS: ${{ secrets.SHARED_WITH_UIDS }}
