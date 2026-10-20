@@ -107,39 +107,63 @@ async function afterSignIn(u){
   try{ await F.D.setDoc(F.D.doc(F.db,'users',u.uid),{seen:Date.now()},{merge:true}); }catch(e){}
   if(!me()||me().uid!==u.uid) return;
   const app=window.fretwiseApp; if(app){ app.reconnect(); app.refreshWords().then(()=>app.wordsChanged()); }
-  await loadPush();
-  if(me()) refreshToken();
+  const pushLoaded=await loadPush();
+  if(me()&&pushLoaded) refreshToken();
 }
 
 /* ---------- daily reminders (Firebase Cloud Messaging) ---------- */
 const pushRef=()=>F.D.doc(F.db,'users',requireUser().uid,'state','push');
 const tz=()=>{ try{ return Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/Madrid'; }catch(e){ return 'Europe/Madrid'; } };
 let PUSH={hour:19,items:{guitar:true,ukulele:true,chess:true,words:true,paintings:false},tokens:{}};
-async function loadPush(){ try{ const s=await F.D.getDoc(pushRef()); if(s.exists()) PUSH=Object.assign(PUSH,s.data()); }catch(e){} }
+async function loadPush(){ try{ const s=await F.D.getDoc(pushRef()); if(s.exists()) PUSH=Object.assign(PUSH,s.data()); return true; }catch(e){ return false; } }
 const pushSupported=()=>'Notification' in window&&'serviceWorker' in navigator&&'PushManager' in window;
+let messagingReady=null;
+async function messagingRuntime(){
+  if(!messagingReady) messagingReady=(async()=>{
+    const M=await import(SDK+'firebase-messaging.js');
+    if(!(await M.isSupported())) throw new Error('unsupported');
+    const messaging=M.getMessaging(F.app);
+    // FCM delivers foreground messages to the page instead of the background worker.
+    M.onMessage(messaging,async payload=>{
+      if(!me()||LOCAL.getItem('fretwise.pushEnabled')!=='1'||Notification.permission!=='granted') return;
+      const reg=await navigator.serviceWorker.ready;
+      if(!me()||LOCAL.getItem('fretwise.pushEnabled')!=='1') return;
+      const d=payload.data||{};
+      await reg.showNotification(d.title||'Fretwise',{body:d.body||'',icon:'icons/icon-192.png',badge:'icons/badge-96.png',tag:'fretwise-daily',renotify:true,data:{url:d.url||'./'}});
+    });
+    return {M,messaging};
+  })().catch(e=>{ messagingReady=null; throw e; });
+  return messagingReady;
+}
 async function getToken(){
-  const M=await import(SDK+'firebase-messaging.js');
-  if(!(await M.isSupported())) throw new Error('unsupported');
+  const {M,messaging}=await messagingRuntime();
   const reg=await navigator.serviceWorker.ready;
-  return M.getToken(M.getMessaging(F.app),{vapidKey:CFG.vapidKey,serviceWorkerRegistration:reg});
+  return M.getToken(messaging,{vapidKey:CFG.vapidKey,serviceWorkerRegistration:reg});
 }
 async function saveToken(token){
   await F.D.setDoc(pushRef(),{hour:PUSH.hour,tz:tz(),items:PUSH.items,goal:10,tokens:{[token]:{t:Date.now(),ua:navigator.userAgent.slice(0,140)}}},{merge:true});
-  try{ LOCAL.setItem('fretwise.pushToken',token); }catch(e){}
+  LOCAL.setItem('fretwise.pushToken',token);
+  LOCAL.setItem('fretwise.pushEnabled','1');
 }
-async function removeToken(token){
+async function removeToken(token,disable=true){
   try{ await F.D.updateDoc(pushRef(),new F.D.FieldPath('tokens',token),F.D.deleteField()); }catch(e){}
-  try{ LOCAL.removeItem('fretwise.pushToken'); }catch(e){}
+  if(disable){ LOCAL.removeItem('fretwise.pushToken'); LOCAL.setItem('fretwise.pushEnabled','0'); }
 }
 async function refreshToken(){
   // tokens change now and then; keep this device's one current
   try{
-    const old=LOCAL.getItem('fretwise.pushToken');
+    const old=LOCAL.getItem('fretwise.pushToken'), enabled=LOCAL.getItem('fretwise.pushEnabled');
+    if(enabled==='0') return;
     if(!pushSupported()||Notification.permission!=='granted'||!CFG.vapidKey) return;
     const t=await getToken();
-    // Recover a pre-isolation reminder only if this account already registered it.
-    if(!old){ if(t&&PUSH.tokens&&PUSH.tokens[t]&&me()) LOCAL.setItem('fretwise.pushToken',t); return; }
-    if(t&&t!==old){ await removeToken(old); await saveToken(t); }
+    let legacy; try{ legacy=window.localStorage.getItem('fretwise.pushToken'); }catch(e){}
+    // A legacy token proves prior consent only when registered to this same account.
+    const ownedLegacy=legacy&&PUSH.tokens&&PUSH.tokens[legacy];
+    if(!me()||!t||!(enabled==='1'||old||ownedLegacy||(PUSH.tokens&&PUSH.tokens[t]))) return;
+    // Save the replacement before deleting an expired registration; a failed write keeps the old one.
+    await saveToken(t);
+    if(old&&old!==t) await removeToken(old,false);
+    if(ownedLegacy&&legacy!==t&&legacy!==old) await removeToken(legacy,false);
   }catch(e){}
 }
 async function enablePush(){

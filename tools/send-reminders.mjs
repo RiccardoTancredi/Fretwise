@@ -6,8 +6,9 @@
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue, FieldPath } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
+import { deliverToDevices } from './lib/reminder-delivery.mjs';
 
-const { FIREBASE_SERVICE_ACCOUNT, APP_URL = './', FORCE } = process.env;
+const { FIREBASE_SERVICE_ACCOUNT, OWNER_UID, APP_URL = './', FORCE } = process.env;
 if (!FIREBASE_SERVICE_ACCOUNT) { console.log('Skipping: set the FIREBASE_SERVICE_ACCOUNT secret to send reminders.'); process.exit(0); }
 initializeApp({ credential: cert(JSON.parse(FIREBASE_SERVICE_ACCOUNT)) });
 const db = getFirestore(), fcm = getMessaging();
@@ -21,7 +22,7 @@ function localNow(tz) {
 }
 const minutes = (act, day, k) => Object.values(((act.d || {})[day] || {})[k] || {}).reduce((a, b) => a + b, 0) / 60000;
 
-let sent = 0, checked = 0;
+let sent = 0, checked = 0, failed = 0;
 for (const user of await db.collection('users').listDocuments()) {
   const state = user.collection('state');
   const push = (await state.doc('push').get()).data();
@@ -46,17 +47,16 @@ for (const user of await db.collection('users').listDocuments()) {
   const title = todo.length ? `${goal} minutes of practice?` : 'Words to review';
   const body = [parts.length ? parts.join(' · ') : '', due ? `${due} ${due === 1 ? 'word' : 'words'} due` : ''].filter(Boolean).join('\n') || 'All done for today. Nice work.';
 
-  for (const token of tokens) {
-    try {
-      await fcm.send({ token, data: { title, body, url: APP_URL }, webpush: { headers: { Urgency: 'high', TTL: '21600' } } });
-      sent++;
-    } catch (e) {
-      const c = e.errorInfo && e.errorInfo.code;
-      if (c === 'messaging/registration-token-not-registered' || c === 'messaging/invalid-registration-token' || c === 'messaging/invalid-argument')
-        await state.doc('push').update(new FieldPath('tokens', token), FieldValue.delete()).catch(() => {});
-      else console.log('send failed:', c || e.message);
-    }
-  }
-  await state.doc('push').set({ lastSent: day }, { merge: true });
+  const result=await deliverToDevices({
+    tokens,
+    send:token=>fcm.send({token,data:{title,body,url:APP_URL},webpush:{headers:{Urgency:'high',TTL:'21600'}}}),
+    remove:token=>state.doc('push').update(new FieldPath('tokens',token),FieldValue.delete()),
+  });
+  sent+=result.sent; failed+=result.failed;
+  const label=OWNER_UID&&user.id===OWNER_UID?'Owner account':`Account ${checked}`;
+  console.log(`${label}: ${result.attempted} devices, ${result.sent} accepted by FCM, ${result.expired} expired, ${result.failed} failed.`);
+  // A failed account must be retried rather than being treated as notified for today.
+  if(result.sent&&!result.failed) await state.doc('push').set({lastSent:day},{merge:true});
 }
 console.log(`Checked ${checked} ${checked === 1 ? 'account' : 'accounts'} with reminders, sent ${sent} ${sent === 1 ? 'notification' : 'notifications'}.`);
+if(failed) process.exitCode=1;

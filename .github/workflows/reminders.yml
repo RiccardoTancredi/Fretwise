@@ -22,9 +22,11 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: tools/package-lock.json
+      - run: node --test tools/tests/*.test.mjs
       - run: npm ci --prefix tools --no-audit --no-fund
       - run: node tools/send-reminders.mjs
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          OWNER_UID: ${{ secrets.OWNER_UID }}
           APP_URL: https://riccardotancredi.github.io/Fretwise/
           FORCE: ${{ inputs.force && '1' || '' }}

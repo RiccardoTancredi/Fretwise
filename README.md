@@ -104,6 +104,10 @@ The job verifies that every recipient is an existing, active Firebase account, t
 2. In the app, tap your name → **Remind me on this device**, choose the hour and the sections. Allow notifications when asked. **Send a test notification** checks that the phone can show them.
 3. To test the real thing: GitHub → **Actions → Daily reminders → Run workflow**, tick **force**, **Run**. A notification should arrive within a minute.
 
+Enable reminders separately on each phone, while signed in to that person's own account. The job checks every account with registered devices; sharing dictionaries does not turn notifications on automatically. Notifications are handled both while the app is open and while it is in the background. Opening the app refreshes a previously enabled device's registration without enabling another account or overriding an explicit opt-out.
+
+If an older installation stops receiving reminders, reload it, then check **Remind me on this device** (turn it off and on if necessary). **Send a test notification** checks local display only. The Actions log reports device counts, expired registrations and messages accepted by FCM for each account; acceptance by FCM does not confirm that the phone displayed the notification.
+
 ## Scheduled jobs
 
 | Workflow | When | What |
