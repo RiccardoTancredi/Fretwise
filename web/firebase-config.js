@@ -10,5 +10,5 @@ self.FIREBASE_CONFIG = {
   storageBucket: "fretwise-6f6db.firebasestorage.app",
   messagingSenderId: "473037965466",
   appId: "1:473037965466:web:98a648497a57226b1c3723",
-  vapidKey: ""   // Project settings → Cloud Messaging → Web Push certificates → Key pair
+  vapidKey: "BE3xHo_liYq3NEb8hEaKjaAKQILNUNQFa18ty0rc_GTdKWzchVGpCvXn_U34Vu6keUkOhBczI0CMsEBHON6MvBo"   // Public Web Push key
 };
