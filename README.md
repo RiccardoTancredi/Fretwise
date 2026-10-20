@@ -97,7 +97,7 @@ The job verifies that every recipient is an existing, active Firebase account, t
 ### 11. First word sync
 1. GitHub → **Actions → Sync words from Notion → Run workflow**.
 2. When it finishes, the log shows how many words each dictionary has (and how many accounts were synced). A dictionary that says *not shared with the Notion integration* still needs step 8.2.
-3. In the app, open **Words**: your dictionaries are there. From now on the sync runs every 6 hours.
+3. In the app, open **Words**: your dictionaries are there. From now on the sync runs once a day, scheduled for 06:23 UTC.
 
 ### 12. Reminders
 1. On your phone, open the site and install it: browser menu → **Add to Home screen**.
@@ -114,7 +114,7 @@ If an older installation stops receiving reminders, reload it, then check **Remi
 |---|---|---|
 | Deploy the app | every push | builds `dist/` and publishes it |
 | Build paintings | 1st of every month | rebuilds `data/paintings.json` from Wikidata, commits it, redeploys |
-| Sync words from Notion | every 6 hours | Notion → your private Firestore space |
+| Sync words from Notion | once a day, 06:23 UTC | Notion → your private Firestore space |
 | Daily reminders | every hour | one notification a day per device, at the hour you picked |
 
 GitHub pauses scheduled jobs in a repository with no commits for 60 days. The monthly paintings commit keeps it active.
