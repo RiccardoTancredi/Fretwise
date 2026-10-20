@@ -1,0 +1,32 @@
+name: Build paintings
+# Rebuilds data/paintings.json from Wikidata once a month, commits it, and redeploys the app.
+# The monthly commit also keeps the repository active, so GitHub doesn't pause the scheduled jobs.
+on:
+  schedule:
+    - cron: '17 4 1 * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [tools/build-paintings.mjs]
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tools/build-paintings.mjs
+      - name: Commit the new list
+        run: |
+          git config user.name "fretwise-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/paintings.json
+          git diff --cached --quiet || (git commit -m "Update paintings from Wikidata" && git push)
+  deploy:
+    needs: build
+    uses: ./.github/workflows/pages.yml

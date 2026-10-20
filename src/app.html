@@ -1,0 +1,2661 @@
+<title>Fretwise</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: a start screen picks the instrument; then one working "stage" (prompt, fretboard, answer area) beside a narrow settings + progress column. Stacks on phones, where the neck turns vertical. */
+:root{
+  --bg:#edf0f3; --surface:#ffffff; --surface-2:#f5f7f9; --ink:#17212c; --muted:#596777; --line:#d5dce3;
+  --accent:#2b5c8e; --accent-ink:#ffffff; --accent-soft:#dfe9f4;
+  --mark:#f2a43a; --on-mark:#2a1906;
+  --good:#2d8c59; --on-good:#ffffff; --bad:#cc4357; --on-bad:#ffffff; --warn:#cf8a1e;
+  --open-zone:#e2e7ec;
+  /* the neck itself keeps one look in both themes: rosewood, nickel frets, bone nut */
+  --wood-1:#4d2f1f; --wood-2:#33201a; --fret:#c9ced4; --nut:#ece3cf; --pearl:#efe8d8; --binding:#d9ceb8;
+  --string-wound:#cbb487; --string-plain:#e4e7eb; --string-nylon:#efe6cf;
+  /* the chessboard also keeps one look: maple and walnut */
+  --sq-l:#ece2cc; --sq-d:#a07c5c; --sq-last:rgba(242,164,58,.42); --sq-sel:rgba(43,92,142,.45);
+  --font-display:'Bricolage Grotesque', 'Avenir Next', 'Segoe UI', sans-serif;
+  --font-body:'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
+  --font-mono:'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10151b; --surface:#19202a; --surface-2:#151b23; --ink:#e6ebf0; --muted:#97a5b5; --line:#2a3440;
+    --accent:#86b6e7; --accent-ink:#0b1622; --accent-soft:#1d3146;
+    --mark:#f6b552; --on-mark:#2a1906;
+    --good:#4bc283; --on-good:#06170e; --bad:#f06e80; --on-bad:#22060b; --warn:#eaa53f;
+    --open-zone:#1c242e; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10151b; --surface:#19202a; --surface-2:#151b23; --ink:#e6ebf0; --muted:#97a5b5; --line:#2a3440;
+  --accent:#86b6e7; --accent-ink:#0b1622; --accent-soft:#1d3146;
+  --mark:#f6b552; --on-mark:#2a1906;
+  --good:#4bc283; --on-good:#06170e; --bad:#f06e80; --on-bad:#22060b; --warn:#eaa53f;
+  --open-zone:#1c242e; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.45}
+button,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{max-width:1200px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:14px 40px}
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.brand-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:800;font-size:1.5rem;letter-spacing:-.02em}
+.brand svg{flex:none}
+.inst-btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-weight:700;font-size:.88rem;display:flex;align-items:center;gap:6px}
+.inst-btn:hover{border-color:var(--accent)}
+.inst-btn svg{flex:none}
+.modes{display:flex;gap:4px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;max-width:100%;overflow-x:auto}
+.modes button{border:0;background:transparent;padding:8px 14px;border-radius:999px;font-weight:700;font-size:.92rem;white-space:nowrap;color:var(--muted)}
+@media (max-width:560px){.modes .long{display:none}.modes{width:100%}.modes button{flex:1;padding:8px 8px;font-size:.86rem}}
+.modes button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;margin-top:16px;align-items:start}
+@media (max-width:920px){.layout{grid-template-columns:minmax(0,1fr)}}
+
+/* start screen */
+.home{margin-top:28px;display:flex;flex-direction:column;gap:18px}
+.home h1{font-size:clamp(1.7rem,5vw,2.6rem)}
+.home .lede{color:var(--muted);margin:0;max-width:60ch}
+.picks{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.pick{display:flex;flex-direction:column;align-items:stretch;gap:10px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+button.pick:hover{border-color:var(--accent)}
+.pick b{font-family:var(--font-display);font-size:1.45rem;font-weight:800;letter-spacing:-.01em}
+.pick .sub{color:var(--muted);font-size:.9rem}
+.pick .meta{font-family:var(--font-mono);font-size:.76rem;color:var(--muted)}
+.pick .last-used{font-family:var(--font-mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.pick > svg{display:block;width:100%;height:auto}
+.pick.soon{opacity:.62}
+.pick.soon .board-mini{display:grid;grid-template-columns:repeat(8,1fr);aspect-ratio:8/3;border-radius:8px;overflow:hidden}
+.pick.soon .board-mini i{display:block}
+.pick.soon .board-mini i:nth-child(odd){background:var(--surface-2)}
+.pick.soon .board-mini i:nth-child(even){background:var(--line)}
+.pick.soon .board-mini i:nth-child(16n+9),.pick.soon .board-mini i:nth-child(16n+11),.pick.soon .board-mini i:nth-child(16n+13),.pick.soon .board-mini i:nth-child(16n+15){background:var(--line)}
+.pick.soon .board-mini i:nth-child(16n+10),.pick.soon .board-mini i:nth-child(16n+12),.pick.soon .board-mini i:nth-child(16n+14),.pick.soon .board-mini i:nth-child(16n+16){background:var(--surface-2)}
+
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+@media (max-width:520px){.stage{padding:12px;border-radius:14px}}
+.prompt-row{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:10px}
+.prompt{min-width:0}
+.eyebrow{font-family:var(--font-mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--font-display);font-weight:800;font-size:clamp(1.35rem,3.6vw,2rem);line-height:1.1;margin:4px 0 0;letter-spacing:-.02em;text-wrap:balance}
+.round{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.dots{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:220px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.dot.cur{background:transparent;box-shadow:inset 0 0 0 2px var(--accent)}
+.dot.ok{background:var(--good)}
+.dot.no{background:var(--bad)}
+.score{font-family:var(--font-mono);font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.score.timer{font-family:var(--font-display);font-weight:800;font-size:1.5rem;color:var(--ink);letter-spacing:-.01em}
+
+.board-wrap{width:100%;min-width:0}
+.board-wrap svg{display:block;width:100%;height:auto;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+svg .openz{fill:var(--open-zone)}
+svg .binding{stroke:var(--binding);stroke-width:1.5}
+svg .fretw{stroke:var(--fret);stroke-width:2.6;stroke-linecap:round}
+svg .nut{stroke:var(--nut);stroke-width:7}
+svg .inlay{fill:var(--pearl);opacity:.85}
+svg .str-w{stroke:var(--string-wound)}
+svg .str-p{stroke:var(--string-plain)}
+svg .str-n{stroke:var(--string-nylon)}
+svg .str-hl{stroke:var(--mark);filter:drop-shadow(0 0 3px var(--mark))}
+svg .lbl{font-family:var(--font-mono);font-size:10.5px;fill:var(--muted)}
+svg .lbl.sn{font-weight:600;font-size:12px;fill:var(--ink)}
+svg .lbl.mute{fill:var(--bad);font-weight:600;font-size:12px}
+svg .link{stroke:var(--mark);stroke-width:2.5;stroke-dasharray:4 4;stroke-linecap:round;opacity:.95}
+svg .win{fill:var(--mark);fill-opacity:.16;stroke:var(--mark);stroke-width:1.5;stroke-dasharray:5 4}
+svg .hit{fill:transparent;cursor:pointer}
+svg .hit:hover{fill:#ffffff;fill-opacity:.07}
+svg .mk text{font-family:var(--font-mono);font-weight:600;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+svg .mk circle{pointer-events:none}
+svg .mk-target circle.c{fill:var(--mark);stroke:#fff;stroke-width:2}
+svg .mk-target circle.ring{fill:none;stroke:var(--mark);stroke-width:2;transform-box:fill-box;transform-origin:center;animation:ring 1.5s ease-out infinite}
+@keyframes ring{from{transform:scale(1);opacity:.9}to{transform:scale(1.9);opacity:0}}
+svg .mk-good circle.c{fill:var(--good)} svg .mk-good text{fill:var(--on-good)}
+svg .mk-bad circle.c{fill:var(--bad)} svg .mk-bad text{fill:var(--on-bad)}
+svg .mk-reveal circle.c{fill:var(--wood-2);stroke:var(--mark);stroke-width:2.2} svg .mk-reveal text{fill:var(--pearl)}
+svg .mk-ghost circle.c{fill:var(--wood-2);fill-opacity:.85;stroke:var(--pearl);stroke-width:1.2;stroke-dasharray:3 2} svg .mk-ghost text{fill:var(--pearl)}
+svg .mk-root circle.c{fill:var(--pearl);stroke:var(--mark);stroke-width:2.5} svg .mk-root text{fill:#2a1906}
+svg .mk-sel circle.c{fill:var(--pearl);fill-opacity:.92} svg .mk-sel text{fill:#2a1906}
+@media (prefers-reduced-motion: reduce){svg .mk-target circle.ring{animation:none;opacity:0}}
+
+.answer{display:flex;flex-direction:column;gap:12px;min-width:0}
+.pad{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));grid-template-rows:auto auto;gap:6px}
+.key{border:1px solid var(--line);border-radius:10px;min-height:46px;font-family:var(--font-mono);font-weight:600;font-size:1rem;padding:0;font-variant-numeric:tabular-nums}
+.key.nat{grid-row:2;grid-column:span 2;background:var(--surface-2)}
+.key.acc{grid-row:1;grid-column:span 2;background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.pad.pad7{grid-template-rows:auto}
+.pad.pad7 .key.nat{grid-row:1}
+.key:not(:disabled):hover{border-color:var(--accent)}
+.key.good{background:var(--good);color:var(--on-good);border-color:var(--good)}
+.key.bad{background:var(--bad);color:var(--on-bad);border-color:var(--bad)}
+.key:disabled{cursor:default}
+.key:disabled:not(.good):not(.bad){opacity:.55}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:10px 16px;font-weight:700;min-height:44px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.quiet{background:transparent}
+.btn.big{min-height:52px;padding:12px 26px;font-size:1.05rem}
+.spacer{flex:1}
+.counter{font-family:var(--font-mono);font-size:.9rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.feedback{min-height:1.5em;font-weight:700}
+.feedback.good{color:var(--good)} .feedback.bad{color:var(--bad)} .feedback.info{color:var(--muted);font-weight:400}
+.hint{font-size:.82rem;color:var(--muted)}
+kbd{font-family:var(--font-mono);font-size:.78rem;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--surface-2)}
+
+/* chord shapes */
+.shapes{display:flex;flex-direction:column;gap:6px}
+.minis{display:flex;flex-wrap:wrap;gap:8px}
+.mini{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:6px 8px 4px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.mini:hover{border-color:var(--accent)}
+.mini[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.mini small{font-family:var(--font-mono);font-size:.72rem;color:var(--muted);letter-spacing:.04em}
+.mini svg{display:block}
+.mc-line{stroke:var(--muted);stroke-width:1}
+.mc-nut{stroke:var(--ink);stroke-width:3}
+.mc-dot{fill:var(--ink)}
+.mc-root{fill:var(--accent)}
+.mc-txt{fill:var(--muted);font-family:var(--font-mono);font-size:9px}
+.mc-x{fill:var(--muted);font-family:var(--font-mono);font-size:9px;text-anchor:middle}
+.mc-o{fill:none;stroke:var(--muted);stroke-width:1}
+
+.summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.stat{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat b{display:block;font-family:var(--font-display);font-size:1.6rem;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat span{font-size:.8rem;color:var(--muted)}
+.missed{margin:0;padding-left:1.1em;font-size:.92rem}
+.missed li{margin:2px 0}
+
+.side{display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.panel>summary{cursor:pointer;font-family:var(--font-display);font-weight:800;font-size:1.05rem;list-style:none;display:flex;justify-content:space-between;align-items:center}
+.panel>summary::-webkit-details-marker{display:none}
+.panel>summary::after{content:"+";font-family:var(--font-mono);color:var(--muted)}
+.panel[open]>summary::after{content:"–"}
+.panel h2{font-family:var(--font-display);font-weight:800;font-size:1.05rem;margin:0 0 8px}
+.settings{display:flex;flex-direction:column;gap:14px;margin-top:12px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label,.field>.fl{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:6px 11px;font-size:.88rem;font-weight:700;min-height:34px}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.chip.mono{font-family:var(--font-mono);font-weight:600}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+select{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:6px 8px;min-height:36px}
+.heat-wrap{margin-top:4px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:.78rem;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.totals{font-size:.88rem;color:var(--muted);margin-top:8px;font-variant-numeric:tabular-nums}
+.linkbtn{border:0;background:none;padding:0;color:var(--muted);text-decoration:underline;font-size:.82rem;margin-top:8px}
+.linkbtn.armed{color:var(--bad);font-weight:700}
+
+.times{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:14px;margin-top:4px}
+.times-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;align-items:baseline}
+.tscroll{overflow-x:auto}
+.times table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:.92rem}
+.times th,.times td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.times thead th{font-family:var(--font-mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.times tbody tr{cursor:pointer}
+.times tbody tr:hover{background:var(--surface-2)}
+.times tbody tr.sel{background:var(--accent-soft)}
+.times tbody tr.sel th{box-shadow:inset 3px 0 0 var(--accent)}
+.times .nt{font-family:var(--font-mono);font-weight:600}
+.spark{display:block}
+.spark path{fill:none;stroke:var(--accent);stroke-width:1.6;stroke-linejoin:round}
+.spark circle{fill:var(--accent)}
+
+/* chess */
+.cboard-wrap{display:flex;justify-content:center;min-width:0}
+.cboard{position:relative;width:min(100%,560px);aspect-ratio:1/1;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(8,minmax(0,1fr));border-radius:6px;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:0 0 0 1px var(--line)}
+.sq{position:relative;cursor:pointer}
+.sq.l{background:var(--sq-l)} .sq.d{background:var(--sq-d)}
+.sq::before{content:"";position:absolute;inset:0;pointer-events:none}
+.sq.last::before{background:var(--sq-last)}
+.sq.sel::before{background:var(--sq-sel)}
+.sq.wrong::before{background:var(--bad);opacity:.55}
+.sq.hint::before{box-shadow:inset 0 0 0 4px var(--mark);background:rgba(242,164,58,.22)}
+.sq.check{background-image:radial-gradient(circle at 50% 50%, rgba(214,40,57,.95) 0%, rgba(214,40,57,.55) 35%, rgba(214,40,57,0) 72%)}
+.sq.src .pc{opacity:.3}
+.sq .dot{position:absolute;left:36%;top:36%;width:28%;height:28%;border-radius:50%;background:rgba(18,32,22,.32);z-index:2;pointer-events:none}
+.sq .ring{position:absolute;inset:4%;border-radius:50%;border:4px solid rgba(18,32,22,.32);z-index:2;pointer-events:none}
+.sq .pc{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
+.coord{position:absolute;font-family:var(--font-mono);font-size:10px;font-weight:600;line-height:1;z-index:3;pointer-events:none}
+.coord.f{right:3px;bottom:2px} .coord.r{left:3px;top:3px}
+.sq.l .coord{color:var(--sq-d)} .sq.d .coord{color:var(--sq-l)}
+.ghost{position:absolute;width:12.5%;height:12.5%;transform:translate(-50%,-55%) scale(1.15);pointer-events:none;z-index:10}
+.ghost .pc{width:100%;height:100%;display:block}
+.promo{position:absolute;inset:0;background:rgba(10,14,18,.5);display:flex;align-items:center;justify-content:center;z-index:12}
+.promo .opts{display:flex;gap:8px;background:var(--surface);padding:10px;border-radius:14px}
+.promo button{width:60px;height:60px;padding:4px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.promo button .pc{width:100%;height:100%;display:block}
+.pc path,.pc circle{stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+.pc.w path,.pc.w circle{fill:#fbf8f1;stroke:#1d1916}
+.pc.b path,.pc.b circle{fill:#2c2724;stroke:#0e0c0b}
+.pc .dt{fill:none!important}
+.pc.w .dt{stroke:#1d1916} .pc.b .dt{stroke:#e8e1d1}
+.pc.b .dt.cross{stroke:#0e0c0b}
+.pc .cross{stroke-width:2.2}
+.pc.w .eye{fill:#1d1916;stroke:none} .pc.b .eye{fill:#e8e1d1;stroke:none}
+.pv-l{fill:var(--sq-l)} .pv-d{fill:var(--sq-d)}
+#cscore .rt{font-family:var(--font-display);font-weight:800;font-size:1.5rem;color:var(--ink)}
+#cscore .up{color:var(--good);font-weight:700;margin-left:6px} #cscore .down{color:var(--bad);font-weight:700;margin-left:6px}
+a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
+.btn.sm{min-height:36px;padding:6px 12px;font-size:.88rem}
+.fams{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.fam{position:relative;text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:8px 10px 11px;display:flex;flex-direction:column;gap:2px;overflow:hidden;font-weight:700;font-size:.9rem}
+.fam:hover{border-color:var(--accent)}
+.fam small{font-weight:400;color:var(--muted);font-size:.75rem}
+.fam i{position:absolute;left:0;bottom:0;height:3px;width:var(--p);background:var(--good)}
+.fam[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.lines{display:flex;flex-direction:column}
+.lines .eyebrow{margin-bottom:2px}
+.lrow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.lname{flex:1;min-width:160px;display:flex;flex-direction:column}
+.lname small{color:var(--muted);font-size:.76rem;font-family:var(--font-mono)}
+.mdots{display:flex;gap:3px} .mdots i{width:8px;height:8px;border-radius:50%;background:var(--line)} .mdots i.on{background:var(--good)}
+.mlist{font-family:var(--font-mono);font-size:.92rem;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline}
+.mlist b{color:var(--muted);font-weight:500}
+.mlist span{padding:1px 4px;border-radius:5px}
+.mlist span[data-ply]{cursor:pointer}
+.mlist span.cur{background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.cstats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.cstats div{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:8px}
+.cstats b{display:block;font-family:var(--font-display);font-size:1.3rem;font-weight:800;font-variant-numeric:tabular-nums}
+.cstats span{font-size:.75rem;color:var(--muted)}
+.rchart{margin-top:10px}
+.rline{fill:none;stroke:var(--accent);stroke-width:2}
+.rarea{fill:var(--accent);opacity:.12}
+.rdot{fill:var(--accent)}
+.rgrid{stroke:var(--line)}
+.rtxt{fill:var(--muted);font-family:var(--font-mono);font-size:9px}
+
+/* words */
+.langs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:560px){.langs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.lang{text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+.lang:hover{border-color:var(--accent)}
+.lang[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.lang b{font-family:var(--font-display);font-weight:800}
+.lang small{color:var(--muted);font-size:.76rem;font-family:var(--font-mono)}
+.wstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.wstats div{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.wstats b{display:block;font-family:var(--font-display);font-size:1.7rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.wstats span{font-size:.78rem;color:var(--muted)}
+.wactions{display:flex;flex-wrap:wrap;gap:8px}
+.btn:disabled{opacity:.45;cursor:default}
+.wsync{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.wsync .linkbtn{margin-top:0}
+.wempty{display:flex;flex-direction:column;gap:12px;align-items:flex-start;max-width:60ch}
+.wempty p{margin:0;color:var(--muted)}
+.wcard{background:var(--surface-2);border:1px solid var(--line);border-radius:16px;padding:22px 22px 18px;display:flex;flex-direction:column;gap:12px;min-height:200px}
+.wcard.q{min-height:0}
+.ww{font-family:var(--font-display);font-weight:800;font-size:clamp(1.9rem,6vw,2.8rem);letter-spacing:-.02em;line-height:1.05;overflow-wrap:anywhere}
+.wd{font-size:1.08rem;line-height:1.5;max-width:65ch}
+.wd.big{font-size:1.2rem}
+.we{font-style:italic;color:var(--muted);border-left:3px solid var(--mark);padding-left:12px;max-width:65ch}
+.wsrc{font-family:var(--font-mono);font-size:.74rem;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.pips{display:flex;gap:6px;justify-content:center}
+.pips i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.pips i.past{background:var(--muted)} .pips i.on{background:var(--accent)}
+.match{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:10px}
+.mcol{display:flex;flex-direction:column;gap:8px}
+.mt{text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:10px 12px;min-height:52px;font-weight:700;overflow-wrap:anywhere}
+.mcol.defs .mt{font-weight:400;font-size:.92rem;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.mt:hover{border-color:var(--accent)}
+.mt.sel{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.mt.ok{background:var(--good);border-color:var(--good);color:var(--on-good);opacity:.75}
+.mt.bad{background:var(--bad);border-color:var(--bad);color:var(--on-bad)}
+.opts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.opt{width:100%;text-align:left;display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);background:var(--surface-2);border-radius:12px;padding:12px 14px;line-height:1.4}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt kbd{flex:none;margin-top:1px}
+.opt.ok{background:var(--good);border-color:var(--good);color:var(--on-good)}
+.opt.ok kbd{color:var(--ink)}
+.opt.bad{background:var(--bad);border-color:var(--bad);color:var(--on-bad)}
+.opt.bad kbd{color:var(--ink)}
+.opt.dim{opacity:.5}
+.opt:disabled{cursor:default}
+.wsum{font-size:1rem}
+.wsum b{font-family:var(--font-display);font-size:1.4rem}
+.wlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.wlist li{display:flex;gap:10px;align-items:baseline;padding:8px 10px;border-radius:10px;background:var(--surface-2);border-left:4px solid var(--good)}
+.wlist li.no{border-left-color:var(--bad)}
+.wlist li span{color:var(--muted);font-size:.9rem}
+.pick .wordmark{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;padding:14px 4px 4px;min-height:96px;font-family:var(--font-display);font-weight:800;font-size:1.35rem;letter-spacing:-.01em}
+.pick .wordmark span:nth-child(2n){color:var(--accent)}
+.pick .wordmark small{flex-basis:100%;font-family:var(--font-body);font-weight:400;font-size:.85rem;color:var(--muted)}
+/* today's practice against the daily goal, on each start card */
+.today{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:.74rem;color:var(--muted)}
+.today .bar{flex:1;height:6px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;max-width:160px}
+.today .bar i{display:block;height:100%;background:var(--accent);border-radius:999px}
+.today.done{color:var(--good)} .today.done .bar i{background:var(--good)}
+/* paintings */
+.gallery{display:flex;gap:10px;align-items:flex-end;justify-content:center;padding:10px 0 2px;min-height:96px}
+.gallery i{display:block;border:5px solid #8a6a3e;border-radius:3px;box-shadow:inset 0 0 0 2px #d8c39a,0 2px 5px rgba(0,0,0,.25)}
+.pframe{position:relative;background:var(--surface-2);border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;align-items:center;justify-content:center;min-height:min(44vh,420px)}
+@media (max-width:560px){.pframe{min-height:34vh;padding:8px}}
+.pframe img{display:block;max-width:100%;max-height:min(54vh,500px);width:auto;height:auto;border-radius:4px;box-shadow:0 6px 22px rgba(0,0,0,.28);background:#d9d2c3}
+.pframe .ploading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.9rem}
+.pframe img.wait{opacity:0}
+.pcap{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
+.pcap b{font-family:var(--font-display);font-size:1.15rem}
+.pcap span{color:var(--muted);font-size:.9rem}
+.pcap a{color:var(--accent)}
+.pcredit{font-size:.74rem;color:var(--muted)} .pcredit a{color:inherit}
+.popts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;list-style:none;margin:0;padding:0}
+@media (max-width:560px){.popts{grid-template-columns:minmax(0,1fr)}}
+.tier{display:inline-block;font-family:var(--font-mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--muted)}
+/* account area, filled only by the web app */
+.acct:empty{display:none}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand-row">
+      <div class="brand">
+        <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect x="2" y="4" width="26" height="22" rx="4" fill="#4d2f1f"/><g stroke="#c9ced4" stroke-width="1.6"><line x1="10" y1="4" x2="10" y2="26"/><line x1="18" y1="4" x2="18" y2="26"/></g><g stroke="#e4e7eb" stroke-width="1"><line x1="2" y1="9" x2="28" y2="9"/><line x1="2" y1="15" x2="28" y2="15"/><line x1="2" y1="21" x2="28" y2="21"/></g><circle cx="14" cy="15" r="3.6" fill="#f2a43a"/></svg>
+        Fretwise
+      </div>
+      <button class="inst-btn" id="instBtn" type="button" hidden aria-label="Change instrument">
+        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 4h9M8 1l3 3-3 3M12 10H3M6 7l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span id="instName">Guitar</span>
+      </button>
+    </div>
+    <nav class="modes" id="modes" role="tablist" aria-label="Exercise" hidden>
+      <button role="tab" data-mode="name" aria-selected="true">Name<span class="long"> the note</span></button>
+      <button role="tab" data-mode="find" aria-selected="false">Find<span class="long"> the note</span></button>
+      <button role="tab" data-mode="all" aria-selected="false">All<span class="long"> positions</span></button>
+      <button role="tab" data-mode="chord" aria-selected="false">Chords</button>
+      <button role="tab" data-mode="iv" aria-selected="false">Intervals<span class="long"> &amp; scales</span></button>
+    </nav>
+    <nav class="modes" id="chessModes" role="tablist" aria-label="Chess" hidden>
+      <button role="tab" data-ctab="puzzles" aria-selected="true">Puzzles</button>
+      <button role="tab" data-ctab="openings" aria-selected="false">Openings</button>
+    </nav>
+    <div class="acct" id="acct"></div>
+  </header>
+
+  <section class="home" id="home" aria-labelledby="homeTitle">
+    <div>
+      <div class="eyebrow">Practice</div>
+      <h1 id="homeTitle">What do you want to practise?</h1>
+    </div>
+    <p class="lede">Each instrument keeps its own settings, accuracy map and times.</p>
+    <div class="picks">
+      <button class="pick" type="button" data-inst="guitar">
+        <svg id="pvGuitar" aria-hidden="true"></svg>
+        <b>Guitar</b>
+        <span class="sub">6 strings, standard tuning E A D G B E</span>
+        <span class="meta" id="metaGuitar"></span>
+        <span class="today" id="todayGuitar"></span>
+      </button>
+      <button class="pick" type="button" data-inst="ukulele">
+        <svg id="pvUkulele" aria-hidden="true"></svg>
+        <b>Ukulele</b>
+        <span class="sub">4 strings, standard tuning G C E A</span>
+        <span class="meta" id="metaUkulele"></span>
+        <span class="today" id="todayUkulele"></span>
+      </button>
+      <button class="pick" type="button" data-inst="chess">
+        <svg id="pvChess" aria-hidden="true"></svg>
+        <b>Chess</b>
+        <span class="sub">Lichess puzzles and an opening trainer</span>
+        <span class="meta" id="metaChess"></span>
+        <span class="today" id="todayChess"></span>
+      </button>
+      <button class="pick" type="button" data-inst="words">
+        <div class="wordmark" aria-hidden="true"><span>Parola</span><span>Word</span><span>Palabra</span><span>Paraula</span><small>what does it mean?</small></div>
+        <b>Words</b>
+        <span class="sub">Your Notion dictionaries: learn five at a time, then review</span>
+        <span class="meta" id="metaWords"></span>
+        <span class="today" id="todayWords"></span>
+      </button>
+      <button class="pick" type="button" data-inst="paintings" id="pickPaintings" hidden>
+        <div class="gallery" aria-hidden="true"><i style="width:56px;height:72px;background:linear-gradient(160deg,#c9a46a,#5b4a7a 60%,#2c2a38)"></i><i style="width:84px;height:60px;background:linear-gradient(200deg,#9ec1d9,#e8d9a6 55%,#5f7d4f)"></i><i style="width:48px;height:64px;background:radial-gradient(circle at 40% 35%,#f1d7b5,#a2553d 55%,#3a2420)"></i></div>
+        <b>Paintings</b>
+        <span class="sub">Who painted it, and what is it called? Famous works and deep cuts</span>
+        <span class="meta" id="metaPaintings"></span>
+        <span class="today" id="todayPaintings"></span>
+      </button>
+    </div>
+    <div id="platformPanel"></div>
+  </section>
+
+  <main class="layout" id="main" hidden>
+    <section class="stage" aria-label="Exercise">
+      <div class="prompt-row">
+        <div class="prompt">
+          <div class="eyebrow" id="eyebrow"></div>
+          <h1 id="prompt"></h1>
+        </div>
+        <div class="round">
+          <div class="dots" id="dots"></div>
+          <div class="score" id="score"></div>
+        </div>
+      </div>
+      <div class="board-wrap" id="boardWrap"><svg id="board" role="img" aria-label="Fretboard"></svg></div>
+      <div class="answer" id="answer"></div>
+      <div class="feedback" id="feedback" aria-live="polite"></div>
+    </section>
+
+    <aside class="side">
+      <details class="panel" id="settingsPanel" open>
+        <summary>Practice settings</summary>
+        <div class="settings" id="settings"></div>
+      </details>
+      <section class="panel" aria-labelledby="progTitle">
+        <h2 id="progTitle">Your fretboard</h2>
+        <div class="hint">Accuracy per position from Name, Find and All positions. Positions you miss come up more often.</div>
+        <div class="heat-wrap" id="heatWrap"><svg id="heat" role="img" aria-label="Accuracy heatmap"></svg></div>
+        <div class="legend">
+          <span><i style="background:var(--bad)"></i>Needs work</span>
+          <span><i style="background:var(--warn)"></i>Getting there</span>
+          <span><i style="background:var(--good)"></i>Solid</span>
+        </div>
+        <div class="totals" id="totals"></div>
+        <button class="linkbtn" id="resetBtn" type="button">Reset progress</button>
+      </section>
+    </aside>
+  </main>
+
+  <main class="layout" id="wordsMain" hidden>
+    <section class="stage" aria-label="Words">
+      <div class="prompt-row">
+        <div class="prompt"><div class="eyebrow" id="weyebrow"></div><h1 id="wprompt"></h1></div>
+        <div class="round"><div class="score" id="wscore"></div></div>
+      </div>
+      <div class="answer" id="wbody"></div>
+      <div class="feedback" id="wfeedback" aria-live="polite"></div>
+    </section>
+    <aside class="side">
+      <details class="panel" id="wSettingsPanel" open><summary>Settings</summary><div class="settings" id="wsettings"></div></details>
+      <section class="panel" id="wstatsSide"></section>
+    </aside>
+  </main>
+
+  <main class="layout" id="paintMain" hidden>
+    <section class="stage" aria-label="Paintings">
+      <div class="prompt-row">
+        <div class="prompt"><div class="eyebrow" id="peyebrow"></div><h1 id="pprompt"></h1></div>
+        <div class="round"><div class="dots" id="pdots"></div><div class="score" id="pscore"></div></div>
+      </div>
+      <div class="answer" id="pbody"></div>
+      <div class="feedback" id="pfeedback" aria-live="polite"></div>
+    </section>
+    <aside class="side">
+      <details class="panel" id="pSettingsPanel" open><summary>Settings</summary><div class="settings" id="psettings"></div></details>
+      <section class="panel" id="pstats"></section>
+    </aside>
+  </main>
+
+  <main class="layout" id="chessMain" hidden>
+    <section class="stage" aria-label="Chess">
+      <div class="prompt-row">
+        <div class="prompt"><div class="eyebrow" id="ceyebrow"></div><h1 id="cprompt"></h1></div>
+        <div class="round"><div class="score" id="cscore"></div></div>
+      </div>
+      <div class="cboard-wrap"><div class="cboard" id="cboard" aria-label="Chessboard"></div></div>
+      <div class="answer" id="canswer"></div>
+      <div class="feedback" id="cfeedback" aria-live="polite"></div>
+    </section>
+    <aside class="side">
+      <details class="panel" id="cSettingsPanel" open><summary>Settings</summary><div class="settings" id="csettings"></div></details>
+      <section class="panel" id="cstats"></section>
+    </aside>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chess.js@0.10.3/chess.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ---------- music data ---------- */
+const SHARP=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+const FLAT =['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'];
+const NATURAL=[0,2,4,5,7,9,11];
+const ALL12=[0,1,2,3,4,5,6,7,8,9,10,11];
+const LETTER_PC={c:0,d:2,e:4,f:5,g:7,a:9,b:11};
+
+// String index 0 is the string drawn at the bottom of a tab (guitar: low E; ukulele: the G string).
+const INSTRUMENTS={
+  guitar:{id:'guitar',name:'Guitar',
+    strings:[
+      {short:'E',name:'low E',midi:40,w:2.8,kind:'w'},{short:'A',name:'A',midi:45,w:2.3,kind:'w'},
+      {short:'D',name:'D',midi:50,w:1.9,kind:'w'},{short:'G',name:'G',midi:55,w:1.5,kind:'p'},
+      {short:'B',name:'B',midi:59,w:1.15,kind:'p'},{short:'e',name:'high E',midi:64,w:0.95,kind:'p'}],
+    inlays:[3,5,7,9,15],
+    presets:[[0,5,'Open–5'],[5,9,'5–9'],[7,12,'7–12'],[0,12,'Open–12'],[0,15,'Open–15']],
+    stringHint:'Learn one or two strings at a time. Most players start with low E and A, since they carry the roots of most chord shapes.',
+    octaveHint:'Dashed lines join the octave shapes: two strings up and two frets over, or three frets when the jump crosses the B string. The low and high E strings share every note at the same fret.',
+    scaleRoots:[0,1], rootBass:true, chordGroups:['triad','seventh','ext'],
+    // steel-string guitar: plucked a third of the way along, dark loop filter, long ring
+    tone:{pick:0.3, dark:[0.12,0.32], noise:0.9, bq:[0.25,0.15], t60:[1.6,4.2]}},
+  ukulele:{id:'ukulele',name:'Ukulele',
+    strings:[
+      {short:'G',name:'G',midi:67,w:1.5,kind:'n'},{short:'C',name:'C',midi:60,w:2.1,kind:'n'},
+      {short:'E',name:'E',midi:64,w:1.8,kind:'n'},{short:'A',name:'A',midi:69,w:1.4,kind:'n'}],
+    inlays:[5,7,10,15],
+    presets:[[0,5,'Open–5'],[0,7,'Open–7'],[5,10,'5–10'],[0,12,'Open–12'],[0,15,'Open–15']],
+    stringHint:'Standard tuning is re-entrant: the G string is tuned above the C string, so the C string carries the lowest note.',
+    octaveHint:'Dashed lines join notes that are an octave apart. On a re-entrant ukulele the open C and the A string at fret 3 make the most useful octave shape.',
+    scaleRoots:[1], rootBass:false, chordGroups:['triad','seventh'],
+    // nylon ukulele: plucked closer to the bridge with a finger, brighter attack, short ring
+    tone:{pick:0.18, dark:[0.34,0.42], noise:0.55, bq:[0.13,0.1], t60:[1.5,2.8]}}
+};
+let INST=INSTRUMENTS.guitar, STRINGS=INST.strings, NS=STRINGS.length;
+
+const INTERVALS=[
+  {id:'m2',semi:1,name:'minor 2nd'},{id:'M2',semi:2,name:'major 2nd'},
+  {id:'m3',semi:3,name:'minor 3rd'},{id:'M3',semi:4,name:'major 3rd'},
+  {id:'P4',semi:5,name:'perfect 4th'},{id:'TT',semi:6,name:'tritone'},
+  {id:'P5',semi:7,name:'perfect 5th'},{id:'m6',semi:8,name:'minor 6th'},
+  {id:'M6',semi:9,name:'major 6th'},{id:'m7',semi:10,name:'minor 7th'},
+  {id:'M7',semi:11,name:'major 7th'},{id:'P8',semi:12,name:'octave'}
+];
+// letter distance of each interval (a 5th is five letters up: A♯ to E♯), used to spell the target note
+const IV_NUM={m2:2,M2:2,m3:3,M3:3,P4:4,TT:4,P5:5,m6:6,M6:6,m7:7,M7:7,P8:8};
+const rootNm=q=>q.rootName||note(q.rootPc);
+const ivTarget=q=>spellTone(rootNm(q),q.rootPc,q.iv.semi%12,String(IV_NUM[q.iv.id]));
+// name the root so the answer needs no double sharps or flats (B♭ to D, not A♯ to C♯♯); ties follow the setting
+function ivRootName(rp,iv){
+  const cost=n=>{ const t=spellTone(n,rp,iv.semi%12,String(IV_NUM[iv.id])); const k=(t.match(/[♯♭]/g)||[]).length+(n.match(/[♯♭]/g)||[]).length; return k+(/[♯♭]{2}/.test(t)?4:0); };
+  const a=note(rp), b=(S.acc==='flat'?SHARP:FLAT)[rp];
+  return cost(b)<cost(a)?b:a;
+}
+const IV_BY_SEMI={}; INTERVALS.forEach(i=>{IV_BY_SEMI[i.semi%12]=IV_BY_SEMI[i.semi%12]||i;}); IV_BY_SEMI[0]=INTERVALS[11];
+const SCALES=[
+  {id:'maj',  name:'major',            steps:[0,2,4,5,7,9,11], deg:['1','2','3','4','5','6','7']},
+  {id:'min',  name:'natural minor',    steps:[0,2,3,5,7,8,10], deg:['1','2','♭3','4','5','♭6','♭7']},
+  {id:'majp', name:'major pentatonic', steps:[0,2,4,7,9],      deg:['1','2','3','5','6']},
+  {id:'minp', name:'minor pentatonic', steps:[0,3,5,7,10],     deg:['1','♭3','4','5','♭7']},
+  {id:'blues',name:'blues',            steps:[0,3,5,6,7,10],   deg:['1','♭3','4','♭5','5','♭7']}
+];
+// Chords: each tone is [semitones above the root, degree, required]. Optional tones (a 5th, a 9th under a 13th) may be left out.
+const CHORDS=[
+  {id:'maj', sym:'',     name:'major',            grp:'triad',   t:[[0,'1',1],[4,'3',1],[7,'5',1]]},
+  {id:'m',   sym:'m',    name:'minor',            grp:'triad',   t:[[0,'1',1],[3,'♭3',1],[7,'5',1]]},
+  {id:'dim', sym:'dim',  name:'diminished',       grp:'triad',   t:[[0,'1',1],[3,'♭3',1],[6,'♭5',1]]},
+  {id:'aug', sym:'aug',  name:'augmented',        grp:'triad',   t:[[0,'1',1],[4,'3',1],[8,'♯5',1]]},
+  {id:'sus2',sym:'sus2', name:'suspended 2nd',    grp:'triad',   t:[[0,'1',1],[2,'2',1],[7,'5',1]]},
+  {id:'sus4',sym:'sus4', name:'suspended 4th',    grp:'triad',   t:[[0,'1',1],[5,'4',1],[7,'5',1]]},
+  {id:'7',   sym:'7',    name:'dominant 7th',     grp:'seventh', t:[[0,'1',1],[4,'3',1],[7,'5',0],[10,'♭7',1]]},
+  {id:'maj7',sym:'maj7', name:'major 7th',        grp:'seventh', t:[[0,'1',1],[4,'3',1],[7,'5',0],[11,'7',1]]},
+  {id:'m7',  sym:'m7',   name:'minor 7th',        grp:'seventh', t:[[0,'1',1],[3,'♭3',1],[7,'5',0],[10,'♭7',1]]},
+  {id:'m7b5',sym:'m7♭5', name:'half-diminished',  grp:'seventh', t:[[0,'1',1],[3,'♭3',1],[6,'♭5',1],[10,'♭7',1]]},
+  {id:'dim7',sym:'dim7', name:'diminished 7th',   grp:'seventh', t:[[0,'1',1],[3,'♭3',1],[6,'♭5',1],[9,'♭♭7',1]]},
+  {id:'6',   sym:'6',    name:'major 6th',        grp:'seventh', t:[[0,'1',1],[4,'3',1],[7,'5',0],[9,'6',1]]},
+  {id:'m6',  sym:'m6',   name:'minor 6th',        grp:'seventh', t:[[0,'1',1],[3,'♭3',1],[7,'5',0],[9,'6',1]]},
+  {id:'add9',sym:'add9', name:'added 9th',        grp:'ext',     t:[[0,'1',1],[4,'3',1],[7,'5',0],[2,'9',1]]},
+  {id:'9',   sym:'9',    name:'dominant 9th',     grp:'ext',     t:[[0,'1',1],[4,'3',1],[7,'5',0],[10,'♭7',1],[2,'9',1]]},
+  {id:'maj9',sym:'maj9', name:'major 9th',        grp:'ext',     t:[[0,'1',1],[4,'3',1],[7,'5',0],[11,'7',1],[2,'9',1]]},
+  {id:'m9',  sym:'m9',   name:'minor 9th',        grp:'ext',     t:[[0,'1',1],[3,'♭3',1],[7,'5',0],[10,'♭7',1],[2,'9',1]]},
+  {id:'m11', sym:'m11',  name:'minor 11th',       grp:'ext',     t:[[0,'1',1],[3,'♭3',1],[7,'5',0],[10,'♭7',1],[2,'9',0],[5,'11',1]]},
+  {id:'13',  sym:'13',   name:'dominant 13th',    grp:'ext',     t:[[0,'1',1],[4,'3',1],[7,'5',0],[10,'♭7',1],[2,'9',0],[9,'13',1]]},
+  {id:'m13', sym:'m13',  name:'minor 13th',       grp:'ext',     t:[[0,'1',1],[3,'♭3',1],[7,'5',0],[10,'♭7',1],[2,'9',0],[5,'11',0],[9,'13',1]]}
+];
+const CHORD_GROUPS=[['triad','Triads'],['seventh','7ths and 6ths'],['ext','9ths, 11ths, 13ths']];
+
+const pcOf=(s,f)=>(STRINGS[s].midi+f)%12;
+const midiOf=(s,f)=>STRINGS[s].midi+f;
+const key=(s,f)=>s+'-'+f;
+// suggested order for learning every position of a note: naturals around the circle of fifths, then the sharps
+const LEARN_ORDER=[0,7,2,9,4,11,5,6,1,8,3,10];
+// octave links: two positions an octave apart within a hand span (plus low E = high E on a guitar)
+function octaveLinks(ps){
+  const L=[];
+  for(const a of ps) for(const b of ps){
+    if(b.s<=a.s) continue;
+    const d=midiOf(b.s,b.f)-midiOf(a.s,a.f), ds=b.s-a.s, df=Math.abs(b.f-a.f);
+    if(d===12&&ds<=2&&df<=3) L.push([a,b]);
+    else if(INST.id==='guitar'&&d===24&&ds===5&&df===0) L.push([a,b]);
+  }
+  return L;
+}
+
+/* ---------- state ---------- */
+const S={
+  inst:'guitar', mode:'name', acc:'sharp', naturalsOnly:false, allPc:0, ivMode:'interval',
+  intervals:['m3','M3','P4','P5','P8'], scales:['minp','maj'], roundLen:10, sound:true,
+  chordGroupsBy:{guitar:['triad'],ukulele:['triad','seventh']}, ivAll:false, chordShapes:2, rootBass:{guitar:true,ukulele:false},
+  by:{guitar:{fretStart:0,fretEnd:12,strings:[true,true,true,true,true,true]},
+      ukulele:{fretStart:0,fretEnd:12,strings:[true,true,true,true]}}
+};
+const C=()=>S.by[S.inst];
+const freshStats=()=>({pos:{}, total:0, correct:0, rounds:0, best:null});
+let statsAll={guitar:freshStats(), ukulele:freshStats()};
+const ST=()=>statsAll[S.inst];
+const STORE='fretwise.v1';
+function load(){
+  try{
+    const raw=localStorage.getItem(STORE); if(!raw) return;
+    const d=JSON.parse(raw); if(!d) return;
+    const st=d.settings||{};
+    // older versions kept a single (guitar) range and string list at the top level
+    if(st.fretStart!=null&&!st.by){ S.by.guitar.fretStart=st.fretStart; S.by.guitar.fretEnd=st.fretEnd; if(Array.isArray(st.strings)&&st.strings.length===6) S.by.guitar.strings=st.strings; }
+    ['mode','lastView','acc','naturalsOnly','allPc','ivMode','ivAll','intervals','scales','roundLen','sound','chordShapes','inst'].forEach(k=>{ if(st[k]!=null) S[k]=st[k]; });
+    if(st.rootBass) Object.assign(S.rootBass,st.rootBass);
+    if(st.chordGroupsBy) Object.assign(S.chordGroupsBy,st.chordGroupsBy); else if(Array.isArray(st.chordGroups)) S.chordGroupsBy.guitar=st.chordGroups;
+    S.chordGroupsBy.ukulele=S.chordGroupsBy.ukulele.filter(g=>INSTRUMENTS.ukulele.chordGroups.indexOf(g)>=0); if(!S.chordGroupsBy.ukulele.length) S.chordGroupsBy.ukulele=['triad','seventh'];
+    if(st.by) ['guitar','ukulele'].forEach(i=>{ if(st.by[i]) Object.assign(S.by[i],st.by[i]); });
+    if(d.statsAll){ ['guitar','ukulele'].forEach(i=>{ if(d.statsAll[i]) statsAll[i]=Object.assign(freshStats(),d.statsAll[i]); }); }
+    else if(d.stats&&d.stats.pos) statsAll.guitar=Object.assign(freshStats(),d.stats);
+    if(!INSTRUMENTS[S.inst]) S.inst='guitar';
+  }catch(e){}
+}
+function save(){ try{ localStorage.setItem(STORE, JSON.stringify({settings:S, statsAll})); }catch(e){} }
+function setInst(id){ S.inst=id; INST=INSTRUMENTS[id]; STRINGS=INST.strings; NS=STRINGS.length; }
+
+let view='home', Q=null, phase='ask', round=null, qStart=0, advTimer=null;
+const note=pc=>(S.acc==='flat'?FLAT:SHARP)[((pc%12)+12)%12];
+const strName=s=>STRINGS[s].name+' string';
+const where=(s,f)=> f===0 ? 'open '+strName(s) : strName(s)+', fret '+f;
+
+/* ---------- audio: warm plucked string ----------
+   Waveguide string (extended Karplus–Strong): a smooth pick-shaped excitation instead of white noise,
+   a darker linear-phase loop filter, then a body EQ and a short room reverb. */
+let actx=null, outs=null; const bufCache=new Map();
+function makeRoom(){
+  const sr=actx.sampleRate, len=Math.floor(sr*1.3), ir=actx.createBuffer(2,len,sr);
+  for(let ch=0;ch<2;ch++){
+    const d=ir.getChannelData(ch); let lp=0;
+    for(let n=0;n<len;n++){ lp+=0.22*((Math.random()*2-1)-lp); d[n]=lp*Math.pow(1-n/len,3.4); }
+  }
+  return ir;
+}
+function eq(type,freq,gain,q){ const b=actx.createBiquadFilter(); b.type=type; b.frequency.value=freq; if(gain!=null) b.gain.value=gain; b.Q.value=q; return b; }
+function ensureAudio(){
+  if(!actx){
+    const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return false;
+    actx=new AC();
+    const verb=actx.createConvolver(); verb.buffer=makeRoom();
+    const wet=actx.createGain(); wet.gain.value=0.2; verb.connect(wet); wet.connect(actx.destination);
+    const chain=(nodes,dryGain,send)=>{
+      for(let k=0;k<nodes.length-1;k++) nodes[k].connect(nodes[k+1]);
+      const last=nodes[nodes.length-1], dry=actx.createGain(); dry.gain.value=dryGain;
+      last.connect(dry); dry.connect(actx.destination);
+      const sg=actx.createGain(); sg.gain.value=send; last.connect(sg); sg.connect(verb);
+      return nodes[0];
+    };
+    outs={
+      // guitar body: low air resonance and top plate, a little less nasal midrange
+      guitar:chain([eq('lowpass',2400,null,0.5),eq('peaking',105,5,1.3),eq('peaking',220,3,1.0),eq('peaking',1300,-4,0.9)],0.6,1.1),
+      // ukulele body: small box, so no deep bass; resonances around 300 and 650 Hz and a nylon "plink" up top
+      ukulele:chain([eq('highpass',150,null,0.7),eq('peaking',300,4,1.1),eq('peaking',650,1.5,1.0),eq('peaking',2600,2.5,0.9),eq('lowpass',6500,null,0.5)],0.55,0.9)
+    };
+  }
+  if(actx.state==='suspended') actx.resume();
+  return true;
+}
+function synthString(sr,midi,dur,tone){
+  const lerp=(r,t)=>r[0]+(r[1]-r[0])*Math.min(1,Math.max(0,t)), hi=(midi-40)/44;
+  const f=440*Math.pow(2,(midi-69)/12), len=Math.floor(sr*dur), y=new Float32Array(len);
+  // loop delay = N (line) + 1 (3-tap filter) + d (allpass) = sr/f, so the pitch stays in tune
+  const P=sr/f; let L=P-1, N=Math.floor(L), d=L-N; if(d<0.15){N-=1; d+=1;}
+  const C=(1-d)/(1+d), line=new Float32Array(N);
+  // excitation: triangle displacement plucked ~30% along the string, plus a little dark noise for the pick
+  const pk=Math.max(1,Math.round(N*tone.pick));
+  const dark=lerp(tone.dark,hi);
+  let nz=0, nz2=0, mean=0;
+  for(let i=0;i<N;i++){
+    const tri=i<pk?i/pk:(N-i)/(N-pk);
+    nz+=dark*((Math.random()*2-1)-nz); nz2+=dark*(nz-nz2);
+    line[i]=tri+tone.noise*nz2; mean+=line[i];
+  }
+  mean/=N; for(let i=0;i<N;i++) line[i]-=mean;
+  const T60=lerp(tone.t60,1-hi);
+  const rho=Math.pow(0.001,1/(f*T60));
+  const bq=lerp(tone.bq,hi); // higher notes keep a bit more sparkle
+  let idx=0,x1=0,x2=0,ax=0,ay=0,peak=0;
+  for(let n=0;n<len;n++){
+    const x=line[idx]; y[n]=x;
+    const lpf=bq*x+(1-2*bq)*x1+bq*x2; x2=x1; x1=x;    // linear-phase lowpass, 1-sample delay
+    const o=C*lpf+ax-C*ay; ax=lpf; ay=o;              // allpass for the fractional delay
+    line[idx]=o*rho; if(++idx===N) idx=0;
+    const a=Math.abs(x); if(a>peak) peak=a;
+  }
+  const norm=peak>0?0.7/peak:1, atk=Math.floor(sr*0.004), fade=Math.floor(sr*0.5);
+  for(let n=0;n<len;n++){ let g=norm; if(n<atk) g*=n/atk; if(n>len-fade) g*=(len-n)/fade; y[n]*=g; }
+  return y;
+}
+function pluck(midi){
+  const k=INST.id+midi;
+  if(bufCache.has(k)) return bufCache.get(k);
+  const sr=actx.sampleRate, data=synthString(sr,midi,INST.id==='ukulele'?2.6:3.2,INST.tone);
+  const buf=actx.createBuffer(1,data.length,sr); buf.getChannelData(0).set(data);
+  bufCache.set(k,buf); return buf;
+}
+function play(midi, when, gain){
+  if(!S.sound) return;
+  try{
+    if(!ensureAudio()) return;
+    const src=actx.createBufferSource(); src.buffer=pluck(midi);
+    const out=outs[INST.id];
+    if(gain!=null&&gain!==1){ const g=actx.createGain(); g.gain.value=gain; src.connect(g); g.connect(out); } else src.connect(out);
+    src.start(actx.currentTime+(when||0)+0.01);
+  }catch(e){}
+}
+function playSeq(midis, gap){ midis.forEach((m,i)=>play(m,i*(gap||0.3))); }
+function strum(frets){ let i=0; frets.forEach((f,s)=>{ if(f>=0){ play(midiOf(s,f),i*0.045,0.7); i++; } }); }
+
+/* ---------- fretboard geometry + drawing ---------- */
+const wire=n=>1-Math.pow(2,-n/12); // real 12-TET fret placement along the scale length
+function geom(o){
+  const W=o.width, start=o.start, end=o.end, hasOpen=start===0;
+  const firstFret=hasOpen?1:start, a=wire(firstFret-1), b=wire(end), nCells=end-firstFret+1;
+  const g={vertical:o.vertical,hasOpen,start,end,firstFret,W};
+  if(o.vertical){
+    const leftNum=26,rightPad=6,top=22;
+    const sp=Math.min(NS<=4?78:62,(W-leftNum-rightPad)/NS);
+    const x0=leftNum+((W-leftNum-rightPad)-NS*sp)/2;
+    const O=hasOpen?40:0;
+    let L=Math.min(o.maxLen||560, nCells*72+O); L=Math.max(L, nCells*28+O);
+    Object.assign(g,{sp,O,off:top,L,c0:x0,c1:x0+NS*sp,height:top+L+8});
+    g.cross=v=>x0+(v+0.5)*sp;
+  }else{
+    const labelW=24,rightPad=6,top=6;
+    const sp=o.sp||Math.max(26,Math.min(NS<=4?42:36,W*(NS<=4?0.055:0.044)));
+    const O=hasOpen?(o.sp?20:32):0;
+    Object.assign(g,{sp,O,off:labelW,L:W-labelW-rightPad,c0:top,c1:top+NS*sp,height:top+NS*sp+20});
+    g.cross=v=>top+(NS-1-v+0.5)*sp;
+  }
+  g.nT=t=>g.off+g.O+(t-a)/(b-a)*(g.L-g.O);
+  g.span=f=>f===0?[g.off+2,g.off+g.O]:[g.nT(wire(f-1)),g.nT(wire(f))];
+  g.neck=f=>{const s=g.span(f);return (s[0]+s[1])/2;};
+  g.pt=(s,f)=>g.vertical?{x:g.cross(s),y:g.neck(f)}:{x:g.neck(f),y:g.cross(s)};
+  g.bStart=g.off+g.O; g.bEnd=g.off+g.L;
+  g.cells=[]; if(hasOpen) g.cells.push(0); for(let f=firstFret;f<=end;f++) g.cells.push(f);
+  const lastSpan=g.span(end), minCell=lastSpan[1]-lastSpan[0];
+  g.r=Math.max(8,Math.min(17,g.sp*0.4,minCell*0.45));
+  return g;
+}
+const f1=n=>Math.round(n*10)/10;
+function rect(g,n0,n1,c0,c1,attr){
+  const r=g.vertical?[c0,n0,c1-c0,n1-n0]:[n0,c0,n1-n0,c1-c0];
+  return `<rect x="${f1(r[0])}" y="${f1(r[1])}" width="${f1(r[2])}" height="${f1(r[3])}" ${attr||''}/>`;
+}
+function line(g,n0,c0,n1,c1,attr){
+  const p=g.vertical?[c0,n0,c1,n1]:[n0,c0,n1,c1];
+  return `<line x1="${f1(p[0])}" y1="${f1(p[1])}" x2="${f1(p[2])}" y2="${f1(p[3])}" ${attr||''}/>`;
+}
+function circleAt(g,nv,cv,r,attr){
+  const x=g.vertical?cv:nv, y=g.vertical?nv:cv;
+  return `<circle cx="${f1(x)}" cy="${f1(y)}" r="${f1(r)}" ${attr||''}/>`;
+}
+function drawBoard(svg,o){
+  const g=geom(o), gid=o.gid||'wood';
+  let h='<defs><linearGradient id="'+gid+'" '+(g.vertical?'x1="0" y1="0" x2="1" y2="0"':'x1="0" y1="0" x2="0" y2="1"')+'>'+
+    '<stop offset="0" style="stop-color:var(--wood-1)"/><stop offset=".5" style="stop-color:var(--wood-2)"/><stop offset="1" style="stop-color:var(--wood-1)"/></linearGradient></defs>';
+  if(g.hasOpen) h+=rect(g,g.off,g.bStart,g.c0,g.c1,'class="openz" rx="4"');
+  h+=rect(g,g.bStart,g.bEnd,g.c0,g.c1,`fill="url(#${gid})"`);
+  h+=line(g,g.bStart,g.c0,g.bEnd,g.c0,'class="binding"')+line(g,g.bStart,g.c1,g.bEnd,g.c1,'class="binding"');
+  if(o.heat){
+    const pos=ST().pos;
+    g.cells.forEach(f=>{ for(let s=0;s<NS;s++){
+      const st=pos[key(s,f)]; if(!st||!st.n) continue;
+      const acc=st.c/st.n, col=acc<0.6?'var(--bad)':acc<0.85?'var(--warn)':'var(--good)';
+      const op=Math.min(1,0.35+st.n*0.13), sp=g.span(f);
+      h+=rect(g,sp[0]+1.5,sp[1]-1.5,g.cross(s)-g.sp/2+1.5,g.cross(s)+g.sp/2-1.5,`style="fill:${col}" fill-opacity="${op.toFixed(2)}" rx="3"`);
+    }});
+  }
+  // inlays
+  const mid=(NS-1)/2, r0=Math.max(3,Math.min(6,g.sp*0.17));
+  g.cells.forEach(f=>{
+    if(f===0) return; const n=g.neck(f);
+    if(INST.inlays.indexOf(f)>=0) h+=circleAt(g,n,g.cross(mid),r0,'class="inlay"');
+    if(f===12) h+=circleAt(g,n,g.cross(mid-1),r0,'class="inlay"')+circleAt(g,n,g.cross(mid+1),r0,'class="inlay"');
+  });
+  if(o.win){
+    const s0=g.span(o.win[0])[0], s1=g.span(o.win[1])[1];
+    h+=rect(g,s0+1,s1-1,g.c0+1,g.c1-1,'class="win" rx="6"');
+  }
+  for(let n=g.firstFret-1;n<=g.end;n++){
+    const p=g.nT(wire(n));
+    h+=line(g,p,g.c0,p,g.c1,n===0?'class="nut"':'class="fretw"');
+  }
+  for(let s=0;s<NS;s++){
+    const c=g.cross(s), st=STRINGS[s], sw=o.small?st.w*0.7:st.w;
+    const cls=o.hl===s?'str-hl':('str-'+st.kind);
+    h+=line(g,g.hasOpen?g.off+2:g.bStart,c,g.bEnd,c,`class="${cls}" stroke-width="${sw}"`);
+  }
+  for(let s=0;s<NS;s++){
+    const c=g.cross(s), muted=o.muted&&o.muted[s];
+    const t=muted?'×':STRINGS[s].short, cls=muted?'lbl mute':'lbl sn';
+    if(g.vertical) h+=`<text class="${cls}" x="${f1(c)}" y="${g.off-8}" text-anchor="middle">${t}</text>`;
+    else h+=`<text class="${cls}" x="${g.off-9}" y="${f1(c+4)}" text-anchor="middle">${t}</text>`;
+  }
+  g.cells.forEach(f=>{
+    const n=g.neck(f);
+    if(o.small && f!==0 && INST.inlays.indexOf(f)<0 && f!==12 && f!==g.firstFret) return;
+    const t=String(f);
+    if(g.vertical) h+=`<text class="lbl" x="${g.c0-8}" y="${f1(n+4)}" text-anchor="end">${t}</text>`;
+    else h+=`<text class="lbl" x="${f1(n)}" y="${f1(g.c1+14)}" text-anchor="middle">${t}</text>`;
+  });
+  (o.links||[]).forEach(l=>{
+    if(l[0].f<g.start||l[1].f>g.end||l[1].f<g.start||l[0].f>g.end) return;
+    const a=g.pt(l[0].s,l[0].f), b=g.pt(l[1].s,l[1].f);
+    h+=`<line class="link" x1="${f1(a.x)}" y1="${f1(a.y)}" x2="${f1(b.x)}" y2="${f1(b.y)}"/>`;
+  });
+  (o.markers||[]).forEach(m=>{
+    if(m.f<g.start||m.f>g.end) return;
+    const p=g.pt(m.s,m.f), r=m.kind==='ghost'?g.r*0.86:g.r;
+    const lab=m.label||'', fs=lab.length>2?r*0.72:r*0.92;
+    h+=`<g class="mk mk-${m.kind}">`+
+      (m.kind==='target'?`<circle class="ring" cx="${f1(p.x)}" cy="${f1(p.y)}" r="${f1(r)}"/>`:'')+
+      `<circle class="c" cx="${f1(p.x)}" cy="${f1(p.y)}" r="${f1(r)}"/>`+
+      (lab?`<text x="${f1(p.x)}" y="${f1(p.y+0.5)}" font-size="${f1(fs)}">${lab}</text>`:'')+`</g>`;
+  });
+  if(o.interactive){
+    g.cells.forEach(f=>{ const sp=g.span(f); for(let s=0;s<NS;s++){
+      h+=rect(g,sp[0],sp[1],g.cross(s)-g.sp/2,g.cross(s)+g.sp/2,`class="hit" data-s="${s}" data-f="${f}"`);
+    }});
+  }
+  svg.setAttribute('viewBox',`0 0 ${f1(g.W)} ${f1(g.height)}`);
+  svg.setAttribute('width',f1(g.W)); svg.setAttribute('height',f1(g.height));
+  svg.innerHTML=h;
+}
+
+/* ---------- picking questions ---------- */
+function rangeFrets(){ const a=[]; for(let f=C().fretStart;f<=C().fretEnd;f++) a.push(f); return a; }
+function positions(useStringFilter, pcFilter){
+  const out=[], c=C();
+  for(let s=0;s<NS;s++){ if(useStringFilter&&!c.strings[s]) continue;
+    for(let f=c.fretStart;f<=c.fretEnd;f++){ const p=pcOf(s,f); if(!pcFilter||pcFilter(p)) out.push({s,f}); } }
+  return out;
+}
+function weight(s,f){
+  const st=ST().pos[key(s,f)]; if(!st||!st.n) return 2.2;
+  const err=1-st.c/st.n, slow=Math.min(1,(st.ms/st.n)/6000);
+  return 1+4*err+slow;
+}
+let lastKey='';
+function pickPos(list){
+  let l=list.length>1?list.filter(p=>key(p.s,p.f)!==lastKey):list;
+  let tot=0; const w=l.map(p=>{const x=weight(p.s,p.f); tot+=x; return x;});
+  let r=Math.random()*tot;
+  for(let i=0;i<l.length;i++){ r-=w[i]; if(r<=0){ lastKey=key(l[i].s,l[i].f); return l[i]; } }
+  const p=l[l.length-1]; lastKey=key(p.s,p.f); return p;
+}
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const natFilter=()=>S.naturalsOnly?(p=>NATURAL.indexOf(p)>=0):null;
+
+function makeQuestion(){
+  if(S.mode==='name'){
+    const p=pickPos(positions(true,natFilter()));
+    return {type:'name',s:p.s,f:p.f,pc:pcOf(p.s,p.f)};
+  }
+  if(S.mode==='find'){
+    const p=pickPos(positions(true,natFilter())), pc=pcOf(p.s,p.f);
+    const frets=rangeFrets().filter(f=>pcOf(p.s,f)===pc);
+    return {type:'findS',s:p.s,pc,frets,tap:null};
+  }
+  if(S.mode==='all'){
+    const pc=S.allPc;
+    return {type:'findA',pc,targets:positions(true,x=>x===pc),found:new Set(),wrong:[]};
+  }
+  if(S.mode==='chord') return makeChordQ();
+  if(S.ivMode==='interval'){
+    const ivs=INTERVALS.filter(i=>S.intervals.indexOf(i.id)>=0);
+    for(let t=0;t<40;t++){
+      const iv=rnd(ivs), root=rnd(positions(false)), rp=pcOf(root.s,root.f), tp=(rp+iv.semi)%12;
+      const targets=positions(false,x=>x===tp).filter(p=>!(p.s===root.s&&p.f===root.f));
+      if(!targets.length) continue;
+      const rootName=ivRootName(rp,iv);
+      if(S.ivAll) return {type:'ivA',root,iv,rootPc:rp,rootName,targetPc:tp,targets,found:new Set(),wrong:[]};
+      return {type:'iv',root,iv,rootPc:rp,rootName,targetPc:tp,targets,tap:null};
+    }
+  }
+  const scs=SCALES.filter(x=>S.scales.indexOf(x.id)>=0), sc=rnd(scs), c=C(), roots=[];
+  INST.scaleRoots.forEach(s=>{ for(let f=c.fretStart;f<=c.fretEnd;f++){
+    const lo=Math.max(c.fretStart,f-1), hi=f+3; if(hi<=c.fretEnd) roots.push({s,f,lo,hi}); } });
+  const R=roots.length?rnd(roots):{s:INST.scaleRoots[0],f:c.fretStart,lo:c.fretStart,hi:c.fretEnd};
+  const rp=pcOf(R.s,R.f), expected=new Map();
+  for(let s=0;s<NS;s++) for(let f=R.lo;f<=R.hi;f++){
+    const iv=(pcOf(s,f)-rp+12)%12, i=sc.steps.indexOf(iv);
+    if(i>=0) expected.set(key(s,f),sc.deg[i]);
+  }
+  return {type:'scale',root:{s:R.s,f:R.f},rootPc:rp,scale:sc,win:[R.lo,R.hi],expected,selected:new Set([key(R.s,R.f)])};
+}
+
+/* ---------- chords ---------- */
+const rootBassOn=()=>!!S.rootBass[S.inst];
+const chordName=q=>q.ch.id==='maj'?q.rootName+' major':q.rootName+q.ch.sym;
+// spell chord tones by letter, so G♯ major is G♯ B♯ D♯ rather than G♯ C D♯
+const LETTERS=['C','D','E','F','G','A','B'], LETTER_PCS=[0,2,4,5,7,9,11];
+function spellTone(rootName,root,semi,deg){
+  const li=LETTERS.indexOf(rootName[0]), num=parseInt(deg.replace(/[^0-9]/g,''),10);
+  const L=(li+(num-1))%7, target=(root+semi)%12;
+  let d=((target-LETTER_PCS[L])%12+12)%12; if(d>6) d-=12;
+  return LETTERS[L]+({0:'',1:'♯',2:'♯♯','-1':'♭','-2':'♭♭'}[d]||'');
+}
+// name the root the way that needs fewer accidentals (B♭ aug, not A♯ aug with C♯♯ and E♯♯); ties follow the setting
+function chordRootName(root,ch){
+  const cost=n=>ch.t.reduce((a,x)=>{ const t=spellTone(n,root,x[0],x[1]); const k=(t.match(/[♯♭]/g)||[]).length; return a+k+(k>1?4:0); },0);
+  const a=note(root), b=(S.acc==='flat'?SHARP:FLAT)[root];
+  return cost(b)<cost(a)?b:a;
+}
+const chordSpelling=q=>q.ch.t.map(x=>spellTone(q.rootName,q.root,x[0],x[1])).join(' ')+'  ('+q.ch.t.map(x=>x[1]).join(' ')+')';
+function degOf(q,pc){ const iv=(pc-q.root+12)%12; const t=q.ch.t.find(x=>x[0]===iv); return t?t[1]:null; }
+// every playable voicing: one note per string, fretted notes inside a 4-fret box, all required tones,
+// sounding strings next to each other (guitar) or all four strings (ukulele), at most four fingers
+function genVoicings(root,ch){
+  const c=C(), start=c.fretStart, end=c.fretEnd;
+  const tones=new Set(ch.t.map(x=>(root+x[0])%12)), req=ch.t.filter(x=>x[2]).map(x=>(root+x[0])%12);
+  const found=new Map();
+  const minStr=NS<=4?4:Math.max(4,req.length);
+  for(let p=Math.max(1,start);p<=end;p++){
+    const opts=[];
+    for(let s=0;s<NS;s++){
+      const o=[-1];
+      if(start===0&&p<=5&&tones.has(pcOf(s,0))) o.push(0);
+      for(let f=p;f<=Math.min(end,p+3);f++) if(tones.has(pcOf(s,f))) o.push(f);
+      opts.push(o);
+    }
+    const cur=new Array(NS);
+    (function rec(s){
+      if(s===NS){
+        const fr=cur.slice(), snd=[]; for(let i=0;i<NS;i++) if(fr[i]>=0) snd.push(i);
+        if(snd.length<minStr) return;
+        if(snd[snd.length-1]-snd[0]+1!==snd.length) return;           // no muted string in the middle
+        const fretted=snd.filter(i=>fr[i]>0).map(i=>fr[i]);
+        if(fretted.length&&Math.min(...fretted)!==p) return;          // each box counted once
+        if(!fretted.length&&p!==Math.max(1,start)) return;
+        const have=new Set(snd.map(i=>pcOf(i,fr[i])));
+        for(const r of req) if(!have.has(r)) return;
+        if(rootBassOn()){ let lo=snd[0]; snd.forEach(i=>{ if(midiOf(i,fr[i])<midiOf(lo,fr[lo])) lo=i; }); if(pcOf(lo,fr[lo])!==root) return; }
+        const minF=fretted.length?Math.min(...fretted):0, atMin=fretted.filter(f=>f===minF).length;
+        // a barre counts as one finger only if no open or muted string sits under it
+        let fingers=fretted.length;
+        if(atMin>=2){ const bi=snd.filter(i=>fr[i]===minF); let flat=true; for(let i=bi[0];i<=bi[bi.length-1];i++) if(fr[i]<minF) flat=false; if(flat) fingers-=atMin-1; }
+        if(fingers>4) return;
+        const k=fr.join(',');
+        const opens=snd.filter(i=>fr[i]===0).length; // open strings mixed with high frets are awkward
+        if(!found.has(k)) found.set(k,{frets:fr,pos:minF,score:minF*0.5+fingers+(NS-snd.length)*1.6+(atMin>=3?0.5:0)+(minF>=3?opens:0)});
+        return;
+      }
+      for(const f of opts[s]){ cur[s]=f; rec(s+1); }
+    })(0);
+  }
+  const all=[...found.values()].sort((a,b)=>a.score-b.score), pick=[];
+  for(const v of all){
+    if(pick.length>=8) break;
+    if(pick.some(u=>Math.abs(u.pos-v.pos)<2&&lowestString(u.frets)===lowestString(v.frets))) continue;
+    pick.push(v);
+  }
+  return pick.sort((a,b)=>a.pos-b.pos).map(v=>v.frets);
+}
+function lowestString(fr){ for(let i=0;i<fr.length;i++) if(fr[i]>=0) return i; return -1; }
+function makeChordQ(){
+  const groups=S.chordGroupsBy[S.inst], pool=CHORDS.filter(c=>groups.indexOf(c.grp)>=0), roots=S.naturalsOnly?NATURAL:ALL12;
+  for(let t=0;t<40;t++){
+    const ch=rnd(pool), root=rnd(roots), voicings=genVoicings(root,ch);
+    if(voicings.length) return {type:'chord',ch,root,rootName:chordRootName(root,ch),voicings,sel:new Map(),found:[],checked:null,mist:0,show:null};
+  }
+  const ch=CHORDS[0]; return {type:'chord',ch,root:0,rootName:'C',voicings:genVoicings(0,ch),sel:new Map(),found:[],checked:null,mist:0,show:null};
+}
+const selToFrets=sel=>{ const fr=new Array(NS).fill(-1); sel.forEach((f,s)=>{ fr[s]=f; }); return fr; };
+const sameShape=(a,b)=>{ let diff=0; for(let s=0;s<NS;s++) if(a[s]!==b[s]) diff++; return diff<2; };
+function evalShape(q,fr){
+  const notes=[]; fr.forEach((f,s)=>{ if(f>=0) notes.push({s,f,pc:pcOf(s,f),midi:midiOf(s,f)}); });
+  const wrong=notes.filter(n=>degOf(q,n.pc)==null);
+  const present=new Set(notes.map(n=>(n.pc-q.root+12)%12));
+  const missing=q.ch.t.filter(x=>x[2]&&!present.has(x[0]));
+  const fretted=notes.filter(n=>n.f>0).map(n=>n.f);
+  const span=fretted.length?Math.max(...fretted)-Math.min(...fretted):0;
+  const low=notes.slice().sort((a,b)=>a.midi-b.midi)[0];
+  const bassBad=!!(rootBassOn()&&low&&low.pc!==q.root);
+  const need=Math.max(3,q.ch.t.filter(x=>x[2]).length), few=notes.length<need;
+  return {notes,wrong,missing,span,bassBad,few,need,low,ok:!wrong.length&&!missing.length&&span<=4&&!bassBad&&!few};
+}
+function checkChord(){
+  if(phase!=='ask'||!Q||Q.type!=='chord') return;
+  if(!Q.sel.size){ setFeedback('info','Tap the fretboard to place notes, one per string. Strings you leave empty are muted.'); return; }
+  const fr=selToFrets(Q.sel), r=evalShape(Q,fr);
+  strum(fr);
+  if(!r.ok){
+    Q.mist++; Q.checked=r;
+    const msg=[];
+    if(r.wrong.length) msg.push(`${[...new Set(r.wrong.map(n=>note(n.pc)))].join(', ')} ${r.wrong.length===1?"isn't":"aren't"} in ${chordName(Q)}.`);
+    if(r.missing.length) msg.push(`Missing: ${r.missing.map(x=>`${spellTone(Q.rootName,Q.root,x[0],x[1])} (the ${x[1]})`).join(', ')}.`);
+    if(r.few&&!r.missing.length) msg.push(`Use at least ${r.need} strings.`);
+    if(r.span>4) msg.push('That stretch is too wide. Keep the fretted notes within five frets.');
+    if(r.bassBad) msg.push(`The lowest note is ${note(r.low.pc)}; it should be the root, ${note(Q.root)}.`);
+    setFeedback('bad',msg.join(' ')); render(); return;
+  }
+  if(Q.found.some(f=>sameShape(f,fr))){ setFeedback('info','You already found that shape. Try a different one, for example higher up the neck.'); return; }
+  Q.found.push(fr); Q.checked=null;
+  if(Q.found.length>=S.chordShapes){
+    setFeedback(Q.mist?'bad':'good',`${Q.mist?'Done':'Correct'}: ${chordName(Q)} is ${chordSpelling(Q)}.${Q.mist?` ${Q.mist} ${Q.mist===1?'check was':'checks were'} off along the way.`:''}`);
+    Q.show={src:'u',i:Q.found.length-1};
+    finish(Q.mist===0,chordName(Q));
+  }else{
+    setFeedback('good',`That works. Shape ${Q.found.length} of ${S.chordShapes} found. Now find a different one.`);
+    Q.sel=new Map(); render();
+  }
+}
+function shownFrets(){
+  if(!Q||Q.type!=='chord') return null;
+  if(Q.show) return Q.show.src==='u'?Q.found[Q.show.i]:otherShapes()[Q.show.i];
+  return null;
+}
+function otherShapes(){ return Q.voicings.filter(v=>!Q.found.some(f=>sameShape(f,v))); }
+function miniChord(fr,root){
+  const n=fr.length, fretted=fr.filter(f=>f>0), maxF=fretted.length?Math.max(...fretted):1, minF=fretted.length?Math.min(...fretted):1;
+  const base=maxF<=4?1:minF, rows=Math.max(4,maxF-base+1);
+  const cg=12, rg=13, x0=18, y0=16, w=x0+(n-1)*cg+10, h=y0+rows*rg+4;
+  let s=`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">`;
+  for(let i=0;i<n;i++) s+=`<line class="mc-line" x1="${x0+i*cg}" y1="${y0}" x2="${x0+i*cg}" y2="${y0+rows*rg}"/>`;
+  for(let r=0;r<=rows;r++) s+=`<line class="${r===0&&base===1?'mc-nut':'mc-line'}" x1="${x0}" y1="${y0+r*rg}" x2="${x0+(n-1)*cg}" y2="${y0+r*rg}"/>`;
+  if(base>1) s+=`<text class="mc-txt" x="2" y="${y0+rg*0.7}">${base}</text>`;
+  fr.forEach((f,i)=>{
+    const x=x0+i*cg;
+    if(f<0) s+=`<text class="mc-x" x="${x}" y="${y0-5}">×</text>`;
+    else if(f===0) s+=`<circle class="mc-o" cx="${x}" cy="${y0-8}" r="3"/>`;
+    else s+=`<circle class="${pcOf(i,f)===root?'mc-root':'mc-dot'}" cx="${x}" cy="${y0+(f-base+0.5)*rg}" r="4.2"/>`;
+  });
+  return s+'</svg>';
+}
+const fretsText=fr=>fr.some(f=>f>9)?fr.map(f=>f<0?'x':f).join('-'):fr.map(f=>f<0?'x':f).join('');
+
+/* ---------- round flow ---------- */
+function newRound(){
+  clearTimeout(advTimer); stopClock(); round={results:[]};
+  if(S.mode==='all') return readyRun();
+  nextQuestion();
+}
+function nextQuestion(){
+  clearTimeout(advTimer);
+  if(round.results.length>=S.roundLen){ return showSummary(); }
+  Q=makeQuestion(); phase='ask'; qStart=performance.now();
+  setFeedback('','');
+  render();
+}
+function recordPos(s,f,ok,ms){
+  const pos=ST().pos, k=key(s,f), st=pos[k]||(pos[k]={n:0,c:0,ms:0});
+  st.n++; if(ok) st.c++; st.ms+=Math.min(ms,15000);
+}
+function finish(ok,label){
+  const ms=performance.now()-qStart, st=ST();
+  phase='answered';
+  round.results.push({ok,ms,label});
+  st.total++; if(ok) st.correct++;
+  if(Q.type==='name') recordPos(Q.s,Q.f,ok,ms);
+  if(Q.type==='findS') Q.frets.forEach(f=>recordPos(Q.s,f,ok,ms));
+  save();
+  render();
+  if(ok&&(Q.type==='name'||Q.type==='findS')) advTimer=setTimeout(nextQuestion,1100);
+}
+function showSummary(){
+  phase='summary';
+  const n=round.results.length, c=round.results.filter(r=>r.ok).length, st=ST();
+  st.rounds++; if(!st.best||c/n>st.best.c/st.best.n) st.best={c,n};
+  save(); render();
+}
+
+/* ---------- All positions: one timed run per note, kept in a history ---------- */
+let clock=null;
+function stopClock(){ if(clock){ clearInterval(clock); clock=null; } }
+function readyRun(){ stopClock(); Q=makeQuestion(); phase='ready'; setFeedback('',''); render(); }
+function startRun(){
+  if(S.mode!=='all'||phase!=='ready') return;
+  if(!Q.targets.length){ setFeedback('info','This note is not on the selected strings and frets. Widen the range in the settings.'); return; }
+  ensureAudio();
+  phase='ask'; qStart=performance.now(); render();
+  clock=setInterval(()=>{ const el=$('score'); if(el) el.textContent=((performance.now()-qStart)/1000).toFixed(1)+' s'; },100);
+}
+function finishRun(ok,gaveUp){
+  stopClock();
+  const ms=Math.round(performance.now()-qStart), st=ST();
+  phase='answered';
+  st.total++; if(ok) st.correct++; save();
+  const cfg=cfgKey(), prior=runsFor(Q.pc,cfg).filter(r=>r.ok);
+  const prevBest=prior.length?Math.min(...prior.map(r=>r.ms)):null;
+  const run={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),inst:S.inst,pc:Q.pc,ms,n:Q.targets.length,found:Q.found.size,wrong:Q.wrong.length,ok,gaveUp:!!gaveUp,t:Date.now(),cfg};
+  runs.push(run); if(runs.length>MAXRUNS) runs=runs.slice(-MAXRUNS);
+  saveLocalRuns(); pushRuns();
+  const n=Q.targets.length, secs=(ms/1000).toFixed(1), name=note(Q.pc);
+  let msg;
+  if(gaveUp) msg=`You found ${Q.found.size} of ${n}. The rest are outlined. This run is saved but doesn't count for your best.`;
+  else if(ok) msg=prevBest==null?`All ${n} found in ${secs} s. That's your first clean ${name} run.`
+    : ms<prevBest?`All ${n} found in ${secs} s. New best, ${((prevBest-ms)/1000).toFixed(1)} s faster.`
+    :`All ${n} found in ${secs} s. Your best is ${(prevBest/1000).toFixed(1)} s.`;
+  else msg=`All ${n} found in ${secs} s, with ${Q.wrong.length} wrong ${Q.wrong.length===1?'tap':'taps'}. Only clean runs count for your best.`;
+  setFeedback(ok?'good':'bad',msg);
+  render();
+}
+const MAXRUNS=1500;
+let runs=[], runsDoc=null, runsSynced=false, resetAt={guitar:0,ukulele:0}, writing=false, writeAgain=false;
+// resetAt may be a number in older saves: it then applied to every instrument
+const normReset=x=>typeof x==='number'?{guitar:x,ukulele:x}:Object.assign({guitar:0,ukulele:0},x||{});
+const RUNS_KEY=STORE+'.runs';
+const cfgKey=()=>`${C().fretStart}-${C().fretEnd}|${C().strings.map(b=>b?1:0).join('')}`;
+const runsFor=(pc,cfg)=>runs.filter(r=>(r.inst||'guitar')===S.inst&&r.pc===pc&&r.cfg===cfg);
+function loadLocalRuns(){
+  try{ const d=JSON.parse(localStorage.getItem(RUNS_KEY)||'null'); if(d&&Array.isArray(d.runs)){ runs=d.runs; resetAt=normReset(d.resetAt); } }catch(e){}
+}
+function saveLocalRuns(){ try{ localStorage.setItem(RUNS_KEY,JSON.stringify({runs,resetAt})); }catch(e){} }
+function mergeRuns(remote,remoteReset){
+  const rr=normReset(remoteReset); Object.keys(resetAt).forEach(k=>{ resetAt[k]=Math.max(resetAt[k],rr[k]); });
+  const byId=new Map(); remote.concat(runs).forEach(r=>{ if(r&&r.id&&r.t>resetAt[r.inst||'guitar']) byId.set(r.id,r); });
+  runs=[...byId.values()].sort((a,b)=>a.t-b.t).slice(-MAXRUNS);
+}
+async function pushRuns(){
+  if(!runsDoc) return;
+  if(writing){ writeAgain=true; return; }
+  writing=true;
+  try{ await runsDoc.set({runs,resetAt,v:1}); }
+  catch(e){ if(e&&(e.code==='invalid_argument'||e.code==='revoked'||e.code==='not_granted')){ runsDoc=null; runsSynced=false; refreshTimes(); } }
+  writing=false;
+  if(writeAgain){ writeAgain=false; pushRuns(); }
+}
+let connectedUid=null;
+async function connectRuns(){
+  try{
+    if(!window.claude||typeof window.claude.use!=='function') return;
+    const [db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
+    if(!db||!user) return;
+    const uid=await user.id(); if(!uid||connectedUid===uid) return;
+    connectedUid=uid;
+    connectChess(db,uid); connectWords(db,uid); connectActivity(db,uid); connectPaint(db,uid);
+    const ref=db.doc('data/users/'+uid+'/fretwise');
+    const snap=await ref.get();
+    const d=snap.exists?snap.data():null;
+    mergeRuns(d&&Array.isArray(d.runs)?d.runs:[], d&&d.resetAt);
+    runsDoc=ref; runsSynced=true; saveLocalRuns();
+    // copy runs made in this browser before syncing up to the account, once
+    if(!d||runs.length!==(d.runs||[]).length) await pushRuns();
+    ref.onSnapshot(s=>{
+      const x=s.exists?s.data():null; if(!x) return;
+      mergeRuns(Array.isArray(x.runs)?x.runs:[], x.resetAt); saveLocalRuns(); refreshTimes();
+    },()=>{ runsSynced=false; refreshTimes(); });
+    refreshTimes();
+  }catch(e){}
+}
+function refreshTimes(){ if(view==='app'&&Q&&S.mode==='all'&&phase!=='ask'){ renderAnswer(); } if(view==='home') renderHome(); }
+function fmtS(ms){ return ms==null?'–':(ms/1000).toFixed(1)+' s'; }
+function spark(vals){
+  if(vals.length<2) return '';
+  const w=64,h=18,mx=Math.max(...vals),mn=Math.min(...vals),rg=Math.max(1,mx-mn);
+  const p=vals.map((v,i)=>[2+i*(w-4)/(vals.length-1), h-2-(v-mn)/rg*(h-4)]);
+  const d=p.map((q,i)=>(i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join(' ');
+  const last=p[p.length-1];
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><path d="${d}"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.4"/></svg>`;
+}
+function timesTable(){
+  const cfg=cfgKey();
+  const rows=LEARN_ORDER.map(pc=>{
+    const rs=runsFor(pc,cfg), clean=rs.filter(r=>r.ok);
+    const best=clean.length?Math.min(...clean.map(r=>r.ms)):null;
+    const last=rs.length?rs[rs.length-1]:null;
+    const sv=clean.slice(-12).map(r=>-r.ms); // faster runs sit higher
+    const lastTxt=last?(last.gaveUp?'gave up':fmtS(last.ms)+(last.wrong?` · ${last.wrong}✗`:'')):'–';
+    return `<tr data-note="${pc}" class="${pc===S.allPc?'sel':''}" tabindex="0" aria-selected="${pc===S.allPc}">
+      <th scope="row"><span class="nt">${note(pc)}</span></th><td>${fmtS(best)}</td><td>${lastTxt}</td><td>${rs.length||'–'}</td><td>${spark(sv)}</td></tr>`;
+  }).join('');
+  const c=C();
+  const rangeTxt=`${INST.name} · frets ${c.fretStart===0?'open':c.fretStart}–${c.fretEnd}, ${c.strings.every(Boolean)?'all strings':c.strings.map((b,i)=>b?STRINGS[i].short:'').join('')}`;
+  return `<div class="times"><div class="times-head"><span class="eyebrow">Your times · ${rangeTxt}</span><span class="hint">${runsSynced?'Saved to your account':'Saved in this browser'}</span></div>
+    <div class="tscroll"><table><thead><tr><th scope="col">Note</th><th scope="col">Best</th><th scope="col">Last</th><th scope="col">Runs</th><th scope="col">Trend</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="hint">Tap a note to practise it. Best counts only runs with no wrong taps, and the trend line rises as you get faster. Times are kept separately for each fret range and string selection.</div></div>`;
+}
+
+/* ---------- interactions ---------- */
+function onCell(s,f){
+  if(phase!=='ask'||!Q) return;
+  const pc=pcOf(s,f), m=midiOf(s,f);
+  if(Q.type==='findS'){
+    if(s!==Q.s){ setFeedback('info',`That's the ${strName(s)}. Tap on the ${strName(Q.s)}.`); return; }
+    play(m); Q.tap={s,f};
+    const ok=pc===Q.pc;
+    setFeedback(ok?'good':'bad', ok?`Yes. ${note(Q.pc)} is at ${fretList(Q.frets)} on the ${strName(Q.s)}.`
+      :`That's ${note(pc)}. ${note(Q.pc)} is at ${fretList(Q.frets)}.`);
+    finish(ok,`${note(Q.pc)} on the ${strName(Q.s)}`); return;
+  }
+  if(Q.type==='findA'){
+    const k=key(s,f);
+    if(Q.found.has(k)||Q.wrong.some(w=>w.s===s&&w.f===f)) return;
+    play(m);
+    const isT=Q.targets.some(t=>t.s===s&&t.f===f), ms=performance.now()-qStart;
+    if(isT){ Q.found.add(k); recordPos(s,f,true,ms/Math.max(1,Q.found.size)); setFeedback('',''); }
+    else { Q.wrong.push({s,f}); recordPos(s,f,false,ms); setFeedback('bad',`That's ${note(pc)}.`); }
+    if(Q.found.size===Q.targets.length){ save(); finishRun(Q.wrong.length===0,false); return; }
+    renderBoard(); renderPrompt(); renderAnswer(); return;
+  }
+  if(Q.type==='chord'){
+    if(Q.checked){ Q.checked=null; }
+    if(Q.sel.get(s)===f) Q.sel.delete(s); else { Q.sel.set(s,f); play(m); }
+    if(document.getElementById('feedback').classList.contains('bad')) setFeedback('','');
+    render(); return;
+  }
+  if(Q.type==='ivA'){
+    if(s===Q.root.s&&f===Q.root.f) return;
+    const k=key(s,f); if(Q.found.has(k)||Q.wrong.some(w=>w.s===s&&w.f===f)) return;
+    play(midiOf(Q.root.s,Q.root.f)); play(m,0.3);
+    if(pc===Q.targetPc){ Q.found.add(k); setFeedback('',''); }
+    else { Q.wrong.push({s,f}); setFeedback('bad', pc===Q.rootPc?`That's another ${note(pc)}, the root itself.`:`That's ${note(pc)}, a ${IV_BY_SEMI[(pc-Q.rootPc+12)%12].name}.`); }
+    if(Q.found.size===Q.targets.length){
+      const ok=!Q.wrong.length, n=Q.targets.length;
+      setFeedback(ok?'good':'bad', ok?(Q.iv.id==='P8'?`All ${n} other ${rootNm(Q)}s found.`:`All ${n} found. Every ${ivTarget(Q)} on the neck is the ${Q.iv.name} of ${rootNm(Q)}.`)
+        :`All ${n} found, with ${Q.wrong.length} wrong ${Q.wrong.length===1?'tap':'taps'}.`);
+      finish(ok,`every ${Q.iv.name} of ${rootNm(Q)}`); return;
+    }
+    render(); return;
+  }
+  if(Q.type==='iv'){
+    if(s===Q.root.s&&f===Q.root.f) return;
+    Q.tap={s,f};
+    play(midiOf(Q.root.s,Q.root.f)); play(m,0.45);
+    const ok=pc===Q.targetPc, got=IV_BY_SEMI[(pc-Q.rootPc+12)%12];
+    setFeedback(ok?'good':'bad', ok?`Yes, ${ivTarget(Q)} is the ${Q.iv.name} of ${rootNm(Q)}.`
+      :`That's ${note(pc)}, a ${got.name}. The ${Q.iv.name} of ${rootNm(Q)} is ${ivTarget(Q)}.`);
+    finish(ok,`${Q.iv.name} of ${rootNm(Q)}`); return;
+  }
+  if(Q.type==='scale'){
+    const k=key(s,f);
+    if(f<Q.win[0]||f>Q.win[1]){ setFeedback('info',`Stay inside frets ${Q.win[0]}–${Q.win[1]}.`); return; }
+    if(k===key(Q.root.s,Q.root.f)) return;
+    if(Q.selected.has(k)) Q.selected.delete(k); else { Q.selected.add(k); play(m); }
+    setFeedback('',''); render(); return;
+  }
+}
+function fretList(fr){ const t=fr.map(f=>f===0?'open':'fret '+f); return t.length>1?t.slice(0,-1).join(', ')+' and '+t[t.length-1]:t[0]; }
+function answerName(pc){
+  if(phase!=='ask'||!Q||Q.type!=='name') return;
+  Q.pick=pc; play(midiOf(Q.s,Q.f));
+  const ok=pc===Q.pc;
+  setFeedback(ok?'good':'bad', ok?`Correct, it's ${note(Q.pc)}.`:`It's ${note(Q.pc)}. You picked ${note(pc)}.`);
+  finish(ok,`${note(Q.pc)} · ${where(Q.s,Q.f)}`);
+}
+function giveUp(){
+  if(phase!=='ask') return;
+  if(Q.type==='findS'){ setFeedback('bad',`${note(Q.pc)} is at ${fretList(Q.frets)} on the ${strName(Q.s)}.`); Q.frets.forEach((f,i)=>play(midiOf(Q.s,f),i*0.35)); finish(false,`${note(Q.pc)} on the ${strName(Q.s)}`); }
+  else if(Q.type==='findA'){
+    const ms=performance.now()-qStart;
+    Q.targets.forEach(t=>{ if(!Q.found.has(key(t.s,t.f))) recordPos(t.s,t.f,false,ms); });
+    save(); finishRun(false,true);
+  }
+  else if(Q.type==='ivA'){ setFeedback('bad',`You found ${Q.found.size} of ${Q.targets.length}. The ${Q.iv.name} of ${rootNm(Q)} is ${ivTarget(Q)}; the rest are outlined.`); finish(false,`every ${Q.iv.name} of ${rootNm(Q)}`); }
+  else if(Q.type==='iv'){ setFeedback('bad',`The ${Q.iv.name} of ${rootNm(Q)} is ${ivTarget(Q)}.`); play(midiOf(Q.root.s,Q.root.f)); play(midiOf(Q.targets[0].s,Q.targets[0].f),0.45); finish(false,`${Q.iv.name} of ${rootNm(Q)}`); }
+  else if(Q.type==='chord'){
+    setFeedback('bad',`${chordName(Q)} is ${chordSpelling(Q)}. Here are some shapes to learn.`);
+    Q.checked=null; const o=otherShapes(); Q.show=o.length?{src:'g',i:0}:(Q.found.length?{src:'u',i:0}:null);
+    if(o.length) strum(o[0]);
+    finish(false,chordName(Q));
+  }
+}
+function checkScale(){
+  if(phase!=='ask'||Q.type!=='scale') return;
+  let right=0, extra=0;
+  Q.selected.forEach(k=>{ if(Q.expected.has(k)) right++; else extra++; });
+  const total=Q.expected.size, ok=right===total&&extra===0;
+  setFeedback(ok?'good':'bad', ok?`Perfect, all ${total} notes.`:`${right} of ${total} notes${extra?`, ${extra} ${extra===1?'note':'notes'} not in the scale`:''}. Missing notes are outlined.`);
+  playScale();
+  finish(ok,`${rootNm(Q)} ${Q.scale.name}`);
+}
+function playScale(){
+  const ms=[]; Q.expected.forEach((d,k)=>{ const [s,f]=k.split('-').map(Number); ms.push(midiOf(s,f)); });
+  const u=[...new Set(ms)].sort((a,b)=>a-b); playSeq(u,0.24);
+}
+function replay(){
+  if(!Q) return;
+  if(Q.type==='name') play(midiOf(Q.s,Q.f));
+  else if(Q.type==='findS'){ const t=Q.tap||{s:Q.s,f:Q.frets[0]}; play(midiOf(t.s,t.f)); }
+  else if(Q.type==='ivA'){ play(midiOf(Q.root.s,Q.root.f)); [...new Set(Q.targets.map(p=>midiOf(p.s,p.f)))].sort((a,b)=>a-b).forEach((m,i)=>play(m,0.45+i*0.3)); }
+  else if(Q.type==='iv'){ const t=Q.tap&&pcOf(Q.tap.s,Q.tap.f)===Q.targetPc?Q.tap:Q.targets[0]; play(midiOf(Q.root.s,Q.root.f)); play(midiOf(t.s,t.f),0.45); }
+  else if(Q.type==='scale') playScale();
+  else if(Q.type==='findA') playSeq([...new Set(Q.targets.map(p=>midiOf(p.s,p.f)))].sort((a,b)=>a-b),0.32);
+  else if(Q.type==='chord'){ const fr=shownFrets()||selToFrets(Q.sel); strum(fr); }
+}
+
+/* ---------- rendering ---------- */
+const $=id=>document.getElementById(id);
+function setFeedback(cls,txt){ const el=$('feedback'); el.className='feedback'+(cls?' '+cls:''); el.textContent=txt; }
+function markers(){
+  const M=[]; if(!Q||phase==='summary') return M;
+  const t=Q.type, done=phase==='answered';
+  if(t==='name'){
+    if(!done) M.push({s:Q.s,f:Q.f,kind:'target'});
+    else M.push({s:Q.s,f:Q.f,kind:Q.pick===Q.pc?'good':'bad',label:note(Q.pc)});
+  }else if(t==='findS'){
+    if(done){
+      Q.frets.forEach(f=>{ if(!(Q.tap&&Q.tap.f===f)) M.push({s:Q.s,f,kind:'reveal',label:note(Q.pc)}); });
+      if(Q.tap) M.push({s:Q.tap.s,f:Q.tap.f,kind:pcOf(Q.tap.s,Q.tap.f)===Q.pc?'good':'bad',label:note(pcOf(Q.tap.s,Q.tap.f))});
+    }
+  }else if(t==='findA'){
+    Q.targets.forEach(p=>{ const k=key(p.s,p.f);
+      if(Q.found.has(k)) M.push({s:p.s,f:p.f,kind:'good',label:note(Q.pc)});
+      else if(done) M.push({s:p.s,f:p.f,kind:'reveal',label:note(Q.pc)}); });
+    Q.wrong.forEach(w=>M.push({s:w.s,f:w.f,kind:'bad',label:note(pcOf(w.s,w.f))}));
+  }else if(t==='chord'){
+    const fr=shownFrets();
+    if(fr){
+      const mine=Q.show.src==='u';
+      fr.forEach((f,s)=>{ if(f>=0) M.push({s,f,kind:mine?'good':'reveal',label:degOf(Q,pcOf(s,f))}); });
+    }else if(Q.checked){
+      Q.sel.forEach((f,s)=>{ const d=degOf(Q,pcOf(s,f)); M.push({s,f,kind:d?'reveal':'bad',label:d||note(pcOf(s,f))}); });
+    }else{
+      Q.sel.forEach((f,s)=>M.push({s,f,kind:'sel'}));
+    }
+  }else if(t==='ivA'){
+    const sym=Q.iv.id==='P8'?'8':Q.iv.id, symOf=pc=>{ const i=IV_BY_SEMI[(pc-Q.rootPc+12)%12]; return i.id==='P8'?'8':i.id; };
+    Q.targets.forEach(p=>{ const k=key(p.s,p.f);
+      if(Q.found.has(k)) M.push({s:p.s,f:p.f,kind:'good',label:sym});
+      else if(done) M.push({s:p.s,f:p.f,kind:'reveal',label:sym}); });
+    Q.wrong.forEach(w=>M.push({s:w.s,f:w.f,kind:'bad',label:symOf(pcOf(w.s,w.f))}));
+    M.push({s:Q.root.s,f:Q.root.f,kind:'root',label:rootNm(Q)});
+  }else if(t==='iv'){
+    if(done){
+      const sym=Q.iv.id==='P8'?'8':Q.iv.id;
+      Q.targets.forEach(p=>{ if(!(Q.tap&&Q.tap.s===p.s&&Q.tap.f===p.f)) M.push({s:p.s,f:p.f,kind:'ghost',label:sym}); });
+      if(Q.tap){ const ok=pcOf(Q.tap.s,Q.tap.f)===Q.targetPc; M.push({s:Q.tap.s,f:Q.tap.f,kind:ok?'good':'bad',label:ok?sym:note(pcOf(Q.tap.s,Q.tap.f))}); }
+    }
+    M.push({s:Q.root.s,f:Q.root.f,kind:'root',label:rootNm(Q)});
+  }else if(t==='scale'){
+    const rk=key(Q.root.s,Q.root.f);
+    if(!done){
+      Q.selected.forEach(k=>{ if(k===rk) return; const [s,f]=k.split('-').map(Number); M.push({s,f,kind:'sel'}); });
+    }else{
+      Q.expected.forEach((deg,k)=>{ if(k===rk) return; const [s,f]=k.split('-').map(Number);
+        M.push({s,f,kind:Q.selected.has(k)?'good':'reveal',label:deg}); });
+      Q.selected.forEach(k=>{ if(Q.expected.has(k)) return; const [s,f]=k.split('-').map(Number); M.push({s,f,kind:'bad',label:note(pcOf(s,f))}); });
+    }
+    M.push({s:Q.root.s,f:Q.root.f,kind:'root',label:rootNm(Q)});
+  }
+  return M;
+}
+function renderBoard(){
+  if(!Q&&phase!=='summary') return;
+  const W=$('boardWrap').clientWidth||600, vertical=W<640;
+  const maxLen=Math.max(360,Math.min(660,window.innerHeight*0.58));
+  let muted=null;
+  if(Q&&Q.type==='chord'&&phase!=='summary'){ const fr=shownFrets()||selToFrets(Q.sel); muted=fr.map(f=>f<0); }
+  drawBoard($('board'),{width:W,vertical,start:C().fretStart,end:C().fretEnd,markers:markers(),
+    hl:Q&&phase==='ask'&&Q.type==='findS'?Q.s:null, win:Q&&Q.type==='scale'&&phase!=='summary'?Q.win:null,
+    links:Q&&(Q.type==='findA'||Q.type==='ivA')&&phase==='answered'?octaveLinks(Q.targets):null, muted,
+    interactive:true,maxLen,gid:'wood'});
+}
+function renderHeat(){
+  const W=$('heatWrap').clientWidth||300;
+  drawBoard($('heat'),{width:W,vertical:false,start:0,end:15,heat:true,sp:NS<=4?22:17,small:true,gid:'wood2'});
+  const st=ST(), pct=st.total?Math.round(100*st.correct/st.total):0;
+  $('totals').textContent=st.total?`${st.total} answers · ${pct}% correct · ${st.rounds} ${st.rounds===1?'round':'rounds'}${st.best?` · best ${st.best.c}/${st.best.n}`:''}`:'No answers yet. Your accuracy will build up here.';
+}
+function renderPrompt(){
+  let eb='', pr='';
+  if(phase==='summary'){ eb='Round complete'; pr=summaryHeadline(); }
+  else if(Q.type==='name'){ eb='Name the note · '+where(Q.s,Q.f); pr='What note is this?'; }
+  else if(Q.type==='findS'){ eb='Find the note · one string'; pr=`Find ${note(Q.pc)} on the ${strName(Q.s)}`; }
+  else if(Q.type==='findA'){
+    eb=phase==='ready'?`All positions · ${Q.targets.length} to find`:`All positions · ${Q.found.size} of ${Q.targets.length} found`;
+    pr=`Find every ${note(Q.pc)}`;
+  }
+  else if(Q.type==='chord'){ eb=`Chords · ${Q.ch.name} · shape ${Math.min(Q.found.length+1,S.chordShapes)} of ${S.chordShapes}`; pr=`Build ${chordName(Q)}`; }
+  else if(Q.type==='ivA'){ eb=`Intervals · every position · ${Q.found.size} of ${Q.targets.length} found`; pr=`Find every ${Q.iv.name} of ${rootNm(Q)}`; }
+  else if(Q.type==='iv'){ eb='Intervals · root '+where(Q.root.s,Q.root.f); pr=`Find the ${Q.iv.name} of ${rootNm(Q)}`; }
+  else if(Q.type==='scale'){ eb=`Scales · frets ${Q.win[0]}–${Q.win[1]}, root on the ${strName(Q.root.s)}`; pr=`Mark every note of ${rootNm(Q)} ${Q.scale.name}`; }
+  $('eyebrow').textContent=eb; $('prompt').textContent=pr;
+  const sc=$('score');
+  if(S.mode==='all'&&phase!=='summary'){
+    $('dots').innerHTML=''; sc.classList.add('timer');
+    if(phase==='ask') sc.textContent=((performance.now()-qStart)/1000).toFixed(1)+' s';
+    else if(phase==='answered') sc.textContent=fmtS(runs.length?runs[runs.length-1].ms:null);
+    else { const c=runsFor(Q.pc,cfgKey()).filter(r=>r.ok); sc.textContent=c.length?'Best '+fmtS(Math.min(...c.map(r=>r.ms))):'No time yet'; }
+    return;
+  }
+  sc.classList.remove('timer');
+  let d='';
+  for(let i=0;i<S.roundLen;i++){
+    const r=round.results[i];
+    d+=`<span class="dot ${r?(r.ok?'ok':'no'):(i===round.results.length&&phase==='ask'?'cur':'')}"></span>`;
+  }
+  $('dots').innerHTML=d;
+  const c=round.results.filter(r=>r.ok).length;
+  sc.textContent=`${c} correct · ${Math.min(round.results.length+(phase==='ask'?1:0),S.roundLen)} of ${S.roundLen}`;
+}
+function summaryHeadline(){
+  const n=round.results.length, c=round.results.filter(r=>r.ok).length;
+  if(c===n) return `${c} out of ${n}. Clean round.`;
+  if(c/n>=0.7) return `${c} out of ${n}. Nearly there.`;
+  return `${c} out of ${n}. Keep at it.`;
+}
+function minis(list,src){
+  return `<div class="minis">${list.map((fr,i)=>{
+    const on=Q.show&&Q.show.src===src&&Q.show.i===i;
+    return `<button type="button" class="mini" data-shape="${src}${i}" aria-pressed="${on}" aria-label="Shape ${fretsText(fr)}">${miniChord(fr,Q.root)}<small>${fretsText(fr)}</small></button>`;
+  }).join('')}</div>`;
+}
+function renderAnswer(){
+  const el=$('answer'); let h='';
+  if(phase==='summary'){
+    const rs=round.results, c=rs.filter(r=>r.ok).length;
+    const avg=rs.reduce((a,r)=>a+r.ms,0)/rs.length/1000;
+    const missed=rs.filter(r=>!r.ok);
+    h+=`<div class="summary"><div class="stat"><b>${c}/${rs.length}</b><span>correct</span></div>`+
+       `<div class="stat"><b>${Math.round(100*c/rs.length)}%</b><span>accuracy</span></div>`+
+       `<div class="stat"><b>${avg.toFixed(1)}s</b><span>average time</span></div></div>`;
+    if(missed.length) h+=`<div><div class="eyebrow" style="margin-bottom:4px">Missed</div><ul class="missed">${missed.map(r=>`<li>${r.label}</li>`).join('')}</ul></div>`;
+    h+=`<div class="actions"><button class="btn primary" data-act="next">Next round</button><span class="hint">or press <kbd>Enter</kbd></span></div>`;
+    el.innerHTML=h; return;
+  }
+  if(S.mode==='all'){
+    const nx=LEARN_ORDER[(LEARN_ORDER.indexOf(Q.pc)+1)%12];
+    if(phase==='ready'){
+      h+=`<div class="actions"><button class="btn primary big" data-act="start">Start ${note(Q.pc)}</button><span class="hint">The clock starts when you press Start${matchMedia('(hover:hover)').matches?' or <kbd>Enter</kbd>':''}.</span></div>`;
+    }else if(phase==='ask'){
+      h+=`<div class="actions"><span class="counter">${Q.found.size} / ${Q.targets.length} found</span><span class="spacer"></span><button class="btn quiet" data-act="giveup">Show the rest</button></div>`;
+    }else{
+      h+=`<div class="actions"><button class="btn" data-act="replay">Play them all</button><span class="spacer"></span><button class="btn" data-act="again">Try ${note(Q.pc)} again</button><button class="btn primary" data-act="nextnote" data-v="${nx}">Next: ${note(nx)}</button></div>`;
+      if(octaveLinks(Q.targets).length) h+=`<div class="hint">${INST.octaveHint}</div>`;
+    }
+    if(phase!=='ask') h+=timesTable();
+    el.innerHTML=h; return;
+  }
+  if(Q.type==='chord'){
+    if(Q.found.length) h+=`<div class="shapes"><div class="eyebrow">Your shapes · tap to see one again</div>${minis(Q.found,'u')}</div>`;
+    if(phase==='ask'){
+      h+=`<div class="actions"><span class="counter">${Q.sel.size} ${Q.sel.size===1?'string':'strings'} placed</span><span class="spacer"></span><button class="btn quiet" data-act="giveup">Show shapes</button><button class="btn quiet" data-act="clear">Clear</button><button class="btn primary" data-act="check">Check</button></div>`;
+      h+=`<div class="hint">Tap one note per string; tap it again to remove it. Strings left empty are muted. ${rootBassOn()?'The lowest note must be the root.':'Inversions are allowed.'}</div>`;
+    }else{
+      const o=otherShapes();
+      if(o.length) h+=`<div class="shapes"><div class="eyebrow">Other ways to play ${chordName(Q)}</div>${minis(o,'g')}<div class="hint">Blue dots are the root. Tap a shape to see it on the neck and hear it.</div></div>`;
+      h+=`<div class="actions"><button class="btn" data-act="replay">Strum it</button><span class="spacer"></span><button class="btn primary" data-act="next">Next chord</button></div>`;
+    }
+    el.innerHTML=h; return;
+  }
+  const done=phase==='answered';
+  if(Q.type==='name'){
+    const pcs=S.naturalsOnly?NATURAL:ALL12;
+    const accCol={1:2,3:4,6:8,8:10,10:12};
+    h+=`<div class="pad ${S.naturalsOnly?'pad7':''}">`;
+    pcs.forEach(p=>{
+      const nat=NATURAL.indexOf(p)>=0;
+      let cls='key '+(nat?'nat':'acc');
+      if(done&&p===Q.pc) cls+=' good'; else if(done&&p===Q.pick) cls+=' bad';
+      const style=nat?'':` style="grid-column:${accCol[p]} / span 2"`;
+      h+=`<button class="${cls}" data-pc="${p}"${style} ${done?'disabled':''} aria-label="${note(p)}">${note(p)}</button>`;
+    });
+    h+='</div>';
+  }
+  h+='<div class="actions">';
+  if(!done){
+    if(Q.type==='findS'||Q.type==='iv') h+=`<button class="btn quiet" data-act="giveup">Show answer</button>`;
+    if(Q.type==='ivA') h+=`<span class="counter">${Q.found.size} / ${Q.targets.length} found</span><span class="spacer"></span><button class="btn quiet" data-act="giveup">Show the rest</button>`;
+    if(Q.type==='scale') h+=`<span class="counter">${Q.selected.size} marked</span><span class="spacer"></span><button class="btn quiet" data-act="clear">Clear</button><button class="btn primary" data-act="check">Check</button>`;
+    if(Q.type==='name') h+=`<span class="hint">Keys: <kbd>A</kbd>–<kbd>G</kbd> for naturals${S.naturalsOnly?'':`, <kbd>Shift</kbd> for ${S.acc==='flat'?'flat':'sharp'}`}</span>`;
+  }else{
+    h+=`<button class="btn" data-act="replay">Play again</button><span class="spacer"></span><button class="btn primary" data-act="next">Next</button>`;
+  }
+  h+='</div>';
+  if(done&&Q.type==='ivA'&&octaveLinks(Q.targets).length) h+=`<div class="hint">${INST.octaveHint}</div>`;
+  el.innerHTML=h;
+}
+function render(){ if(view!=='app') return; renderPrompt(); renderBoard(); renderAnswer(); renderHeat(); syncTabs(); }
+function syncTabs(){ document.querySelectorAll('.modes button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mode===S.mode))); }
+
+/* ---------- start screen ---------- */
+function renderHome(){
+  const prev=S.inst;
+  [['guitar','pvGuitar','metaGuitar'],['ukulele','pvUkulele','metaUkulele']].forEach(([id,svgId,metaId])=>{
+    setInst(id);
+    const svg=$(svgId), W=svg.parentNode.clientWidth-32||280;
+    const demo=id==='guitar'?[{s:1,f:3,kind:'good',label:'C'},{s:3,f:5,kind:'good',label:'C'},{s:0,f:3,kind:'reveal',label:'G'}]
+                           :[{s:1,f:0,kind:'good',label:'C'},{s:3,f:3,kind:'good',label:'C'},{s:0,f:0,kind:'reveal',label:'G'}];
+    drawBoard(svg,{width:Math.max(220,W),vertical:false,start:0,end:5,small:false,sp:NS<=4?22:16,markers:demo,gid:'wood-'+id});
+    const st=statsAll[id], n=runs.filter(r=>(r.inst||'guitar')===id).length;
+    $(metaId).textContent=st.total||n?`${st.total} answers · ${st.total?Math.round(100*st.correct/st.total):0}% correct${n?` · ${n} timed ${n===1?'run':'runs'}`:''}`:'Not practised yet';
+  });
+  setInst(prev);
+  drawChessPreview();
+  $('metaWords').textContent=wordsHomeMeta();
+  if(PAINT_ON){ $('pickPaintings').hidden=false; $('metaPaintings').textContent=paintHomeMeta(); }
+  renderToday();
+}
+function showHome(){
+  view='home'; stopClock(); clearTimeout(advTimer); clearTimeout(cTimer);
+  $('home').hidden=false; $('main').hidden=true; $('modes').hidden=true; $('instBtn').hidden=true; $('chessMain').hidden=true; $('chessModes').hidden=true; $('wordsMain').hidden=true; $('paintMain').hidden=true;
+  renderHome();
+  const last=document.querySelector(`.pick[data-inst="${S.lastView||S.inst}"]`); if(last) last.focus({preventScroll:true});
+}
+function openApp(id){
+  S.lastView=id;
+  if(id==='chess'){ save(); openChess(); return; }
+  if(id==='words'){ save(); openWords(); return; }
+  if(id==='paintings'){ save(); openPaintings(); return; }
+  setInst(id); save();
+  view='app'; $('home').hidden=true; $('main').hidden=false; $('modes').hidden=false; $('instBtn').hidden=false; $('chessMain').hidden=true; $('chessModes').hidden=true; $('wordsMain').hidden=true; $('paintMain').hidden=true;
+  $('instName').textContent=INST.name;
+  renderSettings(); newRound();
+}
+document.querySelectorAll('button.pick[data-inst]').forEach(b=>b.addEventListener('click',()=>openApp(b.dataset.inst)));
+$('instBtn').addEventListener('click',showHome);
+
+/* ---------- settings ---------- */
+function chip(act,val,on,label,mono){ return `<button type="button" class="chip${mono?' mono':''}" data-act="${act}" data-v="${val}" aria-pressed="${on}">${label}</button>`; }
+function renderSettings(){
+  let h=''; const c=C();
+  if(S.mode==='iv'){
+    h+=`<div class="field"><span class="fl">Exercise</span><div class="chips">${chip('ivmode','interval',S.ivMode==='interval','Intervals')}${chip('ivmode','scale',S.ivMode==='scale','Scale shapes')}</div></div>`;
+    if(S.ivMode==='interval') h+=`<div class="field"><span class="fl">Intervals to practise</span><div class="chips">${INTERVALS.map(i=>chip('iv',i.id,S.intervals.indexOf(i.id)>=0,i.id==='P8'?'Octave':i.id,true)).join('')}</div><div class="hint">m = minor, M = major, P = perfect, TT = tritone.</div></div>`+
+      `<div class="field"><span class="fl">Answer</span><div class="chips">${chip('ivall','0',!S.ivAll,'One position')}${chip('ivall','1',S.ivAll,'Every position (hard)')}</div><div class="hint">${S.ivAll?'Tap every position of the interval note in the fret range, on all strings.':'Any position of the right note counts.'}</div></div>`;
+    else h+=`<div class="field"><span class="fl">Scales</span><div class="chips">${SCALES.map(x=>chip('scale',x.id,S.scales.indexOf(x.id)>=0,x.name[0].toUpperCase()+x.name.slice(1))).join('')}</div><div class="hint">You get a root on the ${INST.scaleRoots.map(s=>strName(s)).join(' or ')} and a five-fret box. Mark every scale note inside it.</div></div>`;
+  }
+  if(S.mode==='chord'){
+    h+=`<div class="field"><span class="fl">Chord types</span><div class="chips">${CHORD_GROUPS.filter(g=>INST.chordGroups.indexOf(g[0])>=0).map(g=>chip('cgrp',g[0],S.chordGroupsBy[S.inst].indexOf(g[0])>=0,g[1])).join('')}</div>${INST.id==='ukulele'?'<div class="hint">With four strings, ukulele chord books stop at 7ths and 6ths: C7, Cmaj7, Cm7, Cm7♭5, Cdim7, C6 and Cm6 are all everyday chords. C6 is simply all four strings open.</div>':''}</div>`;
+    h+=`<div class="field"><span class="fl">Shapes to find per chord</span><div class="chips">${[1,2,3].map(n=>chip('cshapes',n,S.chordShapes===n,String(n),true)).join('')}</div></div>`;
+    h+=`<div class="field"><span class="fl">Lowest note</span><div class="chips">${chip('cbass','1',rootBassOn(),'Must be the root')}${chip('cbass','0',!rootBassOn(),'Any (inversions)')}</div>${INST.id==='ukulele'?'<div class="hint">Most ukulele chords are not in root position, because the G string is tuned high.</div>':''}</div>`;
+  }
+  let fromOpts='', toOpts='';
+  for(let f=0;f<=12;f++) fromOpts+=`<option value="${f}"${f===c.fretStart?' selected':''}>${f===0?'Open':f}</option>`;
+  for(let f=c.fretStart+3;f<=15;f++) toOpts+=`<option value="${f}"${f===c.fretEnd?' selected':''}>${f}</option>`;
+  h+=`<div class="field"><span class="fl">Frets</span><div class="chips">${INST.presets.map(p=>chip('preset',p[0]+'-'+p[1],c.fretStart===p[0]&&c.fretEnd===p[1],p[2])).join('')}</div>
+      <div class="row"><label for="fromFret" class="hint">From</label><select id="fromFret">${fromOpts}</select><label for="toFret" class="hint">to</label><select id="toFret">${toOpts}</select></div></div>`;
+  if(S.mode==='name'||S.mode==='find'||S.mode==='all'){
+    const order=[]; for(let s=NS-1;s>=0;s--) order.push(s);
+    const lab=s=>INST.id==='guitar'?(s===NS-1?'high e':s===0?'low E':STRINGS[s].short):STRINGS[s].short;
+    h+=`<div class="field"><span class="fl">Strings</span><div class="chips">${order.map(s=>chip('string',s,c.strings[s],lab(s),true)).join('')}</div><div class="hint">${INST.stringHint}</div></div>`;
+  }
+  if(S.mode==='name'||S.mode==='find'||S.mode==='chord') h+=`<div class="field"><span class="fl">${S.mode==='chord'?'Roots':'Notes'}</span><div class="chips">${chip('nat','0',!S.naturalsOnly,'All 12')}${chip('nat','1',S.naturalsOnly,'Naturals only')}</div></div>`;
+  h+=`<div class="field"><span class="fl">Accidentals</span><div class="chips">${chip('acc','sharp',S.acc==='sharp','Sharps (C♯)')}${chip('acc','flat',S.acc==='flat','Flats (D♭)')}</div></div>`;
+  if(S.mode!=='all') h+=`<div class="field"><span class="fl">Questions per round</span><div class="chips">${[5,10,20].map(n=>chip('round',n,S.roundLen===n,String(n),true)).join('')}</div></div>`;
+  h+=`<div class="field"><span class="fl">Sound</span><div class="chips">${chip('sound','1',S.sound,'Plucked string')}${chip('sound','0',!S.sound,'Off')}</div></div>`;
+  $('settings').innerHTML=h;
+}
+function toggleIn(arr,v){ const i=arr.indexOf(v); if(i>=0){ if(arr.length>1) arr.splice(i,1); } else arr.push(v); }
+$('settings').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b) return;
+  const a=b.dataset.act, v=b.dataset.v, c=C(); let restart=true;
+  if(a==='string'){ const s=+v; if(c.strings[s]&&c.strings.filter(Boolean).length===1) return; c.strings[s]=!c.strings[s]; }
+  else if(a==='acc'){ S.acc=v; restart=false; }
+  else if(a==='round'){ S.roundLen=+v; }
+  else if(a==='sound'){ S.sound=v==='1'; restart=false; if(S.sound){ ensureAudio(); play(STRINGS[1].midi); } }
+  else if(a==='nat'){ S.naturalsOnly=v==='1'; }
+  else if(a==='ivmode'){ S.ivMode=v; }
+  else if(a==='ivall'){ S.ivAll=v==='1'; }
+  else if(a==='iv'){ toggleIn(S.intervals,v); }
+  else if(a==='scale'){ toggleIn(S.scales,v); }
+  else if(a==='cgrp'){ toggleIn(S.chordGroupsBy[S.inst],v); }
+  else if(a==='cshapes'){ S.chordShapes=+v; }
+  else if(a==='cbass'){ S.rootBass[S.inst]=v==='1'; }
+  else if(a==='preset'){ const p=v.split('-').map(Number); c.fretStart=p[0]; c.fretEnd=p[1]; }
+  save(); renderSettings();
+  if(restart) newRound(); else render();
+});
+$('settings').addEventListener('change',e=>{
+  const c=C();
+  if(e.target.id==='fromFret'){ c.fretStart=+e.target.value; if(c.fretEnd<c.fretStart+3) c.fretEnd=Math.min(15,c.fretStart+3); }
+  else if(e.target.id==='toFret'){ c.fretEnd=+e.target.value; }
+  else return;
+  save(); renderSettings(); newRound();
+});
+
+/* ---------- wiring ---------- */
+$('modes').addEventListener('click',e=>{
+  const b=e.target.closest('[data-mode]'); if(!b||b.dataset.mode===S.mode) return;
+  S.mode=b.dataset.mode; save(); renderSettings(); newRound();
+});
+$('board').addEventListener('click',e=>{
+  const t=e.target.closest('.hit'); if(!t) return;
+  onCell(+t.dataset.s,+t.dataset.f);
+});
+function pickNote(pc){ if(phase==='ask') return; S.allPc=pc; save(); readyRun(); }
+$('answer').addEventListener('click',e=>{
+  const row=e.target.closest('tr[data-note]'); if(row){ pickNote(+row.dataset.note); return; }
+  const sh=e.target.closest('[data-shape]');
+  if(sh&&Q&&Q.type==='chord'){
+    const src=sh.dataset.shape[0], i=+sh.dataset.shape.slice(1);
+    Q.show={src,i}; Q.checked=null; strum(shownFrets()); render(); return;
+  }
+  const k=e.target.closest('[data-pc]'); if(k){ answerName(+k.dataset.pc); return; }
+  const b=e.target.closest('[data-act]'); if(!b) return;
+  const a=b.dataset.act;
+  if(a==='next'){ if(phase==='summary') newRound(); else nextQuestion(); }
+  else if(a==='start') startRun();
+  else if(a==='again') readyRun();
+  else if(a==='nextnote'){ S.allPc=+b.dataset.v; save(); readyRun(); }
+  else if(a==='giveup') giveUp();
+  else if(a==='check'){ if(Q.type==='chord') checkChord(); else checkScale(); }
+  else if(a==='clear'){
+    if(Q.type==='chord'){ Q.sel=new Map(); Q.checked=null; setFeedback('',''); }
+    else Q.selected=new Set([key(Q.root.s,Q.root.f)]);
+    render();
+  }
+  else if(a==='replay') replay();
+});
+document.addEventListener('keydown',e=>{
+  if(view!=='app') return;
+  const tg=e.target&&e.target.tagName; if(tg==='SELECT'||tg==='INPUT'||tg==='TEXTAREA') return;
+  if(tg==='TR'&&(e.key==='Enter'||e.key===' ')&&e.target.dataset.note!=null){ e.preventDefault(); pickNote(+e.target.dataset.note); return; }
+  if(S.mode==='all'&&e.key==='Enter'&&tg!=='BUTTON'){
+    if(phase==='ready'){ e.preventDefault(); startRun(); return; }
+    if(phase==='answered'){ e.preventDefault(); readyRun(); return; }
+  }
+  if(S.mode==='chord'&&e.key==='Enter'&&tg!=='BUTTON'&&phase==='ask'){ e.preventDefault(); checkChord(); return; }
+  if(S.mode!=='all'&&(e.key==='Enter'||e.key===' ')&&(phase==='answered'||phase==='summary')){
+    if(tg==='BUTTON'&&e.key===' ') return;
+    e.preventDefault(); if(phase==='summary') newRound(); else nextQuestion(); return;
+  }
+  if(phase==='ask'&&Q&&Q.type==='name'){
+    const l=e.key.toLowerCase(); if(!(l in LETTER_PC)) return;
+    let pc=LETTER_PC[l]; if(e.shiftKey&&!S.naturalsOnly) pc=(pc+(S.acc==='flat'?11:1))%12;
+    e.preventDefault(); answerName(pc);
+  }
+});
+let rsT=null;
+function onResize(){ clearTimeout(rsT); rsT=setTimeout(()=>{ if(view==='app'){ renderBoard(); renderHeat(); } else renderHome(); },60); }
+if(window.ResizeObserver){ const ro=new ResizeObserver(onResize); ro.observe($('boardWrap')); ro.observe($('home')); } else window.addEventListener('resize',onResize);
+let resetArmed=false;
+$('resetBtn').addEventListener('click',()=>{
+  const b=$('resetBtn');
+  if(!resetArmed){ resetArmed=true; b.textContent=`Tap again to erase all ${INST.name.toLowerCase()} progress`; b.classList.add('armed'); setTimeout(()=>{resetArmed=false;b.textContent='Reset progress';b.classList.remove('armed');},4000); return; }
+  statsAll[S.inst]=freshStats(); save();
+  // clear this instrument's timed runs everywhere: keep other instruments' runs
+  resetAt[S.inst]=Date.now(); runs=runs.filter(r=>(r.inst||'guitar')!==S.inst); saveLocalRuns(); pushRuns();
+  resetArmed=false; b.textContent='Reset progress'; b.classList.remove('armed');
+  renderHeat(); if(S.mode==='all'){ renderPrompt(); renderAnswer(); }
+});
+
+/* =====================================================================
+   CHESS: Lichess puzzles and an opening trainer
+   ===================================================================== */
+const OPENINGS=[{"family":"Italian Game","lines":[{"eco":"C50","name":"Italian Game: Giuoco Pianissimo, Normal","moves":["e4","e5","Nf3","Nc6","Bc4","Nf6","d3","Bc5"]},{"eco":"C50","name":"Italian Game: Giuoco Piano","moves":["e4","e5","Nf3","Nc6","Bc4","Bc5"]},{"eco":"C57","name":"Italian Game: Two Knights Defense, Fried Liver Attack","moves":["e4","e5","Nf3","Nc6","Bc4","Nf6","Ng5","d5","exd5","Nxd5","Nxf7"]},{"eco":"C55","name":"Italian Game: Two Knights Defense, Modern Bishop's Opening","moves":["e4","e5","Nf3","Nc6","Bc4","Nf6","d3","h6","O-O","d6"]},{"eco":"C51","name":"Italian Game: Evans Gambit Accepted","moves":["e4","e5","Nf3","Nc6","Bc4","Bc5","b4","Bxb4"]},{"eco":"C54","name":"Italian Game: Classical Variation, Center Attack","moves":["e4","e5","Nf3","Nc6","Bc4","Bc5","c3","Nf6","d4"]},{"eco":"C57","name":"Italian Game: Two Knights Defense, Knight Attack, Normal Variation","moves":["e4","e5","Nf3","Nc6","Bc4","Nf6","Ng5","d5"]}],"side":"w"},{"family":"Ruy Lopez","lines":[{"eco":"C92","name":"Ruy Lopez: Closed","moves":["e4","e5","Nf3","Nc6","Bb5","a6","Ba4","Nf6","O-O","Be7","Re1","b5","Bb3","d6","c3","O-O","h3"]},{"eco":"C65","name":"Ruy Lopez: Berlin Defense","moves":["e4","e5","Nf3","Nc6","Bb5","Nf6","O-O"]},{"eco":"C67","name":"Ruy Lopez: Berlin Defense, Rio Gambit Accepted","moves":["e4","e5","Nf3","Nc6","Bb5","Nf6","O-O","Nxe4"]},{"eco":"C68","name":"Ruy Lopez: Exchange Variation","moves":["e4","e5","Nf3","Nc6","Bb5","a6","Bxc6"]},{"eco":"C89","name":"Ruy Lopez: Marshall Attack","moves":["e4","e5","Nf3","Nc6","Bb5","a6","Ba4","Nf6","O-O","Be7","Re1","b5","Bb3","O-O","c3","d5"]},{"eco":"C94","name":"Ruy Lopez: Closed, Breyer Defense","moves":["e4","e5","Nf3","Nc6","Bb5","a6","Ba4","Nf6","O-O","Be7","Re1","b5","Bb3","d6","c3","O-O","h3","Nb8"]},{"eco":"C82","name":"Ruy Lopez: Open","moves":["e4","e5","Nf3","Nc6","Bb5","a6","Ba4","Nf6","O-O","Nxe4","d4","b5","Bb3","d5","dxe5","Be6","c3"]}],"side":"w"},{"family":"Scotch Game","lines":[{"eco":"C45","name":"Scotch Game: Classical Variation","moves":["e4","e5","Nf3","Nc6","d4","exd4","Nxd4","Bc5"]},{"eco":"C45","name":"Scotch Game: Schmidt Variation","moves":["e4","e5","Nf3","Nc6","d4","exd4","Nxd4","Nf6"]},{"eco":"C45","name":"Scotch Game: Mieses Variation","moves":["e4","e5","Nf3","Nc6","d4","exd4","Nxd4","Nf6","Nxc6","bxc6","e5"]}],"side":"w"},{"family":"Petrov's Defense","lines":[{"eco":"C42","name":"Petrov's Defense: Classical Attack","moves":["e4","e5","Nf3","Nf6","Nxe5","d6","Nf3","Nxe4","d4"]},{"eco":"C42","name":"Petrov's Defense: Three Knights Game","moves":["e4","e5","Nf3","Nf6","Nc3"]}],"side":"b"},{"family":"Vienna Game","lines":[{"eco":"C29","name":"Vienna Game: Vienna Gambit","moves":["e4","e5","Nc3","Nf6","f4"]},{"eco":"C26","name":"Vienna Game: Stanley Variation","moves":["e4","e5","Nc3","Nf6","Bc4"]}],"side":"w"},{"family":"King's Gambit","lines":[{"eco":"C39","name":"King's Gambit Accepted: Kieseritzky Gambit","moves":["e4","e5","f4","exf4","Nf3","g5","h4","g4","Ne5"]},{"eco":"C34","name":"King's Gambit Accepted: Fischer Defense","moves":["e4","e5","f4","exf4","Nf3","d6"]}],"side":"w"},{"family":"Sicilian Defense","lines":[{"eco":"B98","name":"Sicilian Defense: Najdorf Variation","moves":["e4","c5","Nf3","d6","d4","cxd4","Nxd4","Nf6","Nc3","a6","Bg5","e6","f4","Be7"]},{"eco":"B90","name":"Sicilian Defense: Najdorf Variation, English Attack","moves":["e4","c5","Nf3","d6","d4","cxd4","Nxd4","Nf6","Nc3","a6","Be3","e5","Nb3","Be6","f3"]},{"eco":"B72","name":"Sicilian Defense: Dragon Variation","moves":["e4","c5","Nf3","d6","d4","cxd4","Nxd4","Nf6","Nc3","g6","Be3"]},{"eco":"B76","name":"Sicilian Defense: Dragon Variation, Yugoslav Attack","moves":["e4","c5","Nf3","d6","d4","cxd4","Nxd4","Nf6","Nc3","g6","Be3","Bg7","f3","O-O","Qd2","Nc6"]},{"eco":"B33","name":"Sicilian Defense: Lasker-Pelikan Variation, Sveshnikov Variation","moves":["e4","c5","Nf3","Nc6","d4","cxd4","Nxd4","Nf6","Nc3","e5","Ndb5","d6","Bg5","a6","Na3","b5"]},{"eco":"B46","name":"Sicilian Defense: Taimanov Variation","moves":["e4","c5","Nf3","e6","d4","cxd4","Nxd4","Nc6","Nc3","a6"]},{"eco":"B25","name":"Sicilian Defense: Closed","moves":["e4","c5","Nc3","Nc6","g3","g6","Bg2","Bg7","d3","d6","f4"]},{"eco":"B80","name":"Sicilian Defense: Scheveningen Variation","moves":["e4","c5","Nf3","e6","d4","cxd4","Nxd4","Nf6","Nc3","d6"]},{"eco":"B32","name":"Sicilian Defense: Accelerated Dragon","moves":["e4","c5","Nf3","Nc6","d4","cxd4","Nxd4","g6"]},{"eco":"B30","name":"Sicilian Defense: Nyezhmetdinov-Rossolimo Attack","moves":["e4","c5","Nf3","Nc6","Bb5"]}],"side":"b"},{"family":"French Defense","lines":[{"eco":"C02","name":"French Defense: Advance Variation","moves":["e4","e6","d4","d5","e5","c5","c3","Nc6"]},{"eco":"C15","name":"French Defense: Winawer Variation","moves":["e4","e6","d4","d5","Nc3","Bb4"]},{"eco":"C03","name":"French Defense: Tarrasch Variation","moves":["e4","e6","d4","d5","Nd2"]},{"eco":"C14","name":"French Defense: Classical Variation","moves":["e4","e6","d4","d5","Nc3","Nf6","Bg5","Be7","e5","Nfd7","Bxe7","Qxe7"]},{"eco":"C01","name":"French Defense: Exchange Variation","moves":["e4","e6","d4","d5","exd5","exd5","Nf3"]},{"eco":"C10","name":"French Defense: Rubinstein Variation","moves":["e4","e6","d4","d5","Nc3","dxe4"]}],"side":"b"},{"family":"Caro-Kann Defense","lines":[{"eco":"B19","name":"Caro-Kann Defense: Classical Variation","moves":["e4","c6","d4","d5","Nd2","dxe4","Nxe4","Bf5","Ng3","Bg6","h4","h6","Nf3","Nd7"]},{"eco":"B12","name":"Caro-Kann Defense: Advance Variation","moves":["e4","c6","d4","d5","e5"]},{"eco":"B12","name":"Caro-Kann Defense: Advance Variation, Short Variation","moves":["e4","c6","d4","d5","e5","Bf5","Nf3"]},{"eco":"B13","name":"Caro-Kann Defense: Exchange Variation","moves":["e4","c6","d4","d5","exd5","cxd5","Nf3","Nc6"]},{"eco":"B14","name":"Caro-Kann Defense: Panov Attack","moves":["e4","c6","d4","d5","exd5","cxd5","c4","Nc6","Nc3","Nf6","Nf3","e6","cxd5","exd5","Bb5","Bg4"]},{"eco":"B10","name":"Caro-Kann Defense: Two Knights Attack","moves":["e4","c6","Nc3","d5","Nf3"]}],"side":"b"},{"family":"Scandinavian Defense","lines":[{"eco":"B01","name":"Scandinavian Defense: Main Line","moves":["e4","d5","exd5","Qxd5","Nc3","Qa5"]},{"eco":"B01","name":"Scandinavian Defense: Modern Variation","moves":["e4","d5","exd5","Nf6","d4"]}],"side":"b"},{"family":"Pirc Defense","lines":[{"eco":"B09","name":"Pirc Defense: Austrian Attack","moves":["e4","d6","d4","Nf6","Nc3","g6","f4","Bg7","Nf3","O-O"]},{"eco":"B08","name":"Pirc Defense: Classical Variation","moves":["e4","d6","d4","Nf6","Nc3","g6","Nf3","Bg7"]}],"side":"b"},{"family":"Queen's Gambit","lines":[{"eco":"D60","name":"Queen's Gambit Declined: Orthodox Defense","moves":["d4","Nf6","c4","e6","Nf3","d5","Nc3","Be7","Bg5","O-O","e3","Nbd7"]},{"eco":"D35","name":"Queen's Gambit Declined: Exchange Variation","moves":["d4","d5","c4","e6","Nc3","Nf6","e3","Be7","cxd5","exd5","Bd3","O-O","Nf3","c6"]},{"eco":"D58","name":"Queen's Gambit Declined: Tartakower Defense","moves":["d4","Nf6","c4","e6","Nf3","d5","Nc3","Be7","Bg5","h6","Bh4","O-O","e3","b6"]},{"eco":"D26","name":"Queen's Gambit Accepted: Classical Defense","moves":["d4","d5","c4","dxc4","Nf3","Nf6","e3","e6","Bxc4","c5"]},{"eco":"D38","name":"Queen's Gambit Declined: Ragozin Defense","moves":["d4","Nf6","c4","e6","Nf3","d5","Nc3","Bb4"]}],"side":"w"},{"family":"Slav Defense","lines":[{"eco":"D11","name":"Slav Defense: Modern Line","moves":["d4","d5","c4","c6","Nf3","Nf6","g3","Bg4","Bg2","e6","O-O"]},{"eco":"D17","name":"Slav Defense: Czech Variation","moves":["d4","d5","c4","c6","Nf3","Nf6","Nc3","dxc4","a4","Bf5"]},{"eco":"D48","name":"Semi-Slav Defense: Meran Variation","moves":["d4","d5","c4","c6","Nc3","Nf6","e3","e6","Nf3","Nbd7","Bd3","dxc4","Bxc4","b5","Bd3","a6","e4","c5"]},{"eco":"D13","name":"Slav Defense: Exchange Variation","moves":["d4","d5","c4","c6","Nf3","Nf6","cxd5","cxd5"]}],"side":"b"},{"family":"King's Indian Defense","lines":[{"eco":"E95","name":"King's Indian Defense: Orthodox Variation","moves":["d4","Nf6","c4","g6","Nc3","Bg7","e4","d6","Nf3","O-O","Be2","e5","O-O","Nbd7","Re1"]},{"eco":"E86","name":"King's Indian Defense: Sämisch Variation","moves":["d4","Nf6","c4","g6","Nc3","Bg7","e4","d6","f3","O-O","Be3","e5","Nge2","c6"]},{"eco":"E60","name":"King's Indian Defense: Fianchetto Variation","moves":["d4","Nf6","c4","g6","Nf3","Bg7","g3"]},{"eco":"E77","name":"King's Indian Defense: Four Pawns Attack","moves":["d4","Nf6","c4","g6","Nc3","Bg7","e4","d6","Be2","O-O","f4"]}],"side":"b"},{"family":"Nimzo-Indian Defense","lines":[{"eco":"E32","name":"Nimzo-Indian Defense: Classical Variation","moves":["d4","Nf6","c4","e6","Nc3","Bb4","Qc2"]},{"eco":"E41","name":"Nimzo-Indian Defense: Rubinstein System","moves":["d4","Nf6","c4","e6","Nc3","Bb4","e3","c5"]},{"eco":"E47","name":"Nimzo-Indian Defense: Normal Variation","moves":["d4","Nf6","c4","e6","Nc3","Bb4","e3","O-O","Bd3"]}],"side":"b"},{"family":"Grünfeld Defense","lines":[{"eco":"D85","name":"Grünfeld Defense: Exchange Variation","moves":["d4","Nf6","c4","g6","Nc3","d5","cxd5","Nxd5"]},{"eco":"D97","name":"Grünfeld Defense: Russian Variation","moves":["d4","Nf6","c4","g6","Nc3","d5","Nf3","Bg7","Qb3","dxc4","Qxc4","O-O","e4"]}],"side":"b"},{"family":"London System","lines":[{"eco":"D02","name":"Queen's Pawn Game: London System","moves":["d4","d5","Nf3","Nf6","Bf4","c5","e3","Nc6","Nbd2","e6","c3"]},{"eco":"A46","name":"Indian Defense: London System","moves":["d4","Nf6","Nf3","e6","Bf4"]}],"side":"w"},{"family":"English Opening","lines":[{"eco":"A21","name":"English Opening: King's English Variation","moves":["c4","e5","Nc3","d6","Nf3"]},{"eco":"A34","name":"English Opening: Symmetrical Variation","moves":["c4","c5","Nf3","Nf6","Nc3","Nc6","g3","d5","d4","cxd4"]},{"eco":"A13","name":"English Opening: Agincourt Defense","moves":["c4","e6","Nf3","d5","b3","Nf6","Bb2","Be7","e3","O-O","d4"]}],"side":"w"},{"family":"Catalan Opening","lines":[{"eco":"E03","name":"Catalan Opening: Open Defense","moves":["d4","Nf6","c4","e6","g3","d5","Bg2","dxc4","Qa4+","Nbd7","Qxc4"]},{"eco":"E06","name":"Catalan Opening: Closed","moves":["d4","Nf6","c4","e6","g3","d5","Bg2","Be7","Nf3","O-O","O-O","c6","Qc2","b6","Nbd2","Bb7","e4","Na6"]}],"side":"w"},{"family":"Dutch Defense","lines":[{"eco":"A87","name":"Dutch Defense: Leningrad Variation","moves":["d4","f5","c4","Nf6","g3","g6","Bg2","Bg7","Nf3"]},{"eco":"A94","name":"Dutch Defense: Stonewall Variation","moves":["d4","f5","c4","Nf6","g3","e6","Bg2","Be7","Nf3","O-O","O-O","d5","b3","c6","Ba3"]},{"eco":"A96","name":"Dutch Defense: Classical Variation","moves":["d4","f5","c4","Nf6","g3","e6","Bg2","Be7","Nf3","O-O","O-O","d6"]}],"side":"b"}];
+const FILES='abcdefgh';
+const CH_STORE='fretwise.chess';
+const CS={tab:'puzzles', theme:'all', diff:0, rating:1200, hist:[], lines:{}, side:'book', fam:0, upd:0};
+function loadChess(){ try{ const d=JSON.parse(localStorage.getItem(CH_STORE)||'null'); if(d) Object.assign(CS,d); }catch(e){} }
+function storeChess(){ try{ localStorage.setItem(CH_STORE,JSON.stringify(CS)); }catch(e){} }
+function saveChess(){ CS.upd=Date.now(); storeChess(); pushChess(); }
+let chessDoc=null, chessSynced=false, cWriting=false, cAgain=false;
+async function pushChess(){
+  if(!chessDoc) return;
+  if(cWriting){ cAgain=true; return; }
+  cWriting=true;
+  try{ await chessDoc.set({rating:CS.rating,hist:CS.hist.slice(-400),lines:CS.lines,upd:CS.upd,v:1}); }
+  catch(e){ if(e&&(e.code==='invalid_argument'||e.code==='revoked'||e.code==='not_granted')){ chessDoc=null; chessSynced=false; } }
+  cWriting=false; if(cAgain){ cAgain=false; pushChess(); }
+}
+function mergeChess(x){
+  if(!x) return;
+  const have=new Set(CS.hist.map(h=>h.id+':'+h.t));
+  (x.hist||[]).forEach(h=>{ if(!have.has(h.id+':'+h.t)) CS.hist.push(h); });
+  CS.hist.sort((a,b)=>a.t-b.t); CS.hist=CS.hist.slice(-400);
+  if((x.upd||0)>CS.upd&&typeof x.rating==='number') CS.rating=x.rating;
+  Object.entries(x.lines||{}).forEach(([k,v])=>{ const l=CS.lines[k]; if(!l||(v.last||0)>(l.last||0)) CS.lines[k]=v; });
+  CS.upd=Math.max(CS.upd,x.upd||0);
+}
+async function connectChess(db,uid){
+  try{
+    const ref=db.doc('data/users/'+uid+'/chess');
+    const s=await ref.get(), d=s.exists?s.data():null, localUpd=CS.upd;
+    mergeChess(d); chessDoc=ref; chessSynced=true; storeChess();
+    if(!d||localUpd>(d.upd||0)) await pushChess();
+    ref.onSnapshot(sn=>{
+      const x=sn.exists?sn.data():null; if(!x||x.upd===CS.upd) return;
+      mergeChess(x); storeChess();
+      if(view==='chess') renderChessSide(); else if(view==='home') renderHome();
+    },()=>{ chessSynced=false; });
+    if(view==='chess') renderChessSide();
+  }catch(e){}
+}
+
+/* ---------- pieces: drawn for this app ---------- */
+const PIECES={
+  p:'<path d="M22.5 9a4.6 4.6 0 0 0-3.7 7.3 6.4 6.4 0 0 0-2.8 5.3c0 2 .9 3.8 2.4 5-3 1.3-6 4.6-6.5 10.4h21.2c-.5-5.8-3.5-9.1-6.5-10.4 1.5-1.2 2.4-3 2.4-5a6.4 6.4 0 0 0-2.8-5.3A4.6 4.6 0 0 0 22.5 9z"/>',
+  r:'<path d="M11 37.5h23v-3.8H11zM13.5 33.7l1.6-3.2h14.8l1.6 3.2zM15.1 30.5V17.8h14.8v12.7zM13 17.8l2.1-2.8h14.8l2.1 2.8zM12 15V8.5h4.2v2.6h3V8.5h6.6v2.6h3V8.5H33V15z"/>',
+  n:'<path d="M13.5 37.5H33c.2-7-.6-12.3-2.2-16.8-1.5-4.3-3.6-8.6-6.6-11.4l-.5-3.6-3 3.1c-4.4 1.4-7.8 4.8-10.1 9.8l-.8 3.5 2.6 2.4 4.4-3.1 3.4.9c-3.6 3.6-6.5 7.7-6.7 15.2z"/><circle class="eye" cx="19.6" cy="14.2" r="1.25"/><path class="dt" d="M25.6 10.6c2.6 3.6 4.4 8.2 4.9 14.2"/>',
+  b:'<path d="M12 37.5h21v-3.2c-3.2-1.1-6.9-1.6-10.5-1.6s-7.3.5-10.5 1.6z"/><path d="M16.2 32.2c-.9-3.8.1-7.4 3-9.6-2.9-2-4.1-4.6-4.1-7 0-4.1 3.7-7.3 7.4-9.3 3.7 2 7.4 5.2 7.4 9.3 0 2.4-1.2 5-4.1 7 2.9 2.2 3.9 5.8 3 9.6z"/><circle cx="22.5" cy="5.4" r="2.3"/><path class="dt" d="M25.7 11.3l-4.4 5.4M18.5 25.6h8"/>',
+  q:'<path d="M11.5 37.5h22v-3.9h-22z"/><path d="M13.6 33.6l2-10.3-4.5-9.6 6.4 5.9-1-10.7 4.4 8.8 1.6-10.4 1.6 10.4 4.4-8.8-1 10.7 6.4-5.9-4.5 9.6 2 10.3z"/><circle cx="11.1" cy="12.6" r="2"/><circle cx="16.4" cy="7.6" r="2"/><circle cx="22.5" cy="5.9" r="2"/><circle cx="28.6" cy="7.6" r="2"/><circle cx="33.9" cy="12.6" r="2"/>',
+  k:'<path d="M11.5 37.5h22v-3.9h-22z"/><path d="M14.2 33.6c-2.2-5.4-3.5-11 .5-14.7 3.2-3 6.3-1.8 7.8.9 1.5-2.7 4.6-3.9 7.8-.9 4 3.7 2.7 9.3.5 14.7z"/><path d="M19.9 18.6c-.3-3.6 1.1-5.6 2.6-6.4 1.5.8 2.9 2.8 2.6 6.4"/><path class="dt cross" d="M22.5 3.6v8M19 6.9h7"/><path class="dt" d="M15.6 27.4c4.4-1.6 9.4-1.6 13.8 0"/>'
+};
+const PIECE_NAMES={p:'pawn',n:'knight',b:'bishop',r:'rook',q:'queen',k:'king'};
+const pieceSvg=p=>`<svg class="pc ${p.color}" viewBox="0 0 45 45" aria-hidden="true">${PIECES[p.type]}</svg>`;
+
+/* ---------- board ---------- */
+const B={game:null, orient:'w', user:'w', canMove:false, sel:null, legal:[], last:null, flash:null, hint:null, hintTo:null, promo:null, onMove:null};
+const sqOf=(fi,ri)=>FILES[fi]+(ri+1);
+function renderCBoard(){
+  const el=$('cboard'); if(!el) return;
+  if(!B.game){ el.innerHTML=''; return; }
+  const board=B.game.board(), check=B.game.in_check(), turn=B.game.turn();
+  let h='';
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const fi=B.orient==='w'?c:7-c, ri=B.orient==='w'?7-r:r, sq=sqOf(fi,ri), p=board[7-ri][fi];
+    const cls=['sq',(fi+ri)%2?'l':'d'];
+    if(B.last&&(B.last.from===sq||B.last.to===sq)) cls.push('last');
+    if(B.sel===sq) cls.push('sel');
+    if(B.flash&&B.flash[sq]) cls.push(B.flash[sq]);
+    if(B.hint===sq||B.hintTo===sq) cls.push('hint');
+    if(check&&p&&p.type==='k'&&p.color===turn) cls.push('check');
+    if(drag&&drag.moved&&drag.from===sq) cls.push('src');
+    let inner=p?pieceSvg(p):'';
+    if(B.legal.some(m=>m.to===sq)) inner+=p?'<i class="ring"></i>':'<i class="dot"></i>';
+    if(c===0) inner+=`<span class="coord r">${ri+1}</span>`;
+    if(r===7) inner+=`<span class="coord f">${FILES[fi]}</span>`;
+    h+=`<div class="${cls.join(' ')}" data-sq="${sq}" aria-label="${sq}${p?' '+(p.color==='w'?'white':'black')+' '+PIECE_NAMES[p.type]:''}">${inner}</div>`;
+  }
+  if(B.promo){
+    const col=B.game.turn();
+    h+=`<div class="promo"><div class="opts" role="group" aria-label="Promote to">${['q','r','b','n'].map(t=>`<button type="button" data-promo="${t}" aria-label="${{q:'Queen',r:'Rook',b:'Bishop',n:'Knight'}[t]}">${pieceSvg({type:t,color:col})}</button>`).join('')}</div></div>`;
+  }
+  el.innerHTML=h;
+  if(drag&&drag.moved){ const g=document.createElement('div'); g.className='ghost'; g.innerHTML=pieceSvg(B.game.get(drag.from)); g.style.left=drag.px+'px'; g.style.top=drag.py+'px'; el.appendChild(g); drag.ghost=g; }
+}
+function sqAtPoint(x,y){
+  const r=$('cboard').getBoundingClientRect(); if(x<r.left||y<r.top||x>r.right||y>r.bottom) return null;
+  const c=Math.min(7,Math.floor((x-r.left)/r.width*8)), w=Math.min(7,Math.floor((y-r.top)/r.height*8));
+  return B.orient==='w'?sqOf(c,7-w):sqOf(7-c,w);
+}
+function select(sq){ B.sel=sq; B.legal=sq?B.game.moves({square:sq,verbose:true}):[]; }
+function tryMove(from,to){
+  const ms=B.legal.filter(m=>m.from===from&&m.to===to); if(!ms.length) return false;
+  if(ms.some(m=>m.promotion)){ B.promo={from,to}; renderCBoard(); return true; }
+  select(null); B.onMove&&B.onMove(from,to,undefined); return true;
+}
+let drag=null;
+function bindBoard(){
+  const el=$('cboard');
+  el.addEventListener('pointerdown',e=>{
+    const pb=e.target.closest('[data-promo]');
+    if(pb){ const {from,to}=B.promo; B.promo=null; select(null); B.onMove&&B.onMove(from,to,pb.dataset.promo); return; }
+    if(B.promo){ B.promo=null; select(null); renderCBoard(); return; }
+    const t=e.target.closest('.sq'); if(!t||!B.canMove) return;
+    const sq=t.dataset.sq, p=B.game.get(sq);
+    ensureAudio();
+    if(B.sel&&B.legal.some(m=>m.to===sq)){ tryMove(B.sel,sq); return; }
+    if(p&&p.color===B.user&&B.game.turn()===B.user){
+      select(sq);
+      const r=el.getBoundingClientRect();
+      drag={from:sq,x:e.clientX,y:e.clientY,px:e.clientX-r.left,py:e.clientY-r.top,moved:false};
+      try{ el.setPointerCapture(e.pointerId); }catch(_){}
+      renderCBoard();
+    }else{ select(null); renderCBoard(); }
+  });
+  el.addEventListener('pointermove',e=>{
+    if(!drag) return;
+    const r=el.getBoundingClientRect();
+    drag.px=e.clientX-r.left; drag.py=e.clientY-r.top;
+    if(!drag.moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>6){ drag.moved=true; renderCBoard(); return; }
+    if(drag.ghost){ drag.ghost.style.left=drag.px+'px'; drag.ghost.style.top=drag.py+'px'; }
+  });
+  const end=e=>{
+    if(!drag) return;
+    const d=drag; drag=null;
+    if(d.moved){ const to=sqAtPoint(e.clientX,e.clientY); if(to&&to!==d.from&&tryMove(d.from,to)) return; }
+    renderCBoard();
+  };
+  el.addEventListener('pointerup',end); el.addEventListener('pointercancel',()=>{ drag=null; renderCBoard(); });
+}
+function moveSound(mv){ if(!S.sound) return; try{ if(!ensureAudio()) return; const o=actx.createOscillator(), g=actx.createGain(), f=actx.createBiquadFilter();
+  o.type='triangle'; o.frequency.value=mv&&mv.captured?190:150; f.type='lowpass'; f.frequency.value=900;
+  g.gain.setValueAtTime(0.0001,actx.currentTime); g.gain.exponentialRampToValueAtTime(mv&&mv.captured?0.35:0.22,actx.currentTime+0.005); g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+0.09);
+  o.connect(f); f.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime+0.1); }catch(e){} }
+function playUci(u){ const mv=B.game.move({from:u.slice(0,2),to:u.slice(2,4),promotion:u[4]}); if(mv){ B.last={from:mv.from,to:mv.to}; moveSound(mv); } return mv; }
+
+/* ---------- puzzles ---------- */
+let PZDATA=null, PZ=null, pzLoading=null;
+const THEMES=[['all','Any'],['mateIn1','Mate in 1'],['mateIn2','Mate in 2'],['mateIn3','Mate in 3+'],['fork','Forks'],['pin','Pins'],['skewer','Skewers'],['discoveredAttack','Discovered attacks'],['sacrifice','Sacrifices'],['backRankMate','Back-rank mates'],['hangingPiece','Hanging pieces'],['deflection','Deflection'],['promotion','Promotion'],['opening','Opening'],['endgame','Endgame']];
+const THEME_NAMES={mateIn1:'Mate in 1',mateIn2:'Mate in 2',mateIn3:'Mate in 3',mateIn4:'Mate in 4',mateIn5:'Mate in 5',fork:'Fork',pin:'Pin',skewer:'Skewer',discoveredAttack:'Discovered attack',sacrifice:'Sacrifice',endgame:'Endgame',deflection:'Deflection',hangingPiece:'Hanging piece',backRankMate:'Back-rank mate',opening:'Opening',middlegame:'Middlegame',promotion:'Promotion',attraction:'Attraction',short:'Short',long:'Long',veryLong:'Very long',oneMove:'One move',crushing:'Crushing',advantage:'Advantage',mate:'Mate'};
+function themeOk(p){
+  const t=CS.theme; if(t==='all') return true;
+  const ts=p[4].split(' ');
+  if(t==='mateIn3') return ts.some(x=>x==='mateIn3'||x==='mateIn4'||x==='mateIn5');
+  return ts.indexOf(t)>=0;
+}
+function loadPuzzles(){
+  if(PZDATA) return Promise.resolve(PZDATA);
+  if(!pzLoading) pzLoading=fetch('puzzles.json').then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); }).then(d=>{ PZDATA=d; return d; });
+  return pzLoading;
+}
+function pickPuzzle(){
+  const target=CS.rating+CS.diff*300, seen=new Set(CS.hist.map(h=>h.id));
+  let pool=PZDATA.filter(p=>themeOk(p)&&!seen.has(p[0]));
+  if(!pool.length) pool=PZDATA.filter(themeOk);
+  for(let w=80;w<=1600;w=Math.round(w*1.5)){ const c=pool.filter(p=>Math.abs(p[3]-target)<=w); if(c.length>=6) return rnd(c); }
+  return rnd(pool);
+}
+function newPuzzle(){
+  if(!window.Chess){ chessError(); return; }
+  clearTimeout(cTimer);
+  if(!PZDATA){
+    $('cprompt').textContent='Loading puzzles…'; $('ceyebrow').textContent='Puzzles';
+    loadPuzzles().then(()=>{ if(view==='chess'&&CS.tab==='puzzles') newPuzzle(); })
+      .catch(()=>{ $('cprompt').textContent='The puzzles could not be loaded.'; $('cfeedback').className='feedback bad'; $('cfeedback').textContent='Check your connection and reopen Chess.'; });
+    return;
+  }
+  const p=pickPuzzle();
+  PZ={id:p[0],fen:p[1],moves:p[2].split(' '),rating:p[3],themes:p[4].split(' ').filter(Boolean),step:0,phase:'opp',failed:false,hinted:false,scored:false,delta:null};
+  B.game=new Chess(PZ.fen);
+  B.user=B.game.turn()==='w'?'b':'w'; B.orient=B.user; B.canMove=false; B.last=null; B.flash=null; B.hint=null; B.hintTo=null; select(null);
+  B.onMove=puzzleMove;
+  cFeedback('','');
+  renderChess();
+  cTimer=setTimeout(()=>{ playUci(PZ.moves[0]); PZ.step=1; PZ.phase='user'; B.canMove=true; renderChess(); },650);
+}
+function scorePuzzle(ok){
+  if(PZ.scored) return; PZ.scored=true;
+  const n=CS.hist.length, K=n<20?40:n<60?28:20;
+  const exp=1/(1+Math.pow(10,(PZ.rating-CS.rating)/400));
+  const d=Math.round(K*((ok?1:0)-exp));
+  CS.rating=Math.max(400,Math.min(3200,CS.rating+d)); PZ.delta=d;
+  CS.hist.push({id:PZ.id,pr:PZ.rating,ok,d,r:CS.rating,t:Date.now()});
+  saveChess(); renderChessSide();
+}
+function puzzleMove(from,to,promo){
+  if(!PZ||PZ.phase!=='user') return;
+  const before=B.last, u=from+to+(promo||''), exp=PZ.moves[PZ.step];
+  const mv=B.game.move({from,to,promotion:promo||'q'}); if(!mv){ renderCBoard(); return; }
+  moveSound(mv); B.last={from,to}; B.hint=null; B.hintTo=null;
+  const mate=B.game.in_checkmate();
+  if(u===exp||(exp&&u===exp.slice(0,4)&&!exp[4])||mate){
+    PZ.step++;
+    if(PZ.step>=PZ.moves.length||mate) return puzzleSolved();
+    B.canMove=false; cFeedback('good','Good move. Keep going.'); renderChess();
+    cTimer=setTimeout(()=>{ playUci(PZ.moves[PZ.step]); PZ.step++; B.canMove=true; renderChess(); },480);
+  }else{
+    B.flash={[to]:'wrong'}; B.canMove=false; renderCBoard();
+    if(!PZ.failed){ PZ.failed=true; scorePuzzle(false); }
+    cFeedback('bad',`That's not the move. Your rating counts this as a miss${PZ.delta!=null?` (${PZ.delta})`:''}, but you can keep trying.`);
+    cTimer=setTimeout(()=>{ B.game.undo(); B.flash=null; B.last=before; B.canMove=true; renderChess(); },650);
+  }
+}
+function puzzleSolved(){
+  PZ.phase='done'; B.canMove=false; select(null);
+  if(!PZ.failed&&!PZ.hinted) scorePuzzle(true);
+  cFeedback(PZ.failed||PZ.hinted?'bad':'good', PZ.failed||PZ.hinted?'Solved, after a miss.':`Solved! Rating ${PZ.delta>=0?'+':''}${PZ.delta}.`);
+  renderChess();
+}
+function puzzleHint(){
+  if(!PZ||PZ.phase!=='user') return;
+  const exp=PZ.moves[PZ.step];
+  if(!PZ.hinted){ PZ.hinted=true; if(!PZ.failed){ PZ.failed=true; scorePuzzle(false); } }
+  if(B.hint===exp.slice(0,2)) B.hintTo=exp.slice(2,4); else B.hint=exp.slice(0,2);
+  cFeedback('info',B.hintTo?'The highlighted squares show the move.':'Move the highlighted piece. Hints count as a miss for your rating.');
+  renderChess();
+}
+function puzzleSolution(){
+  if(!PZ||PZ.phase==='done') return;
+  if(!PZ.failed){ PZ.failed=true; scorePuzzle(false); }
+  PZ.phase='showing'; B.canMove=false; select(null); clearTimeout(cTimer);
+  const stepOn=()=>{ if(PZ.step>=PZ.moves.length){ PZ.phase='done'; cFeedback('bad','That was the solution. Play through it again with the arrows if you like.'); renderChess(); return; }
+    playUci(PZ.moves[PZ.step]); PZ.step++; renderChess(); cTimer=setTimeout(stepOn,700); };
+  stepOn();
+}
+
+/* ---------- openings ---------- */
+let OP={view:'list', fam:CS.fam||0, line:null, color:'w', ply:0, mistakes:0, wrong:0, done:false};
+const lineId=(f,l)=>f.family+'|'+l.name;
+const shortName=(f,l)=>{ const n=l.name; const i=n.indexOf(':'); return i>=0?n.slice(i+1).trim():n; };
+const lineStat=id=>CS.lines[id]||{n:0,clean:0,streak:0,last:0};
+const mastered=id=>lineStat(id).streak>=3;
+function famSide(f){ return CS.side==='book'?f.side:CS.side; }
+function sanMovesText(moves,upto,cur){
+  let h='';
+  for(let i=0;i<upto;i++){
+    if(i%2===0) h+=`<b>${i/2+1}.</b>`;
+    h+=`<span class="${i===cur?'cur':''}" data-ply="${i+1}">${moves[i]}</span>`;
+  }
+  return h;
+}
+function openingsList(){ clearTimeout(cTimer); OP.view='list'; OP.line=null; const f=OPENINGS[OP.fam]; B.game=new Chess(); f.lines[0].moves.forEach(m=>B.game.move(m)); B.orient=famSide(f); B.canMove=false; B.last=null; B.flash=null; B.hint=B.hintTo=null; select(null); cFeedback('',''); renderChess(); }
+function openingsWatch(li){ clearTimeout(cTimer); const f=OPENINGS[OP.fam]; OP.view='watch'; OP.line=li; OP.ply=0; B.orient=famSide(f); B.canMove=false; select(null); B.flash=null; B.hint=B.hintTo=null; watchTo(0); cFeedback('',''); renderChess(); }
+function watchTo(ply){
+  const l=OPENINGS[OP.fam].lines[OP.line]; OP.ply=Math.max(0,Math.min(l.moves.length,ply));
+  B.game=new Chess(); let mv=null; for(let i=0;i<OP.ply;i++) mv=B.game.move(l.moves[i]);
+  B.last=mv?{from:mv.from,to:mv.to}:null;
+}
+function openingsDrill(li){
+  clearTimeout(cTimer); const f=OPENINGS[OP.fam];
+  OP.view='drill'; OP.line=li; OP.ply=0; OP.mistakes=0; OP.wrong=0; OP.done=false; OP.color=famSide(f);
+  B.game=new Chess(); B.orient=OP.color; B.user=OP.color; B.last=null; B.flash=null; B.hint=B.hintTo=null; select(null);
+  B.onMove=drillMove; cFeedback('',''); drillAdvance();
+}
+function drillAdvance(){
+  const l=OPENINGS[OP.fam].lines[OP.line];
+  if(OP.ply>=l.moves.length) return drillDone();
+  if(B.game.turn()!==OP.color){
+    B.canMove=false; renderChess();
+    cTimer=setTimeout(()=>{ const mv=B.game.move(l.moves[OP.ply]); if(mv){ B.last={from:mv.from,to:mv.to}; moveSound(mv); } OP.ply++; drillAdvance(); },OP.ply===0?500:420);
+  }else{ B.canMove=true; OP.wrong=0; renderChess(); }
+}
+const bare=s=>s.replace(/[+#?!]/g,'');
+function drillMove(from,to,promo){
+  const l=OPENINGS[OP.fam].lines[OP.line], expSan=l.moves[OP.ply];
+  const mv=B.game.move({from,to,promotion:promo||'q'}); if(!mv){ renderCBoard(); return; }
+  if(bare(mv.san)===bare(expSan)){
+    moveSound(mv); B.last={from,to}; B.hint=B.hintTo=null; OP.ply++; cFeedback('good',`${expSan} is the book move.`); drillAdvance();
+  }else{
+    const before=B.last; B.last={from,to}; B.flash={[to]:'wrong'}; B.canMove=false; OP.mistakes++; OP.wrong++;
+    renderCBoard();
+    cTimer=setTimeout(()=>{
+      B.game.undo(); B.flash=null; B.last=before; B.canMove=true;
+      if(OP.wrong>=2){ const t=new Chess(B.game.fen()).move(expSan); if(t){ B.hint=t.from; B.hintTo=t.to; } cFeedback('bad',`Not the book move. The book plays ${expSan}, highlighted.`); }
+      else cFeedback('bad',`${mv.san} isn't the book move here. Try again.`);
+      renderChess();
+    },600);
+  }
+}
+function drillDone(){
+  const f=OPENINGS[OP.fam], l=f.lines[OP.line], id=lineId(f,l), st=Object.assign({},lineStat(id));
+  st.n++; if(!OP.mistakes){ st.clean++; st.streak++; } else st.streak=0; st.last=Date.now();
+  CS.lines[id]=st; saveChess(); renderChessSide();
+  OP.done=true; B.canMove=false;
+  cFeedback(OP.mistakes?'bad':'good', OP.mistakes?`Line complete with ${OP.mistakes} ${OP.mistakes===1?'mistake':'mistakes'}.`:(st.streak>=3?`Clean run. ${st.streak} in a row: this line is mastered.`:`Clean run. ${st.streak} of 3 in a row to master it.`));
+  renderChess();
+}
+function nextLineIndex(){
+  const f=OPENINGS[OP.fam], ids=f.lines.map(l=>lineId(f,l));
+  const order=f.lines.map((l,i)=>i).filter(i=>i!==OP.line).sort((a,b)=>lineStat(ids[a]).streak-lineStat(ids[b]).streak||lineStat(ids[a]).last-lineStat(ids[b]).last);
+  return order.length?order[0]:OP.line;
+}
+
+/* ---------- chess rendering ---------- */
+let cTimer=null;
+function cFeedback(cls,txt){ const el=$('cfeedback'); el.className='feedback'+(cls?' '+cls:''); el.textContent=txt; }
+function chessError(){ $('ceyebrow').textContent='Chess'; $('cprompt').textContent='The chess engine could not be loaded.'; cFeedback('bad','Check your connection and reload the page.'); }
+function renderChess(){
+  if(view!=='chess') return;
+  document.querySelectorAll('#chessModes button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.ctab===CS.tab)));
+  const eb=$('ceyebrow'), pr=$('cprompt'), sc=$('cscore'), an=$('canswer');
+  let h='';
+  if(CS.tab==='puzzles'){
+    if(!PZ){ renderCBoard(); return; }
+    const tm=PZ.phase==='done'?PZ.themes.filter(t=>THEME_NAMES[t]&&['short','long','veryLong','oneMove','crushing','advantage','mate','middlegame'].indexOf(t)<0).map(t=>THEME_NAMES[t]).join(' · '):'';
+    eb.textContent=`Puzzle · rated ${PZ.rating}${tm?' · '+tm:''}`;
+    pr.textContent=PZ.phase==='done'?(PZ.failed||PZ.hinted?'Puzzle complete':'Solved'):PZ.phase==='opp'?'Watch the opponent’s move':`${B.user==='w'?'White':'Black'} to play`;
+    sc.innerHTML=`<span class="rt">${CS.rating}</span>${PZ.delta!=null?`<span class="${PZ.delta>=0?'up':'down'}">${PZ.delta>=0?'+':''}${PZ.delta}</span>`:''}`;
+    if(PZ.phase==='user') h+=`<div class="actions"><button class="btn quiet" data-cact="hint">Hint</button><button class="btn quiet" data-cact="solution">Show solution</button><span class="spacer"></span><span class="hint">Tap or drag a piece</span></div>`;
+    else if(PZ.phase==='done') h+=`<div class="actions"><a class="btn quiet" href="https://lichess.org/training/${PZ.id}" target="_blank" rel="noopener">Open on Lichess ↗</a><span class="spacer"></span><button class="btn primary" data-cact="nextpz">Next puzzle</button></div>`;
+    else h+=`<div class="actions"><span class="hint">${PZ.phase==='opp'?'The puzzle starts after the opponent’s move.':'Playing the solution…'}</span></div>`;
+  }else{
+    const f=OPENINGS[OP.fam];
+    if(OP.view==='list'){
+      eb.textContent=`Openings · ${OPENINGS.length} openings, ${OPENINGS.reduce((a,x)=>a+x.lines.length,0)} lines`;
+      pr.textContent=f.family; sc.innerHTML='';
+      h+=`<div class="fams">${OPENINGS.map((x,i)=>{ const m=x.lines.filter(l=>mastered(lineId(x,l))).length; return `<button type="button" class="fam" data-fam="${i}" aria-pressed="${i===OP.fam}"><span>${x.family}</span><small>${m}/${x.lines.length} mastered</small><i style="--p:${Math.round(100*m/x.lines.length)}%"></i></button>`; }).join('')}</div>`;
+      h+=`<div class="lines"><div class="eyebrow">${f.family} · you play ${famSide(f)==='w'?'White':'Black'}</div>${f.lines.map((l,i)=>{ const st=lineStat(lineId(f,l)); return `<div class="lrow"><div class="lname"><b>${shortName(f,l)}</b><small>${l.eco} · ${Math.ceil(l.moves.length/2)} moves${st.n?` · ${st.n} ${st.n===1?'run':'runs'}`:''}</small></div><span class="mdots" aria-label="${Math.min(3,st.streak)} of 3 clean runs in a row">${[0,1,2].map(k=>`<i class="${k<st.streak?'on':''}"></i>`).join('')}</span><button class="btn quiet sm" data-cact="watch" data-li="${i}">Learn</button><button class="btn sm" data-cact="drill" data-li="${i}">Practise</button></div>`; }).join('')}</div>`;
+      h+=`<div class="actions"><button class="btn primary" data-cact="drillfam">Practise ${f.family}</button><span class="hint">Picks the line you know least.</span></div>`;
+    }else{
+      const l=f.lines[OP.line];
+      eb.textContent=`${l.eco} · ${OP.view==='watch'?'learn the line':`you play ${OP.color==='w'?'White':'Black'}`}`;
+      pr.textContent=l.name; sc.innerHTML='';
+      if(OP.view==='watch'){
+        h+=`<div class="mlist">${sanMovesText(l.moves,l.moves.length,OP.ply-1)}</div>`;
+        h+=`<div class="actions"><button class="btn sm" data-cact="w0" aria-label="Start">⏮</button><button class="btn sm" data-cact="wprev" aria-label="Previous move">◀</button><button class="btn sm" data-cact="wnext" aria-label="Next move">▶</button><button class="btn sm" data-cact="wend" aria-label="End">⏭</button><span class="spacer"></span><button class="btn quiet" data-cact="back">All openings</button><button class="btn primary" data-cact="drill" data-li="${OP.line}">Practise it</button></div>`;
+      }else{
+        h+=`<div class="mlist">${OP.ply?sanMovesText(l.moves,OP.ply,OP.ply-1):'<span class="hint">The moves appear here as you play.</span>'}</div>`;
+        if(!OP.done) h+=`<div class="actions"><span class="counter">${B.canMove?'Your move':'…'} · move ${Math.floor(OP.ply/2)+1} of ${Math.ceil(l.moves.length/2)}</span><span class="spacer"></span><button class="btn quiet" data-cact="back">All openings</button><button class="btn quiet" data-cact="watch" data-li="${OP.line}">Show me the line</button></div>`;
+        else h+=`<div class="actions"><button class="btn quiet" data-cact="back">All openings</button><span class="spacer"></span><button class="btn" data-cact="drill" data-li="${OP.line}">Again</button><button class="btn primary" data-cact="drill" data-li="${nextLineIndex()}">Next line</button></div>`;
+      }
+    }
+  }
+  an.innerHTML=h;
+  renderCBoard();
+}
+function renderChessSide(){
+  let h='';
+  if(CS.tab==='puzzles'){
+    h+=`<div class="field"><span class="fl">Theme</span><div class="chips">${THEMES.map(t=>`<button type="button" class="chip" data-cset="theme" data-v="${t[0]}" aria-pressed="${CS.theme===t[0]}">${t[1]}</button>`).join('')}</div></div>`;
+    h+=`<div class="field"><span class="fl">Difficulty</span><div class="chips">${[[-1,'Easier'],[0,'Normal'],[1,'Harder']].map(d=>`<button type="button" class="chip" data-cset="diff" data-v="${d[0]}" aria-pressed="${CS.diff===d[0]}">${d[1]}</button>`).join('')}</div><div class="hint">Puzzles are picked near your rating${CS.diff?`, ${CS.diff>0?'plus':'minus'} 300`:''}.</div></div>`;
+  }else{
+    h+=`<div class="field"><span class="fl">Play as</span><div class="chips">${[['book','Opening’s side'],['w','White'],['b','Black']].map(d=>`<button type="button" class="chip" data-cset="side" data-v="${d[0]}" aria-pressed="${CS.side===d[0]}">${d[1]}</button>`).join('')}</div><div class="hint">“Opening’s side” plays Black in defences such as the Sicilian and White in the others.</div></div>`;
+  }
+  h+=`<div class="field"><span class="fl">Sound</span><div class="chips"><button type="button" class="chip" data-cset="sound" data-v="1" aria-pressed="${S.sound}">On</button><button type="button" class="chip" data-cset="sound" data-v="0" aria-pressed="${!S.sound}">Off</button></div></div>`;
+  $('csettings').innerHTML=h;
+  // stats
+  let s='';
+  if(CS.tab==='puzzles'){
+    const hs=CS.hist, today=new Date().toDateString(), td=hs.filter(x=>new Date(x.t).toDateString()===today);
+    const ok=hs.filter(x=>x.ok).length; let streak=0; for(let i=hs.length-1;i>=0&&hs[i].ok;i--) streak++;
+    s+=`<h2>Your puzzles</h2><div class="cstats"><div><b>${CS.rating}</b><span>rating</span></div><div><b>${td.filter(x=>x.ok).length}/${td.length}</b><span>today</span></div><div><b>${streak}</b><span>streak</span></div></div>`;
+    s+=hs.length>1?`<div class="rchart">${ratingChart(hs.slice(-60).map(x=>x.r))}</div>`:'';
+    s+=`<div class="totals">${hs.length?`${hs.length} puzzles · ${Math.round(100*ok/hs.length)}% solved first try`:'Your rating starts at 1200 and moves with every puzzle.'}</div>`;
+    s+=`<div class="hint" style="margin-top:8px">Puzzles from the free Lichess puzzle database (CC0).</div>`;
+  }else{
+    const all=OPENINGS.reduce((a,f)=>a+f.lines.length,0), m=OPENINGS.reduce((a,f)=>a+f.lines.filter(l=>mastered(lineId(f,l))).length,0);
+    const runs=Object.values(CS.lines).reduce((a,x)=>a+x.n,0);
+    s+=`<h2>Your openings</h2><div class="cstats"><div><b>${m}/${all}</b><span>lines mastered</span></div><div><b>${runs}</b><span>runs</span></div></div>`;
+    s+=`<div class="hint" style="margin-top:8px">A line is mastered after three clean runs in a row. Opening names and moves come from the Lichess opening database (CC0).</div>`;
+  }
+  s+=`<div class="hint" style="margin-top:6px">${chessSynced?'Saved to your account':'Saved in this browser'}</div>`;
+  $('cstats').innerHTML=s;
+}
+function ratingChart(v){
+  const w=280,h=64,mx=Math.max(...v),mn=Math.min(...v),rg=Math.max(20,mx-mn);
+  const p=v.map((x,i)=>[4+i*(w-8)/(v.length-1), h-14-(x-mn)/rg*(h-24)]);
+  const d=p.map((q,i)=>(i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join(' ');
+  const last=p[p.length-1];
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" aria-label="Rating over your last ${v.length} puzzles" role="img"><line class="rgrid" x1="0" y1="${h-14}" x2="${w}" y2="${h-14}"/><path class="rarea" d="${d} L${last[0].toFixed(1)} ${h-14} L4 ${h-14} Z"/><path class="rline" d="${d}"/><circle class="rdot" cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3"/><text class="rtxt" x="2" y="${h-2}">${mn}</text><text class="rtxt" x="${w-2}" y="${h-2}" text-anchor="end">${mx}</text></svg>`;
+}
+function setChessTab(t){
+  CS.tab=t; storeChess(); clearTimeout(cTimer); renderChessSide();
+  if(t==='puzzles') newPuzzle(); else openingsList();
+}
+function openChess(){
+  view='chess'; stopClock(); clearTimeout(advTimer);
+  $('home').hidden=true; $('main').hidden=true; $('modes').hidden=true; $('wordsMain').hidden=true; $('paintMain').hidden=true; $('chessMain').hidden=false; $('chessModes').hidden=false; $('instBtn').hidden=false;
+  $('instName').textContent='Chess';
+  if(window.innerWidth<920) $('cSettingsPanel').open=false;
+  setChessTab(CS.tab);
+}
+$('chessModes').addEventListener('click',e=>{ const b=e.target.closest('[data-ctab]'); if(b&&b.dataset.ctab!==CS.tab) setChessTab(b.dataset.ctab); });
+$('csettings').addEventListener('click',e=>{
+  const b=e.target.closest('[data-cset]'); if(!b) return;
+  const k=b.dataset.cset, v=b.dataset.v;
+  if(k==='theme'){ CS.theme=v; storeChess(); renderChessSide(); newPuzzle(); }
+  else if(k==='diff'){ CS.diff=+v; storeChess(); renderChessSide(); newPuzzle(); }
+  else if(k==='side'){ CS.side=v; storeChess(); renderChessSide(); openingsList(); }
+  else if(k==='sound'){ S.sound=v==='1'; save(); renderChessSide(); }
+});
+$('canswer').addEventListener('click',e=>{
+  const fb=e.target.closest('[data-fam]'); if(fb){ OP.fam=+fb.dataset.fam; CS.fam=OP.fam; storeChess(); openingsList(); return; }
+  const pl=e.target.closest('[data-ply]'); if(pl&&OP.view==='watch'){ watchTo(+pl.dataset.ply); renderChess(); return; }
+  const b=e.target.closest('[data-cact]'); if(!b) return;
+  const a=b.dataset.cact, li=b.dataset.li!=null?+b.dataset.li:null;
+  if(a==='hint') puzzleHint();
+  else if(a==='solution') puzzleSolution();
+  else if(a==='nextpz') newPuzzle();
+  else if(a==='watch') openingsWatch(li);
+  else if(a==='drill') openingsDrill(li);
+  else if(a==='drillfam'){ OP.line=-1; const f=OPENINGS[OP.fam]; OP.line=f.lines.map((l,i)=>i).sort((x,y)=>lineStat(lineId(f,f.lines[x])).streak-lineStat(lineId(f,f.lines[y])).streak||lineStat(lineId(f,f.lines[x])).last-lineStat(lineId(f,f.lines[y])).last)[0]; openingsDrill(OP.line); }
+  else if(a==='back') openingsList();
+  else if(a==='w0'){ watchTo(0); renderChess(); }
+  else if(a==='wprev'){ watchTo(OP.ply-1); renderChess(); }
+  else if(a==='wnext'){ const l=OPENINGS[OP.fam].lines[OP.line]; if(OP.ply<l.moves.length){ watchTo(OP.ply+1); moveSound(null); } renderChess(); }
+  else if(a==='wend'){ watchTo(1e3); renderChess(); }
+});
+document.addEventListener('keydown',e=>{
+  if(view!=='chess') return;
+  if(CS.tab==='openings'&&OP.view==='watch'){
+    if(e.key==='ArrowRight'){ e.preventDefault(); watchTo(OP.ply+1); renderChess(); }
+    else if(e.key==='ArrowLeft'){ e.preventDefault(); watchTo(OP.ply-1); renderChess(); }
+  }
+  if(e.key==='Enter'&&e.target.tagName!=='BUTTON'&&e.target.tagName!=='A'){
+    if(CS.tab==='puzzles'&&PZ&&PZ.phase==='done'){ e.preventDefault(); newPuzzle(); }
+  }
+});
+bindBoard();
+function drawChessPreview(){
+  const svg=$('pvChess'); const W=Math.max(220,svg.parentNode.clientWidth-32||280), H=Math.round(W*0.36), n=8, cell=H/3;
+  let h='';
+  for(let r=0;r<3;r++) for(let c=0;c<n;c++){ h+=`<rect x="${(c*W/n).toFixed(1)}" y="${(r*cell).toFixed(1)}" width="${(W/n+0.5).toFixed(1)}" height="${(cell+0.5).toFixed(1)}" class="${(r+c)%2?'pv-d':'pv-l'}"/>`; }
+  const put=(t,col,c,r)=>`<svg x="${(c*W/n).toFixed(1)}" y="${(r*cell).toFixed(1)}" width="${(W/n).toFixed(1)}" height="${cell.toFixed(1)}" viewBox="0 0 45 45" preserveAspectRatio="xMidYMid meet" class="pc ${col}">${PIECES[t]}</svg>`;
+  h+=put('k','b',6,0)+put('p','b',5,1)+put('p','b',6,1)+put('q','w',3,1)+put('n','w',4,2)+put('r','w',0,2)+put('b','b',2,0);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('width',W); svg.setAttribute('height',H); svg.innerHTML=h;
+  const done=CS.hist.length, m=OPENINGS.reduce((a,f)=>a+f.lines.filter(l=>mastered(lineId(f,l))).length,0);
+  $('metaChess').textContent=done||m?`Puzzle rating ${CS.rating} · ${done} puzzles · ${m} opening ${m===1?'line':'lines'} mastered`:'Not practised yet';
+}
+
+/* =====================================================================
+   WORDS: your Notion dictionaries, learned in small batches
+   Nothing about the words is stored in this page: they are read from Notion
+   with the viewer's own connection, cached in this browser, and only word ids
+   plus review progress go to the viewer's private store.
+   ===================================================================== */
+const LANGS=[
+  {id:'it',name:'Italiano',view:'view://1e4085a6-3e81-80d0-bb71-000c87f83c99',f:{w:'Parola',d:'Definizione',e:'Esempio',s:'Fonte',date:'date:Data:start'}},
+  {id:'en',name:'English', view:'view://1e4085a6-3e81-815d-9237-000c7888a12b',f:{w:'Word',d:'Definition',e:'Example',s:'Source',date:'date:Date:start'}},
+  {id:'es',name:'Español', view:'view://3c0085a6-3e81-8133-8341-000cae2abefb',f:{w:'Palabra',d:'Definición',e:'Ejemplo',s:'Fuente',date:'date:Fecha:start'}},
+  {id:'ca',name:'Català',  view:'view://3c0085a6-3e81-81aa-9947-000ca31556ba',f:{w:'Paraula',d:'Definició',e:'Exemple',s:'Font',date:'date:Data:start'}}
+];
+const NOTION='Notion', NOTION_TOOL='notion-query-data-sources';
+// review intervals in days by box: short gaps, so words come back almost daily at first
+const SRS_DAYS=[0,1,1,2,3,5,8,13,21];
+const DAY=86400000;
+const W_SET_KEY='fretwise.words.settings', W_DATA_KEY='fretwise.words.data', W_PROG_KEY='fretwise.words.progress';
+const WS={lang:'es', batch:5, order:'new', dir:'mix', reviewMax:20, daily:10};
+// the web app reads the words from the owner's private store; inside Claude they come from Notion directly
+const WSRC=window.fretwiseWordsSource||null;
+let WD={}, WP={p:{it:{},en:{},es:{},ca:{}},upd:0}, WSN=null, wLoading=null, wError=null;
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rich=s=>esc(s).replace(/&lt;br\s*\/?&gt;/gi,'<br>');
+const plain=s=>String(s||'').replace(/<br\s*\/?>/gi,' ').replace(/\s+/g,' ').trim();
+function wLoad(){
+  try{ Object.assign(WS,JSON.parse(localStorage.getItem(W_SET_KEY)||'{}')); }catch(e){}
+  try{ WD=JSON.parse(localStorage.getItem(W_DATA_KEY)||'{}')||{}; }catch(e){ WD={}; }
+  try{ const p=JSON.parse(localStorage.getItem(W_PROG_KEY)||'null'); if(p&&p.p) WP=p; }catch(e){}
+  LANGS.forEach(l=>{ WP.p[l.id]=WP.p[l.id]||{}; });
+}
+const wSaveSettings=()=>{ try{ localStorage.setItem(W_SET_KEY,JSON.stringify(WS)); }catch(e){} };
+const wSaveData=()=>{ try{ localStorage.setItem(W_DATA_KEY,JSON.stringify(WD)); }catch(e){} };
+function wSaveProgress(){ WP.upd=Date.now(); try{ localStorage.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){} pushWords(); }
+let wordsDoc=null, wordsSynced=false, wWriting=false, wAgain=false;
+async function pushWords(){
+  if(!wordsDoc) return; if(wWriting){ wAgain=true; return; } wWriting=true;
+  try{ await wordsDoc.set({p:WP.p,upd:WP.upd,v:1}); }
+  catch(e){ if(e&&(e.code==='invalid_argument'||e.code==='revoked'||e.code==='not_granted')){ wordsDoc=null; wordsSynced=false; } }
+  wWriting=false; if(wAgain){ wAgain=false; pushWords(); }
+}
+function mergeWords(x){
+  if(!x||!x.p) return;
+  LANGS.forEach(l=>{ const mine=WP.p[l.id]||(WP.p[l.id]={}), theirs=x.p[l.id]||{};
+    Object.entries(theirs).forEach(([id,v])=>{ const m=mine[id]; if(!m||(v.last||0)>(m.last||0)) mine[id]=v; }); });
+  WP.upd=Math.max(WP.upd,x.upd||0);
+}
+async function connectWords(db,uid){
+  try{
+    const ref=db.doc('data/users/'+uid+'/words'); const s=await ref.get(), d=s.exists?s.data():null, localUpd=WP.upd;
+    mergeWords(d); wordsDoc=ref; wordsSynced=true; try{ localStorage.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){}
+    if(!d||localUpd>(d.upd||0)) await pushWords();
+    ref.onSnapshot(sn=>{ const x=sn.exists?sn.data():null; if(!x||x.upd===WP.upd) return; mergeWords(x); try{ localStorage.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){} if(view==='words'&&(!WSN||WSN.phase==='done')) renderWords(); else if(view==='home') renderHome(); },()=>{ wordsSynced=false; });
+  }catch(e){}
+}
+
+/* ---------- reading Notion ---------- */
+function normRow(L,x){
+  const url=String(x.url||''), id=url.split('/').pop().split('?')[0];
+  return {id, w:plain(x[L.f.w]), d:String(x[L.f.d]||'').trim(), e:String(x[L.f.e]||'').trim(), s:plain(x[L.f.s]), date:String(x[L.f.date]||'')};
+}
+async function fetchLang(mcp,L){
+  const rows=[]; let cursor=null, pages=0;
+  do{
+    const data={mode:'view',view_url:L.view,page_size:100}; if(cursor) data.start_cursor=cursor;
+    let r;
+    try{ r=await mcp.callTool(NOTION,NOTION_TOOL,{data}); }
+    catch(e){
+      if(e&&e.retryable&&!e._retried){ await new Promise(res=>setTimeout(res,(e.retryAfterMs||1200)+Math.random()*600)); e._retried=true; r=await mcp.callTool(NOTION,NOTION_TOOL,{data}); }
+      else throw e;
+    }
+    let p=r&&r.payload; if(typeof p==='string'){ try{ p=JSON.parse(p); }catch(_){ } }
+    if(!p||!Array.isArray(p.results)) throw {code:'tool_error',message:'Notion sent an answer this page does not understand.'};
+    p.results.forEach(x=>{ const row=normRow(L,x); if(row.id&&row.w) rows.push(row); });
+    cursor=p.has_more?p.next_cursor:null; pages++;
+  }while(cursor&&pages<80);
+  WD[L.id]={t:Date.now(),rows};
+}
+async function refreshWords(){
+  if(wLoading) return wLoading;
+  wError=null; renderWords();
+  wLoading=(async()=>{
+    if(WSRC){
+      const got=await WSRC.load();
+      LANGS.forEach(L=>{ if(got[L.id]) WD[L.id]=got[L.id]; }); wSaveData(); return;
+    }
+    const mcp=window.claude&&typeof window.claude.use==='function'?await window.claude.use('mcp'):null;
+    if(!mcp) throw {code:'not_granted'};
+    for(const L of LANGS){ await fetchLang(mcp,L); wSaveData(); if(view==='words') renderWords(); }
+  })().catch(e=>{ wError=e||{code:'upstream_error'}; }).finally(()=>{ wLoading=null; if(view==='words') renderWords(); });
+  return wLoading;
+}
+function errorCopy(e){
+  const c=e&&e.code;
+  if(c==='signed_out') return 'Sign in with Google to load your dictionaries.';
+  if(c==='no_words') return 'No words have been synced to your account yet. Run “Sync words from Notion” in the repository’s Actions tab (see the README).';
+  if(c==='not_configured') return 'Firebase isn’t set up for this copy of Fretwise yet, so there is nowhere private to read your words from.';
+  if(c==='permission-denied') return 'Your account can’t read these words. Check that you are signed in with the right Google account.';
+  if(c==='unavailable') return 'You seem to be offline. The words you loaded before are still here.';
+  if(c==='server_not_connected') return 'Notion is not connected to your Claude account. Add it in claude.ai Settings → Connectors, then try again.';
+  if(c==='needs_reauth') return 'Your Notion connection has expired. Reconnect Notion in claude.ai Settings → Connectors, then try again.';
+  if(c==='not_in_manifest') return 'Notion is turned off for this page. Allow Notion in the page’s permissions, then try again.';
+  if(c==='approval_required'||c==='consent_required') return 'Reading your dictionaries needs your approval. Press “Load from Notion” and allow it when Claude asks.';
+  if(c==='selection_required') return 'You have more than one Notion connection. Choose one when Claude asks, then try again.';
+  if(c==='blocked_by_policy') return 'Your organization’s settings block this Notion tool for you.';
+  if(c==='not_granted'||c==='capability_disabled'||c==='capability_removed') return 'This view can’t reach Notion. Open Fretwise in the Claude app or on claude.ai.';
+  if(c==='tool_error') return 'Notion reported a problem: '+((e.message||'').slice(0,160)||'no details')+'.';
+  return 'Notion didn’t answer. Try again in a moment.';
+}
+
+/* ---------- picking words ---------- */
+const usable=lang=>((WD[lang]&&WD[lang].rows)||[]).filter(r=>r.d);
+const byId=lang=>{ const m=new Map(); ((WD[lang]&&WD[lang].rows)||[]).forEach(r=>m.set(r.id,r)); return m; };
+const startOfDay=t=>{ const d=new Date(t); d.setHours(0,0,0,0); return d.getTime(); };
+const learnedToday=lang=>{ const t0=startOfDay(Date.now()); return Object.values(WP.p[lang]||{}).filter(v=>(v.learned||0)>=t0).length; };
+const newLeft=lang=>WS.daily?Math.max(0,WS.daily-learnedToday(lang)):Infinity;
+function langStats(lang){
+  const rows=usable(lang), p=WP.p[lang]||{}, now=Date.now(), ids=new Set(rows.map(r=>r.id));
+  let learning=0, due=0, mastered=0;
+  Object.entries(p).forEach(([id,v])=>{ if(!ids.has(id)) return; learning++; if(v.due<=now) due++; if(v.b>=5) mastered++; });
+  const all=(WD[lang]&&WD[lang].rows)||[];
+  return {total:rows.length, fresh:rows.length-learning, learning, due, mastered, noDef:all.length-rows.length, t:WD[lang]&&WD[lang].t};
+}
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function optionsFor(lang,id,field){
+  const rows=usable(lang), me=rows.find(r=>r.id===id);
+  const pool=shuffle(rows.filter(r=>r.id!==id&&plain(r[field])!==plain(me[field])));
+  return shuffle([me].concat(pool.slice(0,4)));
+}
+
+/* ---------- sessions ---------- */
+function startLearn(){
+  const lang=WS.lang, p=WP.p[lang];
+  let fresh=usable(lang).filter(r=>!p[r.id]);
+  if(WS.order==='new') fresh.sort((a,b)=>b.date.localeCompare(a.date));
+  else if(WS.order==='old') fresh.sort((a,b)=>a.date.localeCompare(b.date));
+  else shuffle(fresh);
+  const left=newLeft(lang);
+  if(!left){ wFeedback('info',`That’s ${WS.daily} new words today, your daily limit. Review or practise, or come back tomorrow.`); return; }
+  const ids=fresh.slice(0,Math.min(WS.batch,left)).map(r=>r.id);
+  if(!ids.length){ wFeedback('info','You have started every word in this dictionary. Review them, or add new words in Notion.'); return; }
+  WSN={mode:'learn',lang,ids,phase:'study',i:0,mistakes:0,matched:new Set(),selL:null,selR:null,results:{}};
+  wFeedback('',''); renderWords();
+}
+function startReview(){
+  const lang=WS.lang, p=WP.p[lang], now=Date.now(), have=byId(lang);
+  const ids=Object.entries(p).filter(([id,v])=>v.due<=now&&have.has(id)&&have.get(id).d).sort((a,b)=>a[1].due-b[1].due).slice(0,WS.reviewMax).map(([id])=>id);
+  if(!ids.length){ wFeedback('info','Nothing is due right now. Learn some new words, or practise.'); return; }
+  WSN={mode:'review',lang,ids,phase:'quiz',queue:shuffle(ids.slice()),qi:0,mistakes:0,results:{},requeued:new Set()};
+  nextQuizQ(); wFeedback('',''); renderWords();
+}
+function startPractice(){
+  const lang=WS.lang, rows=shuffle(usable(lang).slice()).slice(0,10);
+  if(rows.length<5){ wFeedback('info','This dictionary needs at least five words with a definition.'); return; }
+  const ids=rows.map(r=>r.id);
+  WSN={mode:'practice',lang,ids,phase:'quiz',queue:ids.slice(),qi:0,mistakes:0,results:{},requeued:new Set()};
+  nextQuizQ(); wFeedback('',''); renderWords();
+}
+function toMatch(){ WSN.phase='match'; WSN.left=shuffle(WSN.ids.slice()); WSN.right=shuffle(WSN.ids.slice()); WSN.matched=new Set(); WSN.selL=WSN.selR=null; renderWords(); }
+function toQuiz(){ WSN.phase='quiz'; WSN.queue=shuffle(WSN.ids.slice()); WSN.qi=0; WSN.requeued=new Set(); nextQuizQ(); renderWords(); }
+function nextQuizQ(){
+  const id=WSN.queue[WSN.qi];
+  const dir=WSN.mode==='learn'?'w2d':WS.dir==='mix'?(Math.random()<0.5?'w2d':'d2w'):WS.dir;
+  WSN.q={id,dir,opts:optionsFor(WSN.lang,id,dir==='w2d'?'d':'w').map(r=>r.id),pick:null};
+}
+function answerQuiz(optId){
+  const q=WSN.q; if(!q||q.pick) return;
+  q.pick=optId; const ok=optId===q.id;
+  if(!ok){ WSN.mistakes++; if(WSN.mode!=='learn'&&!WSN.requeued.has(q.id)){ WSN.requeued.add(q.id); WSN.queue.push(q.id); } }
+  if(WSN.results[q.id]==null) WSN.results[q.id]=ok;
+  renderWords();
+}
+function nextQuiz(){
+  WSN.qi++;
+  if(WSN.qi>=WSN.queue.length) return finishSession();
+  nextQuizQ(); renderWords();
+}
+function finishSession(){
+  const p=WP.p[WSN.lang], now=Date.now(), today=startOfDay(now);
+  if(WSN.mode==='learn'){
+    WSN.ids.forEach(id=>{ const ok=WSN.results[id]; p[id]={b:ok?1:0,due:ok?today+SRS_DAYS[1]*DAY:now,n:1,ok:ok?1:0,last:now,learned:now}; });
+  }else if(WSN.mode==='review'){
+    WSN.ids.forEach(id=>{ const v=Object.assign({b:1,n:0,ok:0},p[id]), ok=WSN.results[id];
+      v.n++; v.last=now;
+      if(ok){ v.ok++; v.b=Math.min(SRS_DAYS.length-1,(v.b||0)+1); v.due=today+SRS_DAYS[v.b]*DAY; }
+      else { v.b=1; v.due=today+DAY; }
+      p[id]=v; });
+  }
+  if(WSN.mode!=='practice') wSaveProgress();
+  WSN.phase='done'; renderWords();
+}
+function tapMatch(side,id){
+  if(WSN.matched.has(id)) return;
+  if(side==='L') WSN.selL=WSN.selL===id?null:id; else WSN.selR=WSN.selR===id?null:id;
+  if(WSN.selL&&WSN.selR){
+    if(WSN.selL===WSN.selR){ WSN.matched.add(WSN.selL); WSN.flash=null; }
+    else { WSN.mistakes++; WSN.flash=[WSN.selL,WSN.selR]; setTimeout(()=>{ if(WSN&&WSN.flash){ WSN.flash=null; renderWords(); } },650); }
+    WSN.selL=WSN.selR=null;
+    if(WSN.matched.size===WSN.ids.length){ renderWords(); setTimeout(()=>{ if(WSN&&WSN.phase==='match') toQuiz(); },700); return; }
+  }
+  renderWords();
+}
+
+/* ---------- rendering ---------- */
+function wFeedback(cls,txt){ const el=$('wfeedback'); if(!el) return; el.className='feedback'+(cls?' '+cls:''); el.textContent=txt; }
+function ago(t){ if(!t) return 'never'; const m=Math.round((Date.now()-t)/60000); return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'; }
+function renderWords(){
+  if(view!=='words') return;
+  const L=LANGS.find(l=>l.id===WS.lang), st=langStats(WS.lang), map=byId(WS.lang);
+  const eb=$('weyebrow'), pr=$('wprompt'), sc=$('wscore'), el=$('wbody'); let h='';
+  if(!WSN||WSN.phase==='done'){
+    const done=WSN&&WSN.phase==='done'?WSN:null;
+    eb.textContent=`Words · ${L.name}`;
+    pr.textContent=done?(done.mode==='learn'?`${done.ids.length} new words learned`:done.mode==='review'?'Review complete':'Practice complete'):'Your dictionaries';
+    sc.textContent='';
+    h+=`<div class="langs" role="group" aria-label="Dictionary">${LANGS.map(l=>{ const s=langStats(l.id); return `<button type="button" class="lang" data-wlang="${l.id}" aria-pressed="${l.id===WS.lang}"><b>${l.name}</b><small>${WD[l.id]?`${s.total} words${s.due?` · ${s.due} due`:''}`:'not loaded'}</small></button>`; }).join('')}</div>`;
+    if(done){
+      const items=done.ids.map(id=>map.get(id)).filter(Boolean);
+      const right=done.ids.filter(id=>done.results[id]).length;
+      h+=`<div class="wsum"><b>${right}/${done.ids.length}</b> right first time${done.mistakes?` · ${done.mistakes} ${done.mistakes===1?'mistake':'mistakes'} in total`:''}${done.mode==='learn'?'. They come back for review tomorrow.':done.mode==='review'?'. Correct words wait longer before coming back.':'. Practice doesn’t change your review schedule.'}</div>`;
+      h+=`<ul class="wlist">${items.map(r=>`<li class="${done.results[r.id]?'ok':'no'}"><b>${esc(r.w)}</b><span>${esc(plain(r.d))}</span></li>`).join('')}</ul>`;
+    }
+    if(!WD[WS.lang]&&!wLoading){
+      if(WSRC) h+=`<div class="wempty"><p>Your Notion dictionaries are copied to your private Fretwise account by a scheduled sync. Only you can read them, after signing in with Google; nothing about them is in the public code.</p>${WSRC.signedIn()?'<button type="button" class="btn primary big" data-wact="load">Load my words</button>':'<button type="button" class="btn primary big" data-wact="signin">Sign in with Google</button>'}</div>`;
+      else h+=`<div class="wempty"><p>Fretwise reads the words straight from your Notion Dictionary, using your own Notion connection. The words stay private: they are not stored in this page.</p><button type="button" class="btn primary big" data-wact="load">Load from Notion</button></div>`;
+    }else if(WD[WS.lang]){
+      h+=`<div class="wstats"><div><b>${st.due}</b><span>due now</span></div><div><b>${st.fresh}</b><span>new</span></div><div><b>${st.learning}</b><span>learning</span></div><div><b>${st.mastered}</b><span>mastered</span></div></div>`;
+      const left=newLeft(WS.lang), nLearn=Math.min(WS.batch,st.fresh,left);
+      h+=`<div class="wactions">
+        <button type="button" class="btn primary big" data-wact="learn" ${nLearn?'':'disabled'}>${st.fresh&&!left?'Daily limit reached':`Learn ${nLearn||''} new ${nLearn===1?'word':'words'}`}</button>
+        <button type="button" class="btn big" data-wact="review" ${st.due?'':'disabled'}>Review ${st.due?Math.min(st.due,WS.reviewMax):''} due</button>
+        <button type="button" class="btn quiet" data-wact="practice" ${st.total>=5?'':'disabled'}>Practise 10 random</button></div>`;
+      if(st.fresh&&!left) h+=`<div class="hint">You’ve learned ${WS.daily} new ${L.name} words today. They come back for review tomorrow; new words open up again then. You can change the limit in Settings.</div>`;
+      if(!st.total) h+=`<div class="hint">No words with a definition in ${L.name} yet.</div>`;
+      else if(st.noDef) h+=`<div class="hint">${st.noDef} ${st.noDef===1?'word has':'words have'} no definition yet, so ${st.noDef===1?'it is':'they are'} left out until your bot or you fill ${st.noDef===1?'it':'them'} in.</div>`;
+    }
+    h+=`<div class="wsync"><span class="hint">${wLoading?(WSRC?'Loading your words…':'Loading from Notion…'):WD[WS.lang]?`${WSRC?'Synced':'Updated'} from Notion ${ago(st.t)}`:''}</span>${WD[WS.lang]&&!wLoading?`<button type="button" class="linkbtn" data-wact="load">${WSRC?'Reload':'Refresh from Notion'}</button>`:''}</div>`;
+    if(wError) h+=`<div class="feedback bad">${esc(errorCopy(wError))}</div>${!wLoading?(wError.code==='signed_out'?'<div class="actions"><button type="button" class="btn primary" data-wact="signin">Sign in with Google</button></div>':'<div class="actions"><button type="button" class="btn" data-wact="load">Try again</button></div>'):''}`;
+  }else if(WSN.phase==='study'){
+    const r=map.get(WSN.ids[WSN.i]);
+    eb.textContent=`Learn · ${L.name} · word ${WSN.i+1} of ${WSN.ids.length}`; pr.textContent='Memorise these words'; sc.textContent='';
+    h+=`<article class="wcard"><div class="ww">${esc(r.w)}</div><div class="wd">${rich(r.d)}</div>${r.e?`<div class="we">${rich(r.e)}</div>`:''}${r.s?`<div class="wsrc">Source: ${esc(r.s)}</div>`:''}</article>`;
+    h+=`<div class="pips">${WSN.ids.map((x,k)=>`<i class="${k===WSN.i?'on':k<WSN.i?'past':''}"></i>`).join('')}</div>`;
+    h+=`<div class="actions"><button type="button" class="btn quiet" data-wact="quit">Stop</button><span class="spacer"></span><button type="button" class="btn" data-wact="prev" ${WSN.i?'':'disabled'}>Previous</button>${WSN.i<WSN.ids.length-1?'<button type="button" class="btn primary" data-wact="next">Next word</button>':'<button type="button" class="btn primary" data-wact="match">I’m ready: match them</button>'}</div>`;
+  }else if(WSN.phase==='match'){
+    eb.textContent=`Learn · ${L.name} · ${WSN.matched.size} of ${WSN.ids.length} matched`; pr.textContent='Match each word with its definition'; sc.textContent='';
+    const cls=(side,id)=>WSN.matched.has(id)?'mt ok':(WSN.flash&&WSN.flash.indexOf(id)>=0?'mt bad':((side==='L'?WSN.selL:WSN.selR)===id?'mt sel':'mt'));
+    h+=`<div class="match"><div class="mcol">${WSN.left.map(id=>`<button type="button" class="${cls('L',id)}" data-ml="${id}" ${WSN.matched.has(id)?'disabled':''}>${esc(map.get(id).w)}</button>`).join('')}</div>`+
+       `<div class="mcol defs">${WSN.right.map(id=>`<button type="button" class="${cls('R',id)}" data-mr="${id}" ${WSN.matched.has(id)?'disabled':''}>${esc(plain(map.get(id).d))}</button>`).join('')}</div></div>`;
+    h+=`<div class="actions"><button type="button" class="btn quiet" data-wact="restudy">See the words again</button><span class="spacer"></span><span class="counter">${WSN.mistakes} ${WSN.mistakes===1?'mistake':'mistakes'}</span></div>`;
+  }else if(WSN.phase==='quiz'){
+    const q=WSN.q, r=map.get(q.id), total=WSN.queue.length;
+    const label=WSN.mode==='learn'?'Check':WSN.mode==='review'?'Review':'Practice';
+    eb.textContent=`${label} · ${L.name} · ${Math.min(WSN.qi+1,total)} of ${total}`;
+    pr.textContent=q.dir==='w2d'?'What does this word mean?':'Which word has this meaning?';
+    sc.textContent='';
+    h+=`<article class="wcard q">${q.dir==='w2d'?`<div class="ww">${esc(r.w)}</div>`:`<div class="wd big">${rich(r.d)}</div>`}${q.pick&&r.e?`<div class="we">${rich(r.e)}</div>`:''}</article>`;
+    h+=`<ol class="opts">${q.opts.map((id,k)=>{ const o=map.get(id); let c='opt'; if(q.pick){ if(id===q.id) c+=' ok'; else if(id===q.pick) c+=' bad'; else c+=' dim'; }
+      return `<li><button type="button" class="${c}" data-opt="${id}" ${q.pick?'disabled':''}><kbd>${k+1}</kbd><span>${q.dir==='w2d'?esc(plain(o.d)):esc(o.w)}</span></button></li>`; }).join('')}</ol>`;
+    if(q.pick) h+=`<div class="actions"><span class="feedback ${q.pick===q.id?'good':'bad'}">${q.pick===q.id?'Correct.':`Not quite: it’s “${esc(q.dir==='w2d'?plain(r.d):r.w)}”.`}</span><span class="spacer"></span><button type="button" class="btn primary" data-wact="nextq">${WSN.qi+1>=WSN.queue.length?'Finish':'Next'}</button></div>`;
+    else h+=`<div class="actions"><button type="button" class="btn quiet" data-wact="quit">Stop</button><span class="spacer"></span><span class="hint">Keys 1–5 choose an answer</span></div>`;
+  }
+  el.innerHTML=h;
+  renderWordsSide();
+}
+function renderWordsSide(){
+  let h='';
+  h+=`<div class="field"><span class="fl">New words per session</span><div class="chips">${[3,5,8,10].map(n=>`<button type="button" class="chip mono" data-wset="batch" data-v="${n}" aria-pressed="${WS.batch===n}">${n}</button>`).join('')}</div></div>`;
+  h+=`<div class="field"><span class="fl">New words per day, per dictionary</span><div class="chips">${[[5,'5'],[10,'10'],[15,'15'],[20,'20'],[0,'No limit']].map(o=>`<button type="button" class="chip${o[0]?' mono':''}" data-wset="daily" data-v="${o[0]}" aria-pressed="${WS.daily===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
+  h+=`<div class="field"><span class="fl">Which new words first</span><div class="chips">${[['new','Newest'],['old','Oldest'],['rnd','Random']].map(o=>`<button type="button" class="chip" data-wset="order" data-v="${o[0]}" aria-pressed="${WS.order===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
+  h+=`<div class="field"><span class="fl">Review questions</span><div class="chips">${[['mix','Mixed'],['w2d','Word → meaning'],['d2w','Meaning → word']].map(o=>`<button type="button" class="chip" data-wset="dir" data-v="${o[0]}" aria-pressed="${WS.dir===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
+  h+=`<div class="field"><span class="fl">Reviews per session</span><div class="chips">${[10,20,40].map(n=>`<button type="button" class="chip mono" data-wset="reviewMax" data-v="${n}" aria-pressed="${WS.reviewMax===n}">${n}</button>`).join('')}</div></div>`;
+  $('wsettings').innerHTML=h;
+  const st=langStats(WS.lang), L=LANGS.find(l=>l.id===WS.lang);
+  $('wstatsSide').innerHTML=`<h2>${L.name}</h2><div class="hint">A learned word comes back the next day. Each right answer waits a little longer (1, 1, 2, 3, 5, 8 days…); a wrong one starts again from tomorrow. A word counts as mastered after four right reviews in a row.</div><div class="totals">${WD[WS.lang]?`${st.total} words with a definition · ${st.learning} learning · ${st.mastered} mastered · ${learnedToday(WS.lang)}${WS.daily?' of '+WS.daily:''} new today`:'Not loaded yet.'}</div><div class="hint" style="margin-top:6px">${wordsSynced?'Progress saved to your account':'Progress saved in this browser'}. ${WSRC?'The words come from your private account, synced from Notion.':'The words themselves stay in your Notion.'}</div>`;
+}
+function openWords(){
+  view='words'; stopClock(); clearTimeout(advTimer); clearTimeout(cTimer);
+  ['home','main','chessMain','modes','chessModes','paintMain'].forEach(id=>$(id).hidden=true); $('wordsMain').hidden=false; $('instBtn').hidden=false;
+  $('instName').textContent='Words';
+  if(window.innerWidth<920) $('wSettingsPanel').open=false;
+  WSN=null; wFeedback('',''); renderWords();
+  // refresh in the background once the viewer has allowed Notion for this page
+  if(WSRC){ if(WSRC.signedIn()&&!wLoading) refreshWords(); }
+  else if(Object.keys(WD).length&&!wLoading){
+    (async()=>{ try{ const perm=await window.claude.use('permissions'); const s=perm?await perm.state('mcp:'+NOTION).catch(()=> 'unavailable'):'unavailable'; if(s==='granted'&&view==='words') refreshWords(); }catch(e){} })();
+  }
+}
+$('wbody').addEventListener('click',e=>{
+  const lb=e.target.closest('[data-wlang]'); if(lb){ WS.lang=lb.dataset.wlang; wSaveSettings(); WSN=null; wFeedback('',''); renderWords(); return; }
+  const ml=e.target.closest('[data-ml]'); if(ml){ tapMatch('L',ml.dataset.ml); return; }
+  const mr=e.target.closest('[data-mr]'); if(mr){ tapMatch('R',mr.dataset.mr); return; }
+  const op=e.target.closest('[data-opt]'); if(op){ answerQuiz(op.dataset.opt); return; }
+  const b=e.target.closest('[data-wact]'); if(!b) return;
+  const a=b.dataset.wact;
+  if(a==='load') refreshWords();
+  else if(a==='signin'&&WSRC) WSRC.signIn();
+  else if(a==='learn') startLearn();
+  else if(a==='review') startReview();
+  else if(a==='practice') startPractice();
+  else if(a==='next'){ WSN.i++; renderWords(); }
+  else if(a==='prev'){ WSN.i=Math.max(0,WSN.i-1); renderWords(); }
+  else if(a==='match') toMatch();
+  else if(a==='restudy'){ WSN.phase='study'; WSN.i=0; renderWords(); }
+  else if(a==='nextq') nextQuiz();
+  else if(a==='quit'){ WSN=null; wFeedback('',''); renderWords(); }
+});
+$('wsettings').addEventListener('click',e=>{
+  const b=e.target.closest('[data-wset]'); if(!b) return;
+  const k=b.dataset.wset, v=b.dataset.v; WS[k]=(k==='batch'||k==='reviewMax'||k==='daily')?+v:v; wSaveSettings(); renderWordsSide(); if(!WSN) renderWords();
+});
+document.addEventListener('keydown',e=>{
+  if(view!=='words'||!WSN) return;
+  const tg=e.target&&e.target.tagName; if(tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT') return;
+  if(WSN.phase==='quiz'){
+    if(!WSN.q.pick&&/^[1-5]$/.test(e.key)){ const id=WSN.q.opts[+e.key-1]; if(id){ e.preventDefault(); answerQuiz(id); } }
+    else if(WSN.q.pick&&(e.key==='Enter'||e.key===' ')&&tg!=='BUTTON'){ e.preventDefault(); nextQuiz(); }
+  }else if(WSN.phase==='study'){
+    if(e.key==='ArrowRight'&&WSN.i<WSN.ids.length-1){ WSN.i++; renderWords(); }
+    else if(e.key==='ArrowLeft'&&WSN.i>0){ WSN.i--; renderWords(); }
+  }
+});
+function wordsHomeMeta(){
+  const loaded=LANGS.filter(l=>WD[l.id]);
+  if(!loaded.length) return 'Your Notion dictionaries · not loaded yet';
+  const due=loaded.reduce((a,l)=>a+langStats(l.id).due,0), total=loaded.reduce((a,l)=>a+langStats(l.id).total,0);
+  return `${total} words${due?` · ${due} due for review`:' · nothing due'}`;
+}
+
+/* =====================================================================
+   PRACTICE TIME: minutes of active practice per section and day.
+   Each device keeps its own count per day, so merging devices adds them up
+   without counting anything twice. Idle time (no tap or key for 90 s) and
+   hidden tabs don't count.
+   ===================================================================== */
+const ACT_KEY='fretwise.activity', GOAL_MIN=10, TICK=15000, IDLE=90000;
+let ACT={d:{},upd:0}, actDoc=null, actDirty=false, lastInput=Date.now();
+const DEV=(()=>{ try{ let d=localStorage.getItem('fretwise.device'); if(!d){ d=Math.random().toString(36).slice(2,10); localStorage.setItem('fretwise.device',d); } return d; }catch(e){ return 'dev'; } })();
+const dayKey=t=>{ const d=new Date(t||Date.now()); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+function actLoad(){ try{ const x=JSON.parse(localStorage.getItem(ACT_KEY)||'null'); if(x&&x.d) ACT=x; }catch(e){} }
+function actStore(){ try{ localStorage.setItem(ACT_KEY,JSON.stringify(ACT)); }catch(e){} }
+function actPrune(){ const keep=new Set(); for(let i=0;i<60;i++) keep.add(dayKey(Date.now()-i*DAY)); Object.keys(ACT.d).forEach(k=>{ if(!keep.has(k)) delete ACT.d[k]; }); }
+function mergeAct(x){
+  if(!x||!x.d) return;
+  Object.entries(x.d).forEach(([day,secs])=>{ const mine=ACT.d[day]||(ACT.d[day]={});
+    Object.entries(secs||{}).forEach(([k,devs])=>{ const m=mine[k]||(mine[k]={}); Object.entries(devs||{}).forEach(([dv,ms])=>{ m[dv]=Math.max(m[dv]||0,ms||0); }); }); });
+  ACT.upd=Math.max(ACT.upd||0,x.upd||0); actPrune();
+}
+const minutesToday=k=>{ const e=(ACT.d[dayKey()]||{})[k]||{}; return Object.values(e).reduce((a,b)=>a+b,0)/60000; };
+const actSection=()=>view==='app'?S.inst:view==='chess'?'chess':view==='words'?'words':view==='paint'?'paintings':null;
+['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,()=>{ lastInput=Date.now(); },true));
+setInterval(()=>{
+  const k=actSection(); if(!k||document.hidden||Date.now()-lastInput>IDLE) return;
+  const day=dayKey(), e=ACT.d[day]||(ACT.d[day]={}), m=e[k]||(e[k]={});
+  m[DEV]=(m[DEV]||0)+TICK; ACT.upd=Date.now(); actStore(); actDirty=true;
+},TICK);
+async function pushAct(){ if(!actDoc||!actDirty) return; actDirty=false; try{ await actDoc.set({d:ACT.d,upd:ACT.upd,v:1}); }catch(e){ actDirty=true; } }
+setInterval(pushAct,60000);
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) pushAct(); });
+async function connectActivity(db,uid){
+  try{
+    const ref=db.doc('data/users/'+uid+'/activity'); const s=await ref.get();
+    mergeAct(s.exists?s.data():null); actDoc=ref; actStore(); actDirty=true; pushAct();
+    ref.onSnapshot(sn=>{ const x=sn.exists?sn.data():null; if(!x||x.upd===ACT.upd) return; mergeAct(x); actStore(); if(view==='home') renderToday(); },()=>{});
+    if(view==='home') renderToday();
+  }catch(e){}
+}
+function renderToday(){
+  [['guitar','todayGuitar'],['ukulele','todayUkulele'],['chess','todayChess'],['words','todayWords'],['paintings','todayPaintings']].forEach(([k,id])=>{
+    const el=$(id); if(!el) return;
+    const m=minutesToday(k), done=m>=GOAL_MIN, pct=Math.min(100,Math.round(100*m/GOAL_MIN));
+    el.className='today'+(done?' done':'');
+    el.innerHTML=`<span>Today ${m>0&&m<1?'&lt;1':Math.floor(m)} / ${GOAL_MIN} min</span><span class="bar"><i style="width:${pct}%"></i></span>${done?'<span>done</span>':''}`;
+  });
+}
+
+/* =====================================================================
+   PAINTINGS: name the painter or the painting. Works and facts come from
+   Wikidata (CC0); the pictures are public-domain files on Wikimedia Commons.
+   Web app only: inside Claude a page can't load pictures from other sites.
+   ===================================================================== */
+const PAINT_ON=!!window.FW_WEB;
+const P_KEY='fretwise.paintings';
+const PS={ask:'mix', fame:'all', p:{}, hist:[], upd:0};   // p: work id -> {n, ok, b (box), last}
+let PDATA=null, pLoading=null, PSN=null, paintDoc=null, pWriting=false, pAgain=false;
+function pLoad(){ try{ const x=JSON.parse(localStorage.getItem(P_KEY)||'null'); if(x) Object.assign(PS,x); }catch(e){} }
+function pStore(){ try{ localStorage.setItem(P_KEY,JSON.stringify(PS)); }catch(e){} }
+function pSave(){ PS.upd=Date.now(); pStore(); pushPaint(); }
+async function pushPaint(){
+  if(!paintDoc) return; if(pWriting){ pAgain=true; return; } pWriting=true;
+  try{ await paintDoc.set({p:PS.p,hist:PS.hist.slice(-200),upd:PS.upd,v:1}); }catch(e){}
+  pWriting=false; if(pAgain){ pAgain=false; pushPaint(); }
+}
+function mergePaint(x){
+  if(!x) return;
+  Object.entries(x.p||{}).forEach(([id,v])=>{ const m=PS.p[id]; if(!m||(v.last||0)>(m.last||0)) PS.p[id]=v; });
+  const have=new Set(PS.hist.map(h=>h.t)); (x.hist||[]).forEach(h=>{ if(!have.has(h.t)) PS.hist.push(h); });
+  PS.hist.sort((a,b)=>a.t-b.t); PS.hist=PS.hist.slice(-200); PS.upd=Math.max(PS.upd,x.upd||0);
+}
+async function connectPaint(db,uid){
+  try{
+    const ref=db.doc('data/users/'+uid+'/paintings'); const s=await ref.get(), d=s.exists?s.data():null, lu=PS.upd;
+    mergePaint(d); paintDoc=ref; pStore(); if(!d||lu>(d.upd||0)) await pushPaint();
+    ref.onSnapshot(sn=>{ const x=sn.exists?sn.data():null; if(!x||x.upd===PS.upd) return; mergePaint(x); pStore(); if(view==='paint'&&(!PSN||PSN.phase==='done')) renderPaint(); else if(view==='home') renderHome(); },()=>{});
+  }catch(e){}
+}
+function loadPaintings(){
+  if(PDATA) return Promise.resolve(PDATA);
+  if(!pLoading) pLoading=fetch('paintings.json').then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(d=>{ PDATA=(d.paintings||[]).filter(x=>x.thumb&&x.artist&&x.title); return PDATA; })
+    .catch(e=>{ pLoading=null; throw e; });
+  return pLoading;
+}
+const FAME=[['all','All'],['famous','Famous'],['known','Known'],['deep cut','Deep cuts']];
+const pPool=()=>(PDATA||[]).filter(x=>PS.fame==='all'||x.fame===PS.fame);
+// unseen works come up, missed ones come back often, well-known ones rarely
+function pWeight(x){ const v=PS.p[x.id]; if(!v) return 3; if(!v.b) return 6; return 1/(1+v.b); }
+function pickWeighted(list,n){
+  const out=[], pool=list.slice();
+  while(out.length<n&&pool.length){
+    const tot=pool.reduce((a,x)=>a+pWeight(x),0); let r=Math.random()*tot, i=0;
+    for(;i<pool.length-1;i++){ r-=pWeight(pool[i]); if(r<=0) break; }
+    out.push(pool.splice(i,1)[0]);
+  }
+  return out;
+}
+const yearGap=(a,b)=>(a.year==null||b.year==null)?150:Math.abs(a.year-b.year);
+function paintOptions(x,kind){
+  const all=PDATA;
+  if(kind==='artist'){
+    // wrong answers from painters of about the same time, so the style doesn't give it away
+    const yrs=new Map(); all.forEach(p=>{ if(p.year!=null){ const a=yrs.get(p.artist)||[]; a.push(p.year); yrs.set(p.artist,a); } });
+    const mid=a=>{ const v=yrs.get(a); return v?v.reduce((s,y)=>s+y,0)/v.length:null; };
+    const others=[...new Set(all.map(p=>p.artist))].filter(a=>a!==x.artist)
+      .map(a=>({a,d:x.year==null||mid(a)==null?150:Math.abs(mid(a)-x.year)}));
+    const near=shuffle(others).sort((p,q)=>p.d-q.d).slice(0,8);
+    return shuffle([x.artist].concat(shuffle(near).slice(0,3).map(o=>o.a)));
+  }
+  // wrong titles: other works by the same painter first, then works of the same period
+  const same=shuffle(all.filter(p=>p.artist===x.artist&&p.title!==x.title));
+  const near=shuffle(all.filter(p=>p.artist!==x.artist&&p.title!==x.title)).sort((p,q)=>yearGap(p,x)-yearGap(q,x)).slice(0,12);
+  const titles=[]; same.concat(shuffle(near)).forEach(p=>{ if(titles.length<3&&titles.indexOf(p.title)<0) titles.push(p.title); });
+  return shuffle([x.title].concat(titles));
+}
+const pAnswer=it=>it.kind==='artist'?it.x.artist:it.x.title;
+const pRight=it=>it.pick!=null&&it.pick>=0&&it.opts[it.pick]===pAnswer(it);
+function pFeedback(cls,txt){ const el=$('pfeedback'); el.className='feedback'+(cls?' '+cls:''); el.textContent=txt; }
+function startPaint(){
+  const pool=pPool();
+  if(pool.length<4){ pFeedback('info','There are too few works in this group. Choose “All” in Settings.'); return; }
+  const items=pickWeighted(pool,Math.min(10,pool.length));
+  PSN={phase:'ask',i:0,right:0,items:items.map(x=>{ const kind=PS.ask==='mix'?(Math.random()<.5?'artist':'title'):PS.ask; return {x,kind,opts:paintOptions(x,kind),pick:null}; })};
+  pFeedback('',''); preloadP(0); preloadP(1); renderPaint();
+}
+function preloadP(i){ const it=PSN&&PSN.items[i]; if(it){ const im=new Image(); im.decoding='async'; im.src=it.x.thumb; } }
+function answerPaint(k){
+  const it=PSN.items[PSN.i]; if(it.pick!=null) return;
+  it.pick=k; const ok=pRight(it); if(ok) PSN.right++;
+  const v=Object.assign({n:0,ok:0,b:0},PS.p[it.x.id]); v.n++; v.last=Date.now();
+  if(ok){ v.ok++; v.b=Math.min(6,(v.b||0)+1); } else v.b=0;
+  PS.p[it.x.id]=v; pSave(); renderPaint();
+}
+function nextPaint(){
+  PSN.i++;
+  if(PSN.i>=PSN.items.length){ PSN.phase='done'; const n=PSN.items.filter(o=>o.pick>=0).length; if(n){ PS.hist.push({t:Date.now(),n,ok:PSN.right}); pSave(); } }
+  else preloadP(PSN.i+1);
+  renderPaint();
+}
+const commonsPage=img=>'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(String(img||'').replace(/ /g,'_'));
+function pCaption(x){
+  return `<div class="pcap"><b>${esc(x.title)}</b><span>${esc(x.artist)}${x.year?`, ${x.year}`:''}${x.museum?` · ${esc(x.museum)}`:''}</span><span>${x.movement?esc(x.movement)+' · ':''}<span class="tier">${esc(x.fame)}</span>${x.wiki?` · <a href="${esc(x.wiki)}" target="_blank" rel="noopener">Read about it</a>`:''}</span></div>`;
+}
+function renderPaint(){
+  if(view!=='paint') return;
+  const eb=$('peyebrow'), pr=$('pprompt'), sc=$('pscore'), el=$('pbody'), dots=$('pdots'); let h=''; dots.innerHTML='';
+  if(!PDATA){
+    eb.textContent='Paintings'; pr.textContent='Loading the collection…'; sc.textContent=''; el.innerHTML='';
+    loadPaintings().then(()=>{ if(view==='paint') renderPaint(); }).catch(()=>{
+      if(view!=='paint') return;
+      pr.textContent='The collection isn’t available yet';
+      el.innerHTML='<div class="hint">The list of paintings is built by a scheduled job on GitHub. On a fresh copy, run “Build paintings” in the repository’s Actions tab. Otherwise, check your connection.</div><div class="actions"><button type="button" class="btn" data-pact="retry">Try again</button></div>';
+    });
+    renderPaintSide(); return;
+  }
+  if(!PSN||PSN.phase==='done'){
+    const d=PSN&&PSN.phase==='done'?PSN:null, pool=pPool();
+    eb.textContent='Paintings'; sc.textContent='';
+    pr.textContent=d?`${d.right} of ${d.items.filter(o=>o.pick>=0).length} right`:'Name the painter, or the painting';
+    if(d) h+=`<ul class="wlist">${d.items.map(it=>`<li class="${pRight(it)?'ok':'no'}"><b>${esc(it.x.title)}</b><span>${esc(it.x.artist)}${it.x.year?', '+it.x.year:''}</span></li>`).join('')}</ul>`;
+    h+=`<div class="wstats"><div><b>${pool.length}</b><span>works</span></div><div><b>${pool.filter(x=>PS.p[x.id]).length}</b><span>seen</span></div><div><b>${pool.filter(x=>(PS.p[x.id]||{}).b>=2).length}</b><span>known</span></div><div><b>${pool.filter(x=>{ const v=PS.p[x.id]; return v&&!v.b; }).length}</b><span>to revisit</span></div></div>`;
+    h+=`<div class="wactions"><button type="button" class="btn primary big" data-pact="start">${d?'Another 10':'Start 10 paintings'}</button></div>`;
+    h+=`<div class="hint">Works you miss come back sooner. Pictures from Wikimedia Commons (public domain); facts from Wikidata.</div>`;
+  }else{
+    const it=PSN.items[PSN.i], x=it.x, ans=pAnswer(it);
+    eb.textContent=`Painting ${PSN.i+1} of ${PSN.items.length}`;
+    pr.textContent=it.kind==='artist'?'Who painted this?':'What is this painting called?';
+    sc.textContent=`${PSN.right} right`;
+    dots.innerHTML=PSN.items.map((o,k)=>`<span class="dot ${o.pick==null?(k===PSN.i?'cur':''):o.pick<0?'':(pRight(o)?'ok':'no')}"></span>`).join('');
+    h+=`<figure class="pframe" style="margin:0"><span class="ploading">Loading the picture…</span><img class="wait" src="${esc(x.thumb)}" alt="${it.pick!=null?esc(x.title+' by '+x.artist):'A painting to identify'}" decoding="async"></figure>`;
+    if(it.kind==='title'&&it.pick==null) h+=`<div class="hint">By ${esc(x.artist)}${x.year?`, ${x.year}`:''}</div>`;
+    h+=`<ol class="popts">${it.opts.map((o,k)=>{ let c='opt'; if(it.pick!=null){ if(o===ans) c+=' ok'; else if(k===it.pick) c+=' bad'; else c+=' dim'; }
+      return `<li><button type="button" class="${c}" data-popt="${k}" ${it.pick!=null?'disabled':''}><kbd>${k+1}</kbd><span>${esc(o)}</span></button></li>`; }).join('')}</ol>`;
+    if(it.pick!=null) h+=pCaption(x)+`<div class="actions"><span class="pcredit">Image: <a href="${commonsPage(x.image)}" target="_blank" rel="noopener">Wikimedia Commons</a></span><span class="spacer"></span><button type="button" class="btn primary" data-pact="next">${PSN.i+1>=PSN.items.length?'Finish':'Next painting'}</button></div>`;
+    else h+=`<div class="actions"><button type="button" class="btn quiet" data-pact="quit">Stop</button><span class="spacer"></span><button type="button" class="btn quiet" data-pact="skip">Skip</button></div>`;
+  }
+  el.innerHTML=h;
+  const img=el.querySelector('.pframe img');
+  if(img){
+    const shown=()=>{ img.classList.remove('wait'); const l=el.querySelector('.ploading'); if(l) l.remove(); };
+    if(img.complete&&img.naturalWidth) shown();
+    else{ img.addEventListener('load',shown); img.addEventListener('error',()=>{ const l=el.querySelector('.ploading'); if(l) l.textContent='The picture didn’t load. Skip this one, or check your connection.'; }); }
+  }
+  renderPaintSide();
+}
+function renderPaintSide(){
+  let h='';
+  h+=`<div class="field"><span class="fl">Question</span><div class="chips">${[['mix','Mixed'],['artist','Who painted it?'],['title','What is it called?']].map(o=>`<button type="button" class="chip" data-pset="ask" data-v="${o[0]}" aria-pressed="${PS.ask===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
+  h+=`<div class="field"><span class="fl">Works</span><div class="chips">${FAME.map(o=>`<button type="button" class="chip" data-pset="fame" data-v="${o[0]}" aria-pressed="${PS.fame===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
+  $('psettings').innerHTML=h;
+  const last=PS.hist.slice(-20), tot=last.reduce((a,x)=>a+x.n,0), ok=last.reduce((a,x)=>a+x.ok,0);
+  $('pstats').innerHTML=`<h2>Your gallery</h2><div class="hint">“Famous” works are covered by many Wikipedias, “deep cuts” by only a few: often lesser-known pieces by great painters.</div><div class="totals">${PDATA?`${Object.keys(PS.p).length} of ${PDATA.length} works seen`:''}${tot?` · ${Math.round(100*ok/tot)}% right in your last ${last.length} ${last.length===1?'round':'rounds'}`:''}</div>`;
+}
+function openPaintings(){
+  view='paint'; stopClock(); clearTimeout(advTimer); clearTimeout(cTimer);
+  ['home','main','chessMain','modes','chessModes','wordsMain'].forEach(id=>$(id).hidden=true); $('paintMain').hidden=false; $('instBtn').hidden=false;
+  $('instName').textContent='Paintings';
+  if(window.innerWidth<920) $('pSettingsPanel').open=false;
+  PSN=null; pFeedback('',''); renderPaint();
+}
+$('pbody').addEventListener('click',e=>{
+  const o=e.target.closest('[data-popt]'); if(o){ answerPaint(+o.dataset.popt); return; }
+  const b=e.target.closest('[data-pact]'); if(!b) return; const a=b.dataset.pact;
+  if(a==='start') startPaint();
+  else if(a==='next') nextPaint();
+  else if(a==='skip'){ PSN.items[PSN.i].pick=-1; nextPaint(); }
+  else if(a==='quit'){ PSN=null; pFeedback('',''); renderPaint(); }
+  else if(a==='retry') renderPaint();
+});
+$('psettings').addEventListener('click',e=>{
+  const b=e.target.closest('[data-pset]'); if(!b) return;
+  PS[b.dataset.pset]=b.dataset.v; pStore(); renderPaintSide(); if(!PSN||PSN.phase==='done'){ PSN=null; pFeedback('',''); renderPaint(); }
+});
+document.addEventListener('keydown',e=>{
+  if(view!=='paint'||!PSN||PSN.phase!=='ask') return;
+  const tg=e.target&&e.target.tagName; if(tg==='INPUT'||tg==='SELECT'||tg==='TEXTAREA') return;
+  const it=PSN.items[PSN.i];
+  if(it.pick==null&&/^[1-4]$/.test(e.key)){ e.preventDefault(); answerPaint(+e.key-1); }
+  else if(it.pick!=null&&(e.key==='Enter'||e.key===' ')&&tg!=='BUTTON'){ e.preventDefault(); nextPaint(); }
+});
+function paintHomeMeta(){
+  const n=Object.keys(PS.p).length; if(!n) return 'Not practised yet';
+  const last=PS.hist.slice(-20), tot=last.reduce((a,x)=>a+x.n,0), ok=last.reduce((a,x)=>a+x.ok,0);
+  return `${n} works seen${tot?` · ${Math.round(100*ok/tot)}% right lately`:''}`;
+}
+
+// hooks for the web app's sign-in layer (absent inside Claude)
+window.fretwiseApp={
+  reconnect:connectRuns,
+  wordsChanged(){ if(view==='words') renderWords(); else if(view==='home') renderHome(); },
+  refreshWords(){ return refreshWords(); },
+  clearWords(){ WD={}; wSaveData(); if(view==='words') renderWords(); }
+};
+
+load(); loadLocalRuns(); loadChess(); wLoad(); actLoad(); pLoad(); setInst(S.inst);
+if(window.innerWidth<920) $('settingsPanel').open=false;
+showHome();
+connectRuns();
+})();
+</script>

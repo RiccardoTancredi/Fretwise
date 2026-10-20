@@ -1,0 +1,10 @@
+{
+  "name": "fretwise-tools",
+  "private": true,
+  "type": "module",
+  "description": "Scheduled jobs for Fretwise: Notion word sync and daily reminders (run in GitHub Actions).",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "firebase-admin": "14.5.0"
+  }
+}

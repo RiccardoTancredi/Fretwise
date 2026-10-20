@@ -1,0 +1,30 @@
+name: Daily reminders
+# Runs every hour and notifies each device once a day, at the hour picked in the app.
+# Needs the FIREBASE_SERVICE_ACCOUNT secret. Run it by hand with "force" to test right away.
+on:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Send now, whatever the hour
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/package-lock.json
+      - run: npm ci --prefix tools --no-audit --no-fund
+      - run: node tools/send-reminders.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          APP_URL: https://riccardotancredi.github.io/Fretwise/
+          FORCE: ${{ inputs.force && '1' || '' }}
