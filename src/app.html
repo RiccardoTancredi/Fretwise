@@ -2368,7 +2368,7 @@ function drawChessPreview(){
   h+=put('k','b',6,0)+put('p','b',5,1)+put('p','b',6,1)+put('q','w',3,1)+put('n','w',4,2)+put('r','w',0,2)+put('b','b',2,0);
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('width',W); svg.setAttribute('height',H); svg.innerHTML=h;
   const done=CS.hist.length, m=OPENINGS.reduce((a,f)=>a+f.lines.filter(l=>mastered(lineId(f,l))).length,0);
-  $('metaChess').textContent=done||m?`Puzzle rating ${CS.rating} · ${done} puzzles · ${m} opening ${m===1?'line':'lines'} mastered`:'Not practised yet';
+  $('metaChess').textContent=done||m?`Puzzle rating ${CS.rating} · ${done} ${done===1?'puzzle':'puzzles'} in all · ${m} opening ${m===1?'line':'lines'} mastered`:'Not practised yet';
 }
 
 /* =====================================================================
@@ -2835,7 +2835,16 @@ function mergeAct(x){
   ACT.upd=Math.max(ACT.upd||0,x.upd||0); actPrune();
 }
 // exercises done per day, section and device (x), and the daily goals for words and paintings
-const doneToday=k=>Object.values(((ACT.x||{})[dayKey()]||{})[k]||{}).reduce((a,b)=>a+b,0);
+// today's work as the sections log it themselves, so work done before the counter existed (or on a
+// device that hasn't synced its counter yet) still counts
+function loggedToday(k){
+  const t0=startOfDay(Date.now());
+  if(k==='paintings') return (PS.days[romeDay()]||[]).length;
+  if(k==='words') return Object.values(WP.days[romeDay()]||{}).reduce((a,l)=>a+Object.keys(l||{}).length,0);
+  if(k==='chess') return CS.hist.filter(h=>(h.t||0)>=t0).length+Object.values(CS.lines).filter(x=>(x.last||0)>=t0).length;
+  return runs.filter(r=>(r.inst||'guitar')===k&&r.t>=t0).length;
+}
+const doneToday=k=>Math.max(Object.values(((ACT.x||{})[dayKey()]||{})[k]||{}).reduce((a,b)=>a+b,0),loggedToday(k));
 const goalFor=k=>(k==='words'||k==='paintings')?((ACT.goals||{})[k]||1):1;
 function bump(k,n){
   const day=dayKey(), X=ACT.x||(ACT.x={}), e=X[day]||(X[day]={}), m=e[k]||(e[k]={});
@@ -3210,7 +3219,7 @@ document.addEventListener('keydown',e=>{
 function paintHomeMeta(){
   const n=Object.keys(PS.p).length; if(!n) return 'Not practised yet';
   const known=Object.values(PS.p).filter(pKnown).length, today=new Set((PS.days[romeDay()]||[]).map(e=>e.id)).size;
-  return `${n} works seen · ${known} known${today?` · ${today} today`:''}`;
+  return `${n} ${n===1?'work':'works'} seen · ${known} known${today?` · ${today} today`:''}`;
 }
 
 // hooks for the web app's sign-in layer (absent inside Claude)
