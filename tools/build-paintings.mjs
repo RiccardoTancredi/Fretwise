@@ -74,13 +74,24 @@ for (const group of chunks(picked, 140)) {
   }
 }
 
+// 5) a painter's own movement, for works that have none of their own (often the less-covered ones);
+//    only when Wikidata gives the painter exactly one, so the answer isn't a guess between several
+const painterMv = new Map();
+for (const group of chunks([...new Set(picked.map(o => o.a))], 150)) {
+  const rows = await sparql(`SELECT ?a ?ml WHERE { VALUES ?a { ${group.map(a => 'wd:' + a).join(' ')} }
+    ?a wdt:P135 ?m. ?m rdfs:label ?ml. FILTER(LANG(?ml) = "en") }`);
+  for (const b of rows) { const a = qid(b.a.value); if (!painterMv.has(a)) painterMv.set(a, new Set()); painterMv.get(a).add(b.ml.value); }
+}
+const onlyMv = a => { const m = painterMv.get(a); return m && m.size === 1 ? [...m][0] : ''; };
+
 const paintings = [];
 for (const o of picked) {
   const x = info.get(o.id) || {};
   const title = (x.t || x.pl || '').replace(/\s*\([^)]*\)$/, '');   // drop Wikipedia's "(Manet)", "(painting)"
   if (!title || !x.al) continue;                       // nothing to ask about without both names
+  const movement = x.ml || onlyMv(o.a);
   paintings.push({
-    id: o.id, title, artist: x.al, year: x.year ?? null, movement: x.ml || '', museum: x.cl || '', image: o.image,
+    id: o.id, title, artist: x.al, year: x.year ?? null, movement, ...(movement && !x.ml ? { movementOf: 'painter' } : {}), museum: x.cl || '', image: o.image,
     wiki: x.t ? 'https://en.wikipedia.org/wiki/' + encodeURIComponent(x.t.replace(/ /g, '_')) : null,
     // Commons serves a resized copy of any file through Special:FilePath
     thumb: 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(o.image) + '?width=900',

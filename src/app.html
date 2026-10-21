@@ -403,6 +403,11 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .pframe img{display:block;max-width:100%;max-height:min(54vh,500px);width:auto;height:auto;border-radius:4px;box-shadow:0 6px 22px rgba(0,0,0,.28);background:#d9d2c3}
 .pframe .ploading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.9rem}
 .pframe img.wait{opacity:0}
+.pframe img[data-big]{cursor:zoom-in}
+.lightbox{position:fixed;inset:0;z-index:100;background:rgba(10,10,12,.94);display:flex;align-items:center;justify-content:center;padding:12px;cursor:zoom-out}
+.lightbox[hidden]{display:none}
+.lightbox img{max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.lightbox .lbhint{position:absolute;left:0;right:0;bottom:max(10px,env(safe-area-inset-bottom));text-align:center;color:#cfcfcf;font-size:.8rem;pointer-events:none}
 .pcap{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
 .pcap b{font-family:var(--font-display);font-size:1.15rem}
 .pcap span{color:var(--muted);font-size:.9rem}
@@ -1846,11 +1851,38 @@ function showHome(){
   renderHome();
   const last=document.querySelector(`.pick[data-inst="${S.lastView||S.inst}"]`); if(last) last.focus({preventScroll:true});
 }
-// Opening a section adds a step to the browser history, so the phone's back button returns to the
-// start page instead of leaving the app; the header's back button takes the same step back.
-function enterSection(){ try{ if(!(history.state&&history.state.fwSection)) history.pushState({fwSection:1},''); }catch(e){} }
-window.addEventListener('popstate',()=>{ if(view!=='home') showHome(); });
-function goHome(){ if(history.state&&history.state.fwSection) history.back(); else showHome(); }
+// Back goes one screen back. Opening a section is a step in the browser history, and so is each screen
+// inside it (a gallery, a painting, a word list, a word, an opening line, a picture shown large), so the
+// phone's back button, the app's Back buttons and Esc all close the latest one; from a section's own
+// first screen it returns to the start page. The header button goes straight to the start page.
+let goingHome=false;
+function enterSection(){ try{ if(!(history.state&&history.state.fwSection)) history.pushState({fwSection:1,sub:0},''); }catch(e){} }
+function subPush(){ try{ history.pushState({fwSection:1,sub:((history.state&&history.state.sub)||0)+1},''); }catch(e){} }
+function navBack(close){ if(history.state&&history.state.sub) history.back(); else close(); }
+window.addEventListener('popstate',()=>{
+  if(goingHome){ goingHome=false; if(view!=='home') showHome(); return; }
+  if(view==='home') return;
+  if(closeLightbox()) return;
+  if(view==='paint'&&PG){ pgBack(); return; }
+  if(view==='words'&&WV){ wvBack(); return; }
+  if(view==='chess'&&CS.tab==='openings'&&OP.view!=='list'){ openingsList(); return; }
+  showHome();
+});
+function goHome(){
+  closeLightbox();
+  if(history.state&&history.state.fwSection){ goingHome=true; history.go(-(((history.state.sub)||0)+1)); }
+  else showHome();
+}
+// a painting shown as large as the screen allows; tap or go back to close it
+function openLightbox(src,big,alt){
+  let d=$('lightbox');
+  if(!d){ d=document.createElement('div'); d.id='lightbox'; d.className='lightbox'; d.hidden=true; d.setAttribute('role','dialog');
+    d.innerHTML='<img alt=""><span class="lbhint">Tap to close · pinch to zoom</span>'; document.body.appendChild(d);
+    d.addEventListener('click',()=>navBack(closeLightbox)); }
+  const im=d.querySelector('img'); im.src=src; im.alt=alt||''; d.hidden=false; subPush();
+  const b=new Image(); b.onload=()=>{ if(!d.hidden) im.src=big; }; b.src=big;
+}
+function closeLightbox(){ const d=$('lightbox'); if(!d||d.hidden) return false; d.hidden=true; return true; }
 function openApp(id){
   S.lastView=id; enterSection();
   if(id==='chess'){ save(); openChess(); return; }
@@ -2281,14 +2313,14 @@ const plyLabel=(l,ply)=>`${Math.ceil(ply/2)}${ply%2?'.':'…'}${l.moves[ply-1]}`
 function moveNote(l,ply){ const t=ply>0&&OPENING_NOTES.m[l.moves.slice(0,ply).join(' ')]; return t?`<div class="mnote"><b>${plyLabel(l,ply)}</b>${esc(t)}</div>`:''; }
 const lineIdea=l=>OPENING_NOTES.l[l.name]?`<p class="oidea">${esc(OPENING_NOTES.l[l.name])}</p>`:'';
 function openingsList(){ clearTimeout(cTimer); OP.view='list'; OP.line=null; const f=OPENINGS[OP.fam]; B.game=new Chess(); f.lines[0].moves.forEach(m=>B.game.move(m)); B.orient=famSide(f); B.canMove=false; B.last=null; B.flash=null; B.hint=B.hintTo=null; select(null); cFeedback('',''); renderChess(); }
-function openingsWatch(li){ clearTimeout(cTimer); const f=OPENINGS[OP.fam]; OP.view='watch'; OP.line=li; OP.ply=0; B.orient=famSide(f); B.canMove=false; select(null); B.flash=null; B.hint=B.hintTo=null; watchTo(0); cFeedback('',''); renderChess(); }
+function openingsWatch(li){ clearTimeout(cTimer); if(OP.view==='list') subPush(); const f=OPENINGS[OP.fam]; OP.view='watch'; OP.line=li; OP.ply=0; B.orient=famSide(f); B.canMove=false; select(null); B.flash=null; B.hint=B.hintTo=null; watchTo(0); cFeedback('',''); renderChess(); }
 function watchTo(ply){
   const l=OPENINGS[OP.fam].lines[OP.line]; OP.ply=Math.max(0,Math.min(l.moves.length,ply));
   B.game=new Chess(); let mv=null; for(let i=0;i<OP.ply;i++) mv=B.game.move(l.moves[i]);
   B.last=mv?{from:mv.from,to:mv.to}:null;
 }
 function openingsDrill(li){
-  clearTimeout(cTimer); const f=OPENINGS[OP.fam];
+  clearTimeout(cTimer); if(OP.view==='list') subPush(); const f=OPENINGS[OP.fam];
   OP.view='drill'; OP.line=li; OP.ply=0; OP.mistakes=0; OP.wrong=0; OP.done=false; OP.color=famSide(f);
   B.game=new Chess(); B.orient=OP.color; B.user=OP.color; B.last=null; B.flash=null; B.hint=B.hintTo=null; select(null);
   B.onMove=drillMove; cFeedback('',''); drillAdvance();
@@ -2445,7 +2477,7 @@ $('canswer').addEventListener('click',e=>{
   else if(a==='watch') openingsWatch(li);
   else if(a==='drill') openingsDrill(li);
   else if(a==='drillfam'){ OP.line=-1; const f=OPENINGS[OP.fam]; OP.line=f.lines.map((l,i)=>i).sort((x,y)=>lineStat(lineId(f,f.lines[x])).streak-lineStat(lineId(f,f.lines[y])).streak||lineStat(lineId(f,f.lines[x])).last-lineStat(lineId(f,f.lines[y])).last)[0]; openingsDrill(OP.line); }
-  else if(a==='back') openingsList();
+  else if(a==='back') navBack(openingsList);
   else if(a==='w0'){ watchTo(0); renderChess(); }
   else if(a==='wprev'){ watchTo(OP.ply-1); renderChess(); }
   else if(a==='wnext'){ const l=OPENINGS[OP.fam].lines[OP.line]; if(OP.ply<l.moves.length){ watchTo(OP.ply+1); moveSound(null); } renderChess(); }
@@ -2748,10 +2780,11 @@ function tapMatch(side,id){
 /* ---------- looking at the words again ---------- */
 // WV: null, or {src: 'session' | a list filter, ids, i: index of the open word or null for the list}
 let WV=null;
-const W_FILTERS=[['all','All'],['right','Right'],['missed','Missed'],['mastered','Mastered']];
+// Missed, Right and Mastered don't overlap: a word moves from one to the next as you answer it
+const W_FILTERS=[['all','All'],['missed','Missed'],['right','Right, still learning'],['mastered','Mastered']];
 // was the last answer right? Older saves don't say, so read it from the box when it is unambiguous
 const wLast=v=>v.r!=null?!!v.r:v.b===0?false:v.b>=2?true:v.n<=1;
-const wFilter=(v,f)=>f==='all'||(f==='mastered'?v.b>=5:f==='right'?wLast(v):!wLast(v));
+const wFilter=(v,f)=>f==='all'||(f==='mastered'?v.b>=5&&wLast(v):f==='right'?wLast(v)&&v.b<5:!wLast(v));
 // a day's words in one dictionary, most recent first
 const wDayLog=(lang,d)=>{ const have=byId(lang); return Object.entries(((WP.days[d]||{})[lang])||{}).filter(([id])=>have.has(id)&&have.get(id).d).sort((a,b)=>b[1].t-a[1].t); };
 const wDays=lang=>Object.keys(WP.days).filter(d=>wDayLog(lang,d).length).sort().reverse().slice(0,14);
@@ -2760,8 +2793,8 @@ function wListIds(lang,f){
   const p=WP.p[lang]||{}, have=byId(lang);
   return Object.entries(p).filter(([id,v])=>have.has(id)&&have.get(id).d&&wFilter(v,f)).sort((a,b)=>(b[1].last||0)-(a[1].last||0)).map(([id])=>id);
 }
-function openWordList(f){ WV={src:f,ids:wListIds(WS.lang,f),i:null}; wFeedback('',''); renderWords(); scrollTo(0,0); }
-function openSessionWord(k){ WV={src:'session',ids:WSN.ids.slice(),i:k}; wFeedback('',''); renderWords(); scrollTo(0,0); }
+function openWordList(f){ if(!WV) subPush(); WV={src:f,ids:wListIds(WS.lang,f),i:null}; wFeedback('',''); renderWords(); scrollTo(0,0); }
+function openSessionWord(k){ subPush(); WV={src:'session',ids:WSN.ids.slice(),i:k}; wFeedback('',''); renderWords(); scrollTo(0,0); }
 function wvStep(d){ const i=WV.i+d; if(i<0||i>=WV.ids.length) return; WV.i=i; renderWords(); }
 function wvBack(){ if(WV.src==='session'||WV.i==null) WV=null; else WV.i=null; renderWords(); }
 function inDays(t){ const d=Math.round((startOfDay(t)-startOfDay(Date.now()))/DAY); return d<=0?'today':d===1?'tomorrow':`in ${d} days`; }
@@ -2889,7 +2922,7 @@ function openWords(){
 $('wbody').addEventListener('click',e=>{
   const lb=e.target.closest('[data-wlang]'); if(lb){ WS.lang=lb.dataset.wlang; wSaveSettings(); WSN=null; if(WV){ const f=WV.src==='session'?'all':WV.src; WV={src:f,ids:wListIds(WS.lang,f),i:null}; } wFeedback('',''); renderWords(); return; }
   const wl=e.target.closest('[data-wlist]'); if(wl){ openWordList(wl.dataset.wlist); return; }
-  const wv=e.target.closest('[data-wview]'); if(wv){ WV.i=+wv.dataset.wview; renderWords(); scrollTo(0,0); return; }
+  const wv=e.target.closest('[data-wview]'); if(wv){ subPush(); WV.i=+wv.dataset.wview; renderWords(); scrollTo(0,0); return; }
   const ws=e.target.closest('[data-wsession]'); if(ws){ openSessionWord(+ws.dataset.wsession); return; }
   const ml=e.target.closest('[data-ml]'); if(ml){ tapMatch('L',ml.dataset.ml); return; }
   const mr=e.target.closest('[data-mr]'); if(mr){ tapMatch('R',mr.dataset.mr); return; }
@@ -2908,7 +2941,7 @@ $('wbody').addEventListener('click',e=>{
   else if(a==='restudy'){ WSN.phase='study'; WSN.i=0; renderWords(); }
   else if(a==='nextq') nextQuiz();
   else if(a==='quit'){ WSN=null; wFeedback('',''); renderWords(); }
-  else if(a==='vback') wvBack();
+  else if(a==='vback') navBack(wvBack);
   else if(a==='vprev') wvStep(-1);
   else if(a==='vnext') wvStep(1);
   else if(a==='vpractise') startPractice(WV.ids);
@@ -2924,7 +2957,7 @@ document.addEventListener('keydown',e=>{
   if(WV){
     if(WV.i!=null&&e.key==='ArrowLeft') wvStep(-1);
     else if(WV.i!=null&&e.key==='ArrowRight') wvStep(1);
-    else if(e.key==='Escape') wvBack();
+    else if(e.key==='Escape') navBack(wvBack);
     return;
   }
   if(!WSN) return;
@@ -3216,8 +3249,9 @@ function restorePaint(){
 // PG: null, or {src: 'round' | a gallery filter | 'day:YYYY-MM-DD', ids, i: index of the open work or null for the grid}
 let PG=null, PMAP=null;
 const pWork=id=>{ if(!PMAP){ PMAP=new Map(); PDATA.forEach(x=>PMAP.set(x.id,x)); } return PMAP.get(id); };
-const P_FILTERS=[['all','All seen'],['right','Right last time'],['missed','To revisit'],['known','Known']];
-const pFilter=(v,f)=>!!v&&(f==='all'||(f==='right'?pRightLast(v):f==='known'?pKnown(v):pMissed(v)));
+// To revisit, Right last time and Known don't overlap: a work moves from one to the next as you answer it
+const P_FILTERS=[['all','All seen'],['missed','To revisit'],['right','Right last time'],['known','Known']];
+const pFilter=(v,f)=>!!v&&(f==='all'||(f==='right'?pRightLast(v)&&!pKnown(v):f==='known'?pKnown(v)&&pRightLast(v):pMissed(v)));
 // a day's works, most recent first, each with how that day went
 function pDayResults(d){
   const m=new Map(); (PS.days[d]||[]).forEach(e=>{ const r=m.get(e.id)||{id:e.id,ok:1,kinds:[],t:0}; r.kinds.push(e); if(!e.ok) r.ok=0; r.t=Math.max(r.t,e.t); m.set(e.id,r); });
@@ -3229,8 +3263,9 @@ function pGalleryIds(f){
 }
 const pDays=()=>Object.keys(PS.days).filter(d=>pDayResults(d).length).sort().reverse().slice(0,14);
 const pSmall=x=>String(x.thumb).replace(/([?&]width=)\d+/,'$1320');
-function openGallery(f){ PG={src:f,ids:pGalleryIds(f),i:null}; pFeedback('',''); renderPaint(); scrollTo(0,0); }
-function openRoundWork(k){ PG={src:'round',ids:PSN.items.map(it=>it.x.id),i:k}; pFeedback('',''); renderPaint(); scrollTo(0,0); }
+const pBig=x=>String(x.thumb).replace(/([?&]width=)\d+/,'$12000');
+function openGallery(f){ if(!PG) subPush(); PG={src:f,ids:pGalleryIds(f),i:null}; pFeedback('',''); renderPaint(); scrollTo(0,0); }
+function openRoundWork(k){ subPush(); PG={src:'round',ids:PSN.items.map(it=>it.x.id),i:k}; pFeedback('',''); renderPaint(); scrollTo(0,0); }
 function pgStep(d){ const i=PG.i+d; if(i<0||i>=PG.ids.length) return; PG.i=i; renderPaint(); }
 function pgBack(){ if(PG.src==='round'||PG.i==null) PG=null; else PG.i=null; renderPaint(); }
 // how this work is going
@@ -3248,7 +3283,7 @@ function galleryHtml(){
     const dr=day?pDayResults(day).find(r=>r.id===x.id):null;
     eb.textContent=`${PG.src==='round'?'This round':day?dayLabel(day):'Your gallery'} · ${PG.i+1} of ${PG.ids.length}`;
     pr.textContent=x.title; sc.textContent='';
-    h+=`<figure class="pframe" style="margin:0"><span class="ploading">Loading the picture…</span><img class="wait" src="${esc(x.thumb)}" alt="${esc(x.title+' by '+x.artist)}" decoding="async"></figure>`;
+    h+=`<figure class="pframe" style="margin:0"><span class="ploading">Loading the picture…</span><img class="wait" src="${esc(x.thumb)}" data-big="${esc(pBig(x))}" alt="${esc(x.title+' by '+x.artist)}" decoding="async"></figure>`;
     h+=pCaption(x);
     if(it) h+=`<div class="vstat">${it.pick<0?'<span>Skipped this round</span>':pRight(it)?`<span class="ok">${P_KIND_NAME[it.kind]}: right this round</span>`:`<span class="no">${P_KIND_NAME[it.kind]}: missed this round</span><span>You answered “${esc(it.opts[it.pick])}”</span>`}</div>`;
     else if(dr) h+=`<div class="vstat">${dr.kinds.map(e=>`<span class="${e.ok?'ok':'no'}">${e.kind?P_KIND_NAME[e.kind]+': ':''}${e.ok?'right':'missed'}</span>`).join('')}</div>`;
@@ -3258,7 +3293,7 @@ function galleryHtml(){
     return h;
   }
   eb.textContent='Your gallery'+(!day&&PS.fame!=='all'?' · '+FAME.find(o=>o[0]===PS.fame)[1]:'');
-  pr.textContent=day?`${dayLabel(day)}: the works you saw`:PG.src==='all'?'Works you’ve seen':PG.src==='right'?'Right the last time you saw them':PG.src==='known'?'Works you know':'Works to revisit';
+  pr.textContent=day?`${dayLabel(day)}: the works you saw`:PG.src==='all'?'Works you’ve seen':PG.src==='right'?'Right last time, not known yet':PG.src==='known'?'Works you know':'Works to revisit';
   sc.textContent=`${PG.ids.length} ${PG.ids.length===1?'work':'works'}`;
   h+=`<div class="chips" role="group" aria-label="Show">${P_FILTERS.map(o=>`<button type="button" class="chip" data-pgal="${o[0]}" aria-pressed="${PG.src===o[0]}">${o[1]} · ${pGalleryIds(o[0]).length}</button>`).join('')}</div>`;
   const days=pDays(); if(days.length) h+=`<div class="chips" role="group" aria-label="By day">${days.map(d=>`<button type="button" class="chip" data-pgal="day:${d}" aria-pressed="${day===d}">${dayLabel(d)} · ${pDayResults(d).length}</button>`).join('')}</div>`;
@@ -3271,7 +3306,7 @@ function galleryHtml(){
 }
 const commonsPage=img=>'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(String(img||'').replace(/ /g,'_'));
 function pCaption(x){
-  return `<div class="pcap"><b>${esc(x.title)}</b><span>${esc(x.artist)}${x.year?`, ${x.year}`:''}${x.museum?` · ${esc(x.museum)}`:''}</span><span>${x.movement?esc(x.movement)+' · ':''}<span class="tier">${esc(x.fame)}</span>${x.wiki?` · <a href="${esc(x.wiki)}" target="_blank" rel="noopener">Read about it</a>`:''}</span></div>`;
+  return `<div class="pcap"><b>${esc(x.title)}</b><span>${esc(x.artist)}${x.year?`, ${x.year}`:''}${x.museum?` · ${esc(x.museum)}`:''}</span><span>${x.movement?esc(mvOf(x))+(x.movementOf==='painter'?' (the painter’s)':'')+' · ':''}<span class="tier">${esc(x.fame)}</span>${x.wiki?` · <a href="${esc(x.wiki)}" target="_blank" rel="noopener">Read about it</a>`:''}</span></div>`;
 }
 function renderPaint(){
   if(view!=='paint') return;
@@ -3304,7 +3339,7 @@ function renderPaint(){
     pr.textContent=P_QUESTION[it.kind];
     sc.textContent=`${PSN.right} right`;
     dots.innerHTML=PSN.items.map((o,k)=>`<span class="dot ${o.pick==null?(k===PSN.i?'cur':''):o.pick<0?'':(pRight(o)?'ok':'no')}"></span>`).join('');
-    h+=`<figure class="pframe" style="margin:0"><span class="ploading">Loading the picture…</span><img class="wait" src="${esc(x.thumb)}" alt="${it.pick!=null?esc(x.title+' by '+x.artist):'A painting to identify'}" decoding="async"></figure>`;
+    h+=`<figure class="pframe" style="margin:0"><span class="ploading">Loading the picture…</span><img class="wait" src="${esc(x.thumb)}" data-big="${esc(pBig(x))}" alt="${it.pick!=null?esc(x.title+' by '+x.artist):'A painting to identify'}" decoding="async"></figure>`;
     if(it.kind==='title'&&it.pick==null) h+=`<div class="hint">By ${esc(x.artist)}${x.year?`, ${x.year}`:''}</div>`;
     if((it.kind==='year'||it.kind==='museum'||it.kind==='movement')&&it.pick==null) h+=`<div class="hint">${esc(x.title)}, by ${esc(x.artist)}${it.kind==='museum'&&x.year?`, ${x.year}`:''}</div>`;
     h+=`<ol class="popts">${it.opts.map((o,k)=>{ let c='opt'; if(it.pick!=null){ if(o===ans) c+=' ok'; else if(k===it.pick) c+=' bad'; else c+=' dim'; }
@@ -3345,11 +3380,12 @@ function openPaintings(){
 $('pbody').addEventListener('click',e=>{
   const o=e.target.closest('[data-popt]'); if(o){ answerPaint(+o.dataset.popt); return; }
   const g=e.target.closest('[data-pgal]'); if(g){ openGallery(g.dataset.pgal); return; }
-  const pv=e.target.closest('[data-pview]'); if(pv){ PG.i=+pv.dataset.pview; renderPaint(); scrollTo(0,0); return; }
+  const pv=e.target.closest('[data-pview]'); if(pv){ subPush(); PG.i=+pv.dataset.pview; renderPaint(); scrollTo(0,0); return; }
+  const im=e.target.closest('.pframe img[data-big]'); if(im){ openLightbox(im.src,im.dataset.big,im.alt); return; }
   const pr=e.target.closest('[data-pround]'); if(pr){ openRoundWork(+pr.dataset.pround); return; }
   const b=e.target.closest('[data-pact]'); if(!b) return; const a=b.dataset.pact;
   if(a==='start') startPaint();
-  else if(a==='back') pgBack();
+  else if(a==='back') navBack(pgBack);
   else if(a==='prevw') pgStep(-1);
   else if(a==='nextw') pgStep(1);
   else if(a==='practise') startPaint(PG.ids.map(pWork));
@@ -3369,10 +3405,11 @@ $('psettings').addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(view!=='paint') return;
   const tg=e.target&&e.target.tagName; if(tg==='INPUT'||tg==='SELECT'||tg==='TEXTAREA') return;
+  if($('lightbox')&&!$('lightbox').hidden){ if(e.key==='Escape') navBack(closeLightbox); return; }
   if(PG){
     if(PG.i!=null&&e.key==='ArrowLeft') pgStep(-1);
     else if(PG.i!=null&&e.key==='ArrowRight') pgStep(1);
-    else if(e.key==='Escape') pgBack();
+    else if(e.key==='Escape') navBack(pgBack);
     return;
   }
   if(!PSN||PSN.phase!=='ask') return;
