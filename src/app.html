@@ -701,7 +701,7 @@ function octaveLinks(ps){
 /* ---------- state ---------- */
 const S={
   inst:'guitar', mode:'name', acc:'sharp', naturalsOnly:false, allPc:0, ivMode:'interval',
-  intervals:['m3','M3','P4','P5','P8'], scales:['minp','maj'], scaleRootPcs:ALL12.slice(), scaleArea:'box', circle:{i:0,minor:false,scale:'',chord:null}, roundLen:10, sound:true,
+  intervals:['m3','M3','P4','P5','P8'], scales:['minp','maj'], scaleRootPcs:ALL12.slice(), scaleArea:'box', scalePos:[1], circle:{i:0,minor:false,scale:'',chord:null}, roundLen:10, sound:true,
   chordGroupsBy:{guitar:['triad'],ukulele:['triad','seventh']}, ivAll:false, chordShapes:2, rootBass:{guitar:true,ukulele:false},
   by:{guitar:{fretStart:0,fretEnd:12,strings:[true,true,true,true,true,true]},
       ukulele:{fretStart:0,fretEnd:12,strings:[true,true,true,true]}}
@@ -718,7 +718,7 @@ function load(){
     const st=d.settings||{};
     // older versions kept a single (guitar) range and string list at the top level
     if(st.fretStart!=null&&!st.by){ S.by.guitar.fretStart=st.fretStart; S.by.guitar.fretEnd=st.fretEnd; if(Array.isArray(st.strings)&&st.strings.length===6) S.by.guitar.strings=st.strings; }
-    ['mode','lastView','acc','naturalsOnly','allPc','ivMode','ivAll','intervals','scales','scaleRootPcs','scaleArea','circle','roundLen','sound','chordShapes','inst'].forEach(k=>{ if(st[k]!=null) S[k]=st[k]; });
+    ['mode','lastView','acc','naturalsOnly','allPc','ivMode','ivAll','intervals','scales','scaleRootPcs','scaleArea','scalePos','circle','roundLen','sound','chordShapes','inst'].forEach(k=>{ if(st[k]!=null) S[k]=st[k]; });
     // scales used to live under Intervals
     if(S.mode==='iv'&&S.ivMode==='scale'){ S.mode='scale'; S.ivMode='interval'; }
     S.scales=S.scales.filter(id=>SCALES.some(x=>x.id===id)); if(!S.scales.length) S.scales=['maj'];
@@ -1034,9 +1034,61 @@ function scaleNote(root,rp,sc,i){
   return (/♭/.test(root)?FLAT:/♯/.test(root)?SHARP:(S.acc==='flat'?FLAT:SHARP))[(rp+sc.steps[i])%12];
 }
 const scaleSpelling=q=>q.scale.steps.map((x,i)=>scaleNote(rootNm(q),q.rootPc,q.scale,i)).join(' ');
-// one position: a five-fret box around a root on the instrument's root strings; whole range: every scale note in the fret range
+// Positions are counted on the lowest string (guitar low E, ukulele C): position 1 starts on the root, 2 on
+// the next note of the scale, and so on; each is a five-fret box from the fret below its first note.
+// For pentatonics these are the five usual boxes. Three notes per string (guitar, seven-note scales) is
+// the exact pattern that starts on that note and climbs three scale notes on each string.
+const POS_STRING=()=>INST.id==='guitar'?0:1;
+const ord=n=>n+(n===1?'st':n===2?'nd':n===3?'rd':'th');
+// the fret of the k-th scale note on the lowest string, in the octave that keeps [f+lo, f+hi] in the range
+function posFret(sc,rp,k,c,lo,hi){
+  const s=POS_STRING(); let r0=0; while(pcOf(s,r0)!==rp) r0++;
+  const f0=r0+sc.steps[k%sc.steps.length];
+  for(const f of [f0,f0+12,f0-12]) if(f>=0&&Math.max(0,f+lo)>=c.fretStart&&f+hi<=c.fretEnd) return f;
+  return null;
+}
+function scaleAt(sc,rp,s,f){ const i=sc.steps.indexOf((pcOf(s,f)-rp+12)%12); return i>=0?sc.deg[i]:null; }
+function threeNps(sc,rp,k,c){
+  let r0=0; while(pcOf(0,r0)!==rp) r0++;
+  const f0=r0+sc.steps[k];
+  for(const f of [f0,f0+12,f0-12]){
+    if(f<0) continue;
+    const notes=[]; let m=midiOf(0,f), ok=true;
+    for(let s=0;s<NS&&ok;s++) for(let n=0;n<3;n++){
+      if(notes.length){ m++; while(sc.steps.indexOf(((m-rp)%12+12)%12)<0) m++; }
+      const fr=m-STRINGS[s].midi; if(fr<c.fretStart||fr>c.fretEnd){ ok=false; break; } notes.push({s,f:fr});
+    }
+    if(ok) return notes;
+  }
+  return null;
+}
+function makePosQ(scs,c){
+  const three=S.scaleArea==='3nps'&&INST.id==='guitar';
+  for(let t=0;t<80;t++){
+    const sc=rnd(three?scs.filter(x=>x.steps.length===7):scs); if(!sc) return null;
+    const rp=rnd(S.scaleRootPcs), k=rnd(S.scalePos)-1, expected=new Map();
+    let lo, hi;
+    if(three){
+      const notes=threeNps(sc,rp,k%7,c); if(!notes) continue;
+      notes.forEach(n=>expected.set(key(n.s,n.f),scaleAt(sc,rp,n.s,n.f)));
+      lo=Math.min(...notes.map(n=>n.f)); hi=Math.max(...notes.map(n=>n.f));
+    }else{
+      const f=posFret(sc,rp,k%sc.steps.length,c,-1,3); if(f==null) continue;
+      lo=Math.max(0,f-1); hi=f+3;
+      for(let s=0;s<NS;s++) for(let fr=lo;fr<=hi;fr++){ const d=scaleAt(sc,rp,s,fr); if(d) expected.set(key(s,fr),d); }
+    }
+    // the root shown to start from: the lowest one in the box
+    const roots=[...expected.keys()].map(x=>x.split('-').map(Number)).filter(([s,f])=>pcOf(s,f)===rp).sort((a,b)=>midiOf(a[0],a[1])-midiOf(b[0],b[1]));
+    if(!roots.length) continue;
+    const [rs,rf]=roots[0];
+    return {type:'scale',root:{s:rs,f:rf},rootPc:rp,rootName:scaleRootName(rp,sc),scale:sc,win:[lo,hi],pos:(k%(three?7:sc.steps.length))+1,pattern:three,expected,selected:new Set([key(rs,rf)])};
+  }
+  return null;
+}
+// random position: a five-fret box around a root on the instrument's root strings; whole neck: every scale note in the fret range
 function makeScaleQ(){
   const scs=SCALES.filter(x=>S.scales.indexOf(x.id)>=0), c=C(), neck=S.scaleArea==='neck';
+  if(S.scaleArea==='pos'||S.scaleArea==='3nps'){ const q=makePosQ(scs,c); if(q) return q; }
   for(let t=0;t<60;t++){
     const sc=rnd(scs), rp=rnd(S.scaleRootPcs), roots=[];
     if(neck){
@@ -1494,7 +1546,7 @@ function onCell(s,f){
   }
   if(Q.type==='scale'){
     const k=key(s,f);
-    if(f<Q.win[0]||f>Q.win[1]){ setFeedback('info',Q.neck?`Stay inside frets ${Q.win[0]}–${Q.win[1]}, the range set in Practice settings.`:`This is one position: the highlighted box, frets ${Q.win[0]}–${Q.win[1]}, picked at random around the root. For the scale everywhere, press Whole neck.`); return; }
+    if(f<Q.win[0]||f>Q.win[1]){ setFeedback('info',Q.neck?`Stay inside frets ${Q.win[0]}–${Q.win[1]}, the range set in Practice settings.`:Q.pos?`Stay inside the highlighted frets, ${Q.win[0]}–${Q.win[1]}: that’s this position. Choose positions in Practice settings, under Where.`:`This is one position: the highlighted box, frets ${Q.win[0]}–${Q.win[1]}, picked at random around the root. For the scale everywhere, press Whole neck.`); return; }
     if(k===key(Q.root.s,Q.root.f)) return;
     if(Q.selected.has(k)) Q.selected.delete(k); else { Q.selected.add(k); play(m); }
     setFeedback('',''); render(); return;
@@ -1531,7 +1583,7 @@ function checkScale(){
   Q.selected.forEach(k=>{ if(Q.expected.has(k)) right++; else extra++; });
   const total=Q.expected.size, ok=right===total&&extra===0;
   const sp=`${rootNm(Q)} ${Q.scale.name}: ${scaleSpelling(Q)}.`;
-  setFeedback(ok?'good':'bad', ok?`Perfect, all ${total} notes. ${sp}`:`${right} of ${total} notes${extra?`, ${extra} ${extra===1?'note':'notes'} not in the scale`:''}. Missing notes are outlined. ${sp}`);
+  setFeedback(ok?'good':'bad', ok?`Perfect, all ${total} notes. ${sp}`:`${right} of ${total} notes${extra?`, ${extra} ${extra===1?'note':'notes'} ${Q.pattern?'not in this pattern (three scale notes on each string, no more)':'not in the scale'}`:''}. Missing notes are outlined. ${sp}`);
   playScale();
   finish(ok,`${rootNm(Q)} ${Q.scale.name}`);
 }
@@ -1635,7 +1687,7 @@ function renderPrompt(){
   else if(Q.type==='chord'){ eb=`Chords · ${Q.ch.name} · shape ${Math.min(Q.found.length+1,S.chordShapes)} of ${S.chordShapes}`; pr=`Build ${chordName(Q)}`; }
   else if(Q.type==='ivA'){ eb=`Intervals · every position · ${Q.found.size} of ${Q.targets.length} found`; pr=`Find every ${Q.iv.name} of ${rootNm(Q)}`; }
   else if(Q.type==='iv'){ eb='Intervals · root '+where(Q.root.s,Q.root.f); pr=`Find the ${Q.iv.name} of ${rootNm(Q)}`; }
-  else if(Q.type==='scale'){ eb=Q.neck?`Scales · whole neck, frets ${Q.win[0]}–${Q.win[1]}`:`Scales · one position, frets ${Q.win[0]}–${Q.win[1]}, root on the ${strName(Q.root.s)}`; pr=`Mark every note of ${rootNm(Q)} ${Q.scale.name}`; }
+  else if(Q.type==='scale'){ eb=Q.neck?`Scales · whole neck, frets ${Q.win[0]}–${Q.win[1]}`:Q.pattern?`Scales · 3 notes per string from the ${ord(Q.pos)} note, frets ${Q.win[0]}–${Q.win[1]}`:Q.pos?`Scales · position ${Q.pos}, frets ${Q.win[0]}–${Q.win[1]}`:`Scales · random position, frets ${Q.win[0]}–${Q.win[1]}, root on the ${strName(Q.root.s)}`; pr=`Mark every note of ${rootNm(Q)} ${Q.scale.name}`; }
   $('eyebrow').textContent=eb; $('prompt').textContent=pr;
   const sc=$('score'), row=sc.closest('.prompt-row');
   if(S.mode==='all'&&phase!=='summary'){
@@ -1784,7 +1836,13 @@ function renderSettings(){
     SCALE_GROUPS.forEach(g=>{ h+=`<div class="field"><span class="fl">${g[1]}</span><div class="chips">${SCALES.filter(x=>x.grp===g[0]).map(x=>chip('scale',x.id,S.scales.indexOf(x.id)>=0,x.name[0].toUpperCase()+x.name.slice(1))).join('')}</div>${g[0]==='mode'?'<div class="hint">Ionian is the major scale and Aeolian the natural minor.</div>':g[0]==='more'?'<div class="hint">Phrygian dominant is the 5th mode of harmonic minor; Lydian dominant and altered come from melodic minor, the sounds of jazz over dominant chords.</div>':''}</div>`; });
     const rs=S.scaleRootPcs, all=rs.length===12, nat=rs.length===7&&NATURAL.every(x=>rs.indexOf(x)>=0);
     h+=`<div class="field"><span class="fl">Keys</span><div class="chips">${chip('sroots','all',all,'All 12')}${chip('sroots','nat',nat,'Naturals')}</div><div class="chips" style="margin-top:6px">${ALL12.map(pc=>chip('sroot',pc,rs.indexOf(pc)>=0,note(pc),true)).join('')}</div></div>`;
-    h+=`<div class="field"><span class="fl">Where</span><div class="chips">${chip('sarea','box',S.scaleArea==='box','One position')}${chip('sarea','neck',S.scaleArea==='neck','Whole neck')}</div><div class="hint">${S.scaleArea==='box'?`A root on the ${INST.scaleRoots.map(s=>strName(s)).join(' or ')} and a five-fret box: mark every scale note inside it.`:'Mark every note of the scale on every string, across all the frets shown, then press Check.'}</div>`+
+    const area=S.scaleArea==='3nps'&&INST.id!=='guitar'?'pos':S.scaleArea;
+    h+=`<div class="field"><span class="fl">Where</span><div class="chips">${chip('sarea','box',area==='box','Random position')}${chip('sarea','pos',area==='pos','Choose positions')}${INST.id==='guitar'?chip('sarea','3nps',area==='3nps','3 notes per string'):''}${chip('sarea','neck',area==='neck','Whole neck')}</div><div class="hint">${
+      area==='box'?`A root on the ${INST.scaleRoots.map(s=>strName(s)).join(' or ')} and a five-fret box around it: mark every scale note inside it.`
+      :area==='pos'?`Positions are counted on the ${strName(POS_STRING())}: position 1 starts on the root, 2 on the next note of the scale, and so on, each a five-fret box. For pentatonics these are the five usual boxes; pick one, or several to mix them.`
+      :area==='3nps'?'Three scale notes on each string, starting from the chosen note of the scale on the low E string: the pattern overlaps two boxes. Seven-note scales only (major, minor, the modes and the like).'
+      :'Mark every note of the scale on every string, across all the frets shown, then press Check.'}</div>`+
+      (area==='pos'||area==='3nps'?`<div class="chips" style="margin-top:6px">${[1,2,3,4,5,6,7].map(n=>chip('spos',n,S.scalePos.indexOf(n)>=0,String(n),true)).join('')}${chip('sposall','1',S.scalePos.length===7,'All')}</div><div class="hint">${area==='3nps'?'The note of the scale each pattern starts from.':'Pentatonics have five positions: 6 and 7 go round again to 1 and 2.'}</div>`:'')+
       (S.scaleArea==='neck'?`<div class="chips" style="margin-top:6px">${[5,7,12,15].map(n=>chip('sfrets',n,c.fretStart===0&&c.fretEnd===n,'Open–'+n,true)).join('')}</div><div class="hint">How many frets to show. Any other range: Frets, below.</div>`:'')+`</div>`;
   }
   if(S.mode==='chord'){
@@ -1829,6 +1887,8 @@ $('settings').addEventListener('click',e=>{
   else if(a==='sroots'){ S.scaleRootPcs=(v==='nat'?NATURAL:ALL12).slice(); }
   else if(a==='sarea'){ S.scaleArea=v; }
   else if(a==='sfrets'){ c.fretStart=0; c.fretEnd=+v; }
+  else if(a==='spos'){ toggleIn(S.scalePos,+v); }
+  else if(a==='sposall'){ S.scalePos=S.scalePos.length===7?[1]:[1,2,3,4,5,6,7]; }
   else if(a==='cgrp'){ toggleIn(S.chordGroupsBy[S.inst],v); }
   else if(a==='cshapes'){ S.chordShapes=+v; }
   else if(a==='cbass'){ S.rootBass[S.inst]=v==='1'; }
