@@ -1,6 +1,6 @@
 # Fretwise
 
-Ten minutes a day: learn the guitar and ukulele fretboards, solve chess puzzles and drill openings, learn the words from your own Notion dictionaries, and get to know paintings, famous ones and deep cuts.
+A little every day: learn the guitar and ukulele fretboards, solve chess puzzles and drill openings, learn the words from your own Notion dictionaries, and get to know paintings, famous ones and deep cuts.
 
 Live app: **https://riccardotancredi.github.io/Fretwise/**: it installs on a phone like an app (browser menu → *Add to Home screen*) and works offline.
 
@@ -13,7 +13,7 @@ Live app: **https://riccardotancredi.github.io/Fretwise/**: it installs on a pho
 | Words | 5 new words at a time, matched with their definitions, then spaced reviews. A daily limit of new words per dictionary (10 by default) | Your Notion dictionaries, **private** (see below) |
 | Paintings | Who painted it? What is it called? When? Each question has its own review schedule, and a work counts as known only after two right answers in a row for each | [Wikidata](https://www.wikidata.org/) (CC0) and public-domain images on [Wikimedia Commons](https://commons.wikimedia.org/), in `data/paintings.json` |
 
-Today’s words and paintings stay on screen until midnight (Italian time), and you can look back at what you saw on each of the last 60 days. Each section counts the minutes you spend on it today against a 10-minute goal, and a daily notification reminds you of the ones you haven't done.
+Today’s words and paintings stay on screen until midnight (Italian time), and you can look back at what you saw on each of the last 60 days. Each start card turns green once you’ve done something there today: one exercise, or your daily goal of words and paintings (1, 5, 10 or 20, in their settings). A daily notification reminds you of the ones you haven't done.
 
 ## How your words stay private
 

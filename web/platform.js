@@ -239,7 +239,7 @@ function renderDialog(){
     h+='<h2>Sign in</h2><p class="muted">Sign in with Google to sync progress between devices and to load your dictionaries.</p><div class="row"><button type="button" class="btn primary" data-fw="signin">Sign in with Google</button></div>';
   }else{
     h+=`<h2>${esc(u.displayName||'Your account')}</h2><div class="muted">${esc(u.email||'')}<br>Progress syncs to this account on every device you sign in on.</div>`;
-    h+=`<section><h3>Daily reminder</h3><div class="muted" style="margin-bottom:8px">One notification a day for anything you haven’t practised for 10 minutes yet, plus words due for review.</div>`;
+    h+=`<section><h3>Daily reminder</h3><div class="muted" style="margin-bottom:8px">One notification a day for anything you haven’t done yet today, plus words due for review.</div>`;
     h+=`<label><input type="checkbox" data-fw="pushon" ${on?'checked':''}> Remind me on this device</label>`;
     h+=`<div class="row" style="margin-top:8px"><span class="muted">At</span><select data-fw="hour">${Array.from({length:18},(_,i)=>i+6).map(x=>`<option value="${x}" ${x===PUSH.hour?'selected':''}>${hh(x)}</option>`).join('')}</select><span class="muted">${esc(tz())}</span></div>`;
     h+=`<div class="row" style="margin-top:8px">${ITEMS.map(([k,l])=>`<label><input type="checkbox" data-fw="item" value="${k}" ${PUSH.items[k]?'checked':''}> ${l}</label>`).join('')}</div>`;

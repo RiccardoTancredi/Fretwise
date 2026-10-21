@@ -358,14 +358,42 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .vstat{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:.86rem;color:var(--muted)}
 .vstat .ok{color:var(--good);font-weight:700}
 .vstat .no{color:var(--bad);font-weight:700}
+/* circle of fifths */
+.cofwrap{display:flex;flex-direction:column;gap:12px}
+.cof{display:block;width:100%;max-width:380px;margin:0 auto;user-select:none;-webkit-user-select:none}
+.cof .cof-rot{transition:transform .45s ease;transform-origin:200px 200px}
+.cof .seg{fill:var(--surface-2);stroke:var(--surface);stroke-width:2;cursor:pointer}
+.cof .seg.in{fill:var(--surface)}
+.cof .seg.inkey{fill:var(--good)}
+.cof .seg.in.inkey{fill-opacity:.78}
+.cof .seg.tonic{filter:brightness(.78)}
+.cof .seg.sel{stroke:var(--mark);stroke-width:4}
+.cof .lab{font-family:var(--font-display);font-weight:700;font-size:17px;fill:var(--muted);text-anchor:middle;dominant-baseline:central;pointer-events:none;transform-box:fill-box;transform-origin:center;transition:transform .45s ease}
+.cof .lab.sm{font-size:13px}
+.cof .lab.inkey{fill:var(--on-good);font-weight:800}
+.cof .cof-num text{font-family:var(--font-mono);font-size:9.5px;fill:var(--on-good);opacity:.85;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.cof .cof-mid{fill:var(--surface);stroke:var(--line)}
+.cof .cof-key{font-family:var(--font-display);font-weight:800;font-size:36px;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.cof .cof-sig{font-family:var(--font-mono);font-size:14px;fill:var(--muted);text-anchor:middle;dominant-baseline:central}
+.cofnav{justify-content:space-between}
+.cchords{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cchord{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 2px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);min-width:0}
+.cchord small{font-family:var(--font-mono);font-size:.68rem;color:var(--muted)}
+.cchord b{font-size:.92rem;white-space:nowrap}
+.cchord.on{background:var(--good);border-color:var(--good);color:var(--on-good)}
+.cchord.on small{color:inherit}
+.cofinfo{font-size:.92rem}
+.cofinfo .linkbtn{margin:0 0 0 4px}
+.cneck{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
+.cneck svg{display:block;max-width:none}
 .pick .wordmark{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;padding:14px 4px 4px;min-height:96px;font-family:var(--font-display);font-weight:800;font-size:1.35rem;letter-spacing:-.01em}
 .pick .wordmark span:nth-child(2n){color:var(--accent)}
 .pick .wordmark small{flex-basis:100%;font-family:var(--font-body);font-weight:400;font-size:.85rem;color:var(--muted)}
-/* today's practice against the daily goal, on each start card */
-.today{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:.74rem;color:var(--muted)}
-.today .bar{flex:1;height:6px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;max-width:160px}
-.today .bar i{display:block;height:100%;background:var(--accent);border-radius:999px}
-.today.done{color:var(--good)} .today.done .bar i{background:var(--good)}
+/* done today: the start card turns green once the day's goal is met */
+.today{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:.74rem;color:var(--muted)}
+.today.done{color:var(--good);font-weight:700}
+.today.done::before{content:'';width:9px;height:9px;border-radius:50%;background:var(--good)}
+.pick.done{border-color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
 /* paintings */
 .gallery{display:flex;gap:10px;align-items:flex-end;justify-content:center;padding:10px 0 2px;min-height:96px}
 .gallery i{display:block;border:5px solid #8a6a3e;border-radius:3px;box-shadow:inset 0 0 0 2px #d8c39a,0 2px 5px rgba(0,0,0,.25)}
@@ -405,6 +433,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
       <button role="tab" data-mode="chord" aria-selected="false">Chords</button>
       <button role="tab" data-mode="iv" aria-selected="false">Intervals</button>
       <button role="tab" data-mode="scale" aria-selected="false">Scales</button>
+      <button role="tab" data-mode="circle" aria-selected="false">Circle<span class="long"> of 5ths</span></button>
     </nav>
     <nav class="modes" id="chessModes" role="tablist" aria-label="Chess" hidden>
       <button role="tab" data-ctab="puzzles" aria-selected="true">Puzzles</button>
@@ -451,7 +480,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
       <button class="pick" type="button" data-inst="paintings" id="pickPaintings" hidden>
         <div class="gallery" aria-hidden="true"><i style="width:56px;height:72px;background:linear-gradient(160deg,#c9a46a,#5b4a7a 60%,#2c2a38)"></i><i style="width:84px;height:60px;background:linear-gradient(200deg,#9ec1d9,#e8d9a6 55%,#5f7d4f)"></i><i style="width:48px;height:64px;background:radial-gradient(circle at 40% 35%,#f1d7b5,#a2553d 55%,#3a2420)"></i></div>
         <b>Paintings</b>
-        <span class="sub">Who painted it, and what is it called? Famous works and deep cuts</span>
+        <span class="sub">Who painted it, what is it called, when? Famous works and deep cuts</span>
         <span class="meta" id="metaPaintings"></span>
         <span class="today" id="todayPaintings"></span>
       </button>
@@ -665,7 +694,7 @@ function octaveLinks(ps){
 /* ---------- state ---------- */
 const S={
   inst:'guitar', mode:'name', acc:'sharp', naturalsOnly:false, allPc:0, ivMode:'interval',
-  intervals:['m3','M3','P4','P5','P8'], scales:['minp','maj'], scaleRootPcs:ALL12.slice(), scaleArea:'box', roundLen:10, sound:true,
+  intervals:['m3','M3','P4','P5','P8'], scales:['minp','maj'], scaleRootPcs:ALL12.slice(), scaleArea:'box', circle:{i:0,minor:false,scale:'',chord:null}, roundLen:10, sound:true,
   chordGroupsBy:{guitar:['triad'],ukulele:['triad','seventh']}, ivAll:false, chordShapes:2, rootBass:{guitar:true,ukulele:false},
   by:{guitar:{fretStart:0,fretEnd:12,strings:[true,true,true,true,true,true]},
       ukulele:{fretStart:0,fretEnd:12,strings:[true,true,true,true]}}
@@ -682,7 +711,7 @@ function load(){
     const st=d.settings||{};
     // older versions kept a single (guitar) range and string list at the top level
     if(st.fretStart!=null&&!st.by){ S.by.guitar.fretStart=st.fretStart; S.by.guitar.fretEnd=st.fretEnd; if(Array.isArray(st.strings)&&st.strings.length===6) S.by.guitar.strings=st.strings; }
-    ['mode','lastView','acc','naturalsOnly','allPc','ivMode','ivAll','intervals','scales','scaleRootPcs','scaleArea','roundLen','sound','chordShapes','inst'].forEach(k=>{ if(st[k]!=null) S[k]=st[k]; });
+    ['mode','lastView','acc','naturalsOnly','allPc','ivMode','ivAll','intervals','scales','scaleRootPcs','scaleArea','circle','roundLen','sound','chordShapes','inst'].forEach(k=>{ if(st[k]!=null) S[k]=st[k]; });
     // scales used to live under Intervals
     if(S.mode==='iv'&&S.ivMode==='scale'){ S.mode='scale'; S.ivMode='interval'; }
     S.scales=S.scales.filter(id=>SCALES.some(x=>x.id===id)); if(!S.scales.length) S.scales=['maj'];
@@ -994,6 +1023,104 @@ function makeScaleQ(){
   return {type:'scale',root:{s:0,f:c.fretStart},rootPc:rp,rootName:scaleRootName(rp,sc),scale:sc,win:[c.fretStart,c.fretEnd],neck:true,expected,selected:new Set([key(0,c.fretStart)])};
 }
 
+/* ---------- circle of fifths: a place to learn keys, their chords and scales before drilling ---------- */
+// Keys go round a fifth at a time; the circle turns so the chosen key is always on top, and its seven
+// chords then always sit in the same place: IV and V either side of I, their relative minors (ii, vi, iii)
+// inside, and vii° next to iii. Below, the key's scale (or another on the same tonic) on the whole neck.
+const FIFTHS=[0,7,2,9,4,11,6,1,8,3,10,5];
+const cofMaj=i=>i===6?(S.acc==='flat'?'G♭':'F♯'):['C','G','D','A','E','B','','D♭','A♭','E♭','B♭','F'][i];
+const cofMin=i=>i===6?(S.acc==='flat'?'E♭':'D♯'):['A','E','B','F♯','C♯','G♯','','B♭','F','C','G','D'][i];
+function cofSig(i){
+  const sharp=i<6||(i===6&&S.acc!=='flat'), n=sharp?i:12-i;
+  return {n,sharp,names:(sharp?['F♯','C♯','G♯','D♯','A♯','E♯']:['B♭','E♭','A♭','D♭','G♭','C♭']).slice(0,n)};
+}
+const md=(n,m)=>((n%m)+m)%m;
+// where each chord of the key sits: [ring, offset from the key's place on the circle]
+const COF_SPOTS={maj:[['o',0],['n',-1],['n',1],['o',-1],['o',1],['n',0],['n',2]], min:[['n',0],['n',2],['o',0],['n',-1],['n',1],['o',-1],['o',1]]};
+function cofState(){
+  const c=S.circle, i=md(c.i,12), minor=!!c.minor;
+  const tonicName=minor?cofMin(i):cofMaj(i), tonicPc=md(FIFTHS[i]+(minor?9:0),12);
+  const fam=SCALES.find(x=>x.id===(minor?'min':'maj'));
+  const names=fam.steps.map((x,j)=>spellTone(tonicName,tonicPc,x,fam.deg[j]));
+  const qual=minor?['m','°','','m','m','','']:['','m','m','','','m','°'];
+  const num=minor?['i','ii°','III','iv','v','VI','VII']:['I','ii','iii','IV','V','vi','vii°'];
+  const chords=num.map((n,d)=>({d,num:n,qual:qual[d],name:names[d]+qual[d],ring:COF_SPOTS[minor?'min':'maj'][d][0],k:md(i+COF_SPOTS[minor?'min':'maj'][d][1],12),
+    tones:[d,d+2,d+4].map(j=>({pc:md(tonicPc+fam.steps[j%7],12),name:names[j%7]}))}));
+  const sc=SCALES.find(x=>x.id===c.scale)||fam;
+  const scaleNames=sc.steps.map((x,j)=>({pc:md(tonicPc+x,12),name:spellTone(tonicName,tonicPc,x,sc.deg[j]),deg:sc.deg[j]}));
+  return {i,minor,tonicName,tonicPc,fam,chords,sc,scaleNames,sig:cofSig(i),chord:c.chord!=null?chords[c.chord]:null};
+}
+function cofArc(k,r1,r2){
+  const C0=200, a0=(k*30-15)*Math.PI/180, a1=(k*30+15)*Math.PI/180;
+  const P=(r,a)=>`${f1(C0+r*Math.sin(a))} ${f1(C0-r*Math.cos(a))}`;
+  return `M${P(r2,a0)} A${r2} ${r2} 0 0 1 ${P(r2,a1)} L${P(r1,a1)} A${r1} ${r1} 0 0 0 ${P(r1,a0)} Z`;
+}
+const cofAt=(k,r)=>({x:f1(200+r*Math.sin(k*Math.PI/6)),y:f1(200-r*Math.cos(k*Math.PI/6))});
+function cofSvg(){
+  let h='<svg class="cof" viewBox="0 0 400 400" role="img" aria-label="Circle of fifths"><g class="cof-rot" id="cofRot">';
+  for(let k=0;k<12;k++){
+    const o=cofAt(k,168), n=cofAt(k,123);
+    h+=`<path class="seg" id="cofO${k}" d="${cofArc(k,140,192)}" data-seg="o" data-k="${k}"/>`;
+    h+=`<path class="seg in" id="cofN${k}" d="${cofArc(k,96,138)}" data-seg="n" data-k="${k}"/>`;
+    h+=`<text class="lab" id="cofOL${k}" x="${o.x}" y="${o.y}">${cofMaj(k)}</text>`;
+    h+=`<text class="lab sm" id="cofNL${k}" x="${n.x}" y="${n.y}">${cofMin(k)}m</text>`;
+  }
+  h+='</g><g class="cof-num" id="cofNum"></g><circle class="cof-mid" cx="200" cy="200" r="92"/><text class="cof-key" id="cofKey" x="200" y="190"></text><text class="cof-sig" id="cofSig" x="200" y="218"></text></svg>';
+  return h;
+}
+let cofBuilt='', cofDeg=null;
+function renderCircle(){
+  const el=$('answer'), st=cofState();
+  $('eyebrow').textContent=`Circle of fifths · ${st.sig.n?`${st.sig.n}${st.sig.sharp?'♯':'♭'}: ${st.sig.names.join(' ')}`:'no sharps or flats'}`;
+  $('prompt').textContent=`${st.tonicName} ${st.minor?'minor':'major'}`;
+  $('dots').innerHTML=''; const sc=$('score'); sc.textContent=''; sc.classList.remove('timer'); sc.closest('.prompt-row').classList.remove('timed');
+  if(!$('cofWrap')||cofBuilt!==S.acc+INST.id){
+    cofBuilt=S.acc+INST.id; cofDeg=null;
+    el.innerHTML=`<div class="cofwrap" id="cofWrap">${cofSvg()}
+      <div class="actions cofnav"><button type="button" class="btn sm" data-cof="down" aria-label="Down a fifth">◀ 4th</button><div class="chips" role="group" aria-label="Key">${['Major','Minor'].map((m,j)=>`<button type="button" class="chip" data-cof="mode" data-v="${j}">${m}</button>`).join('')}</div><button type="button" class="btn sm" data-cof="up" aria-label="Up a fifth">5th ▶</button></div>
+      <div class="cchords" id="cofChords"></div>
+      <div class="cofinfo" id="cofInfo"></div>
+      <div class="row cofscale"><label for="cofScale" class="hint">On the neck</label><select id="cofScale"></select><span class="spacer"></span><button type="button" class="btn sm" data-cof="playscale">Play scale</button></div>
+      <div class="cneck" id="cofNeckWrap"><svg id="cofNeck" role="img" aria-label="Scale on the neck"></svg></div>
+      <div class="hint">Tap a key to make it the key; tap one of its chords (the coloured segments, or the buttons) to see it on the neck. Neighbours on the circle are a fifth apart and differ by one sharp or flat. Swipe the neck sideways to see it all.</div></div>`;
+  }
+  // turn the circle the short way so the key is on top; labels turn back so they stay upright
+  const want=-30*md(S.circle.i,12); cofDeg=cofDeg==null?want:cofDeg+md(want-cofDeg+180,360)-180;
+  $('cofRot').style.transform=`rotate(${cofDeg}deg)`;
+  const inKey=new Map(st.chords.map(c=>[c.ring+c.k,c]));
+  for(let k=0;k<12;k++){
+    ['o','n'].forEach(r=>{
+      const c=inKey.get(r+k), seg=$('cof'+r.toUpperCase()+k), lab=$('cof'+r.toUpperCase()+'L'+k);
+      seg.setAttribute('class','seg'+(r==='n'?' in':'')+(c?' inkey':'')+(c&&c.d===0?' tonic':'')+(st.chord&&c&&c.d===st.chord.d?' sel':''));
+      lab.style.transform=`rotate(${-cofDeg}deg)`;
+      lab.textContent=c?c.name:(r==='o'?cofMaj(k):cofMin(k)+'m');
+      lab.setAttribute('class','lab'+(r==='n'?' sm':'')+(c?' inkey':''));
+    });
+  }
+  // roman numerals stay put: the key's chords are always in the same place once it's on top
+  $('cofNum').innerHTML=st.chords.map(c=>{ const off=COF_SPOTS[st.minor?'min':'maj'][c.d][1], p=cofAt(off,c.ring==='o'?150:105); return `<text x="${p.x}" y="${p.y}">${c.num}</text>`; }).join('');
+  $('cofKey').textContent=`${st.tonicName}${st.minor?'m':''}`;
+  $('cofSig').textContent=st.sig.n?`${st.sig.n}${st.sig.sharp?'♯':'♭'}`:'no ♯ or ♭';
+  document.querySelectorAll('[data-cof="mode"]').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.v===+st.minor)));
+  $('cofChords').innerHTML=st.chords.map(c=>`<button type="button" class="cchord${st.chord&&st.chord.d===c.d?' on':''}" data-cofchord="${c.d}"><small>${c.num}</small><b>${c.name}</b></button>`).join('');
+  const ch=st.chord;
+  $('cofInfo').innerHTML=ch?`<b>${ch.name}</b>: ${ch.tones.map(t=>t.name).join(' ')}. The ${ch.num} chord of ${st.tonicName} ${st.minor?'minor':'major'}.${ch.qual!=='°'?` <button type="button" class="linkbtn" data-cof="makekey">Make ${ch.name} the key</button>`:''}`
+    :`${st.tonicName} ${st.minor?'minor':'major'}: ${st.fam.steps.map((x,j)=>spellTone(st.tonicName,st.tonicPc,x,st.fam.deg[j])).join(' ')}. ${st.minor?`Relative major: ${cofMaj(st.i)}.`:`Relative minor: ${cofMin(st.i)}m.`}`;
+  const sel=$('cofScale');
+  sel.innerHTML=`<option value="">${st.tonicName} ${st.minor?'natural minor':'major'} (the key)</option>`+SCALES.filter(x=>x.id!==st.fam.id).map(x=>`<option value="${x.id}"${S.circle.scale===x.id?' selected':''}>${st.tonicName} ${x.name}</option>`).join('');
+  // the neck: chord tones filled, the rest of the scale outlined, the tonic marked
+  const tones=ch?new Map(ch.tones.map(t=>[t.pc,t.name])):null, names=new Map(st.scaleNames.map(t=>[t.pc,t.name]));
+  const M=[]; for(let s=0;s<NS;s++) for(let f=0;f<=15;f++){
+    const pc=pcOf(s,f);
+    if(tones&&tones.has(pc)) M.push({s,f,kind:pc===ch.tones[0].pc?'root':'good',label:tones.get(pc)});
+    else if(names.has(pc)) M.push({s,f,kind:tones?'ghost':pc===st.tonicPc?'root':'reveal',label:names.get(pc)});
+  }
+  const nW=NS<=4?860:1000;
+  drawBoard($('cofNeck'),{width:nW,vertical:false,start:0,end:15,markers:M,gid:'wood3'});
+}
+function cofPlayChord(c){ const base=48+c.tones[0].pc; let last=base; playSeq(c.tones.map((t,j)=>{ if(!j) return base; let m=last; while(md(m,12)!==t.pc||m<=last) m++; last=m; return m; }),0.07); }
+function cofPlayScale(){ const st=cofState(), base=48+st.tonicPc; playSeq(st.sc.steps.map(x=>base+x).concat([base+12]),0.24); }
+
 /* ---------- chords ---------- */
 const rootBassOn=()=>!!S.rootBass[S.inst];
 const chordName=q=>q.ch.id==='maj'?q.rootName+' major':q.rootName+q.ch.sym;
@@ -1138,6 +1265,7 @@ const fretsText=fr=>fr.some(f=>f>9)?fr.map(f=>f<0?'x':f).join('-'):fr.map(f=>f<0
 /* ---------- round flow ---------- */
 function newRound(){
   clearTimeout(advTimer); stopClock(); round={results:[]};
+  if(S.mode==='circle'){ Q=null; phase='circle'; setFeedback('',''); return render(); }
   if(S.mode==='all') return readyRun();
   nextQuestion();
 }
@@ -1156,7 +1284,7 @@ function finish(ok,label){
   const ms=performance.now()-qStart, st=ST();
   phase='answered';
   round.results.push({ok,ms,label});
-  st.total++; if(ok) st.correct++;
+  st.total++; if(ok) st.correct++; bump(S.inst);
   if(Q.type==='name') recordPos(Q.s,Q.f,ok,ms);
   if(Q.type==='findS') Q.frets.forEach(f=>recordPos(Q.s,f,ok,ms));
   save();
@@ -1185,7 +1313,7 @@ function finishRun(ok,gaveUp){
   stopClock();
   const ms=Math.round(performance.now()-qStart), st=ST();
   phase='answered';
-  st.total++; if(ok) st.correct++; save();
+  st.total++; if(ok) st.correct++; save(); bump(S.inst);
   const cfg=cfgKey(), prior=runsFor(Q.pc,cfg).filter(r=>r.ok);
   const prevBest=prior.length?Math.min(...prior.map(r=>r.ms)):null;
   const run={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),inst:S.inst,pc:Q.pc,ms,n:Q.targets.length,found:Q.found.size,wrong:Q.wrong.length,ok,gaveUp:!!gaveUp,t:Date.now(),cfg};
@@ -1568,7 +1696,7 @@ function renderAnswer(){
   if(done&&Q.type==='ivA'&&octaveLinks(Q.targets).length) h+=`<div class="hint">${INST.octaveHint}</div>`;
   el.innerHTML=h;
 }
-function render(){ if(view!=='app') return; renderPrompt(); renderBoard(); renderAnswer(); renderHeat(); syncTabs(); }
+function render(){ if(view!=='app') return; $('boardWrap').hidden=S.mode==='circle'; if(S.mode==='circle'){ renderCircle(); renderHeat(); syncTabs(); return; } renderPrompt(); renderBoard(); renderAnswer(); renderHeat(); syncTabs(); }
 function syncTabs(){ document.querySelectorAll('.modes button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mode===S.mode))); }
 
 /* ---------- start screen ---------- */
@@ -1620,12 +1748,18 @@ function renderSettings(){
     SCALE_GROUPS.forEach(g=>{ h+=`<div class="field"><span class="fl">${g[1]}</span><div class="chips">${SCALES.filter(x=>x.grp===g[0]).map(x=>chip('scale',x.id,S.scales.indexOf(x.id)>=0,x.name[0].toUpperCase()+x.name.slice(1))).join('')}</div>${g[0]==='mode'?'<div class="hint">Ionian is the major scale and Aeolian the natural minor.</div>':''}</div>`; });
     const rs=S.scaleRootPcs, all=rs.length===12, nat=rs.length===7&&NATURAL.every(x=>rs.indexOf(x)>=0);
     h+=`<div class="field"><span class="fl">Keys</span><div class="chips">${chip('sroots','all',all,'All 12')}${chip('sroots','nat',nat,'Naturals')}</div><div class="chips" style="margin-top:6px">${ALL12.map(pc=>chip('sroot',pc,rs.indexOf(pc)>=0,note(pc),true)).join('')}</div></div>`;
-    h+=`<div class="field"><span class="fl">Where</span><div class="chips">${chip('sarea','box',S.scaleArea==='box','One position')}${chip('sarea','neck',S.scaleArea==='neck','Whole fret range')}</div><div class="hint">${S.scaleArea==='box'?`A root on the ${INST.scaleRoots.map(s=>strName(s)).join(' or ')} and a five-fret box: mark every scale note inside it.`:'Mark every note of the scale on every string, across the fret range set below. Hard: start with a short range.'}</div></div>`;
+    h+=`<div class="field"><span class="fl">Where</span><div class="chips">${chip('sarea','box',S.scaleArea==='box','One position')}${chip('sarea','neck',S.scaleArea==='neck','Whole neck')}</div><div class="hint">${S.scaleArea==='box'?`A root on the ${INST.scaleRoots.map(s=>strName(s)).join(' or ')} and a five-fret box: mark every scale note inside it.`:'Mark every note of the scale on every string, across all the frets shown, then press Check.'}</div>`+
+      (S.scaleArea==='neck'?`<div class="chips" style="margin-top:6px">${[5,7,12,15].map(n=>chip('sfrets',n,c.fretStart===0&&c.fretEnd===n,'Open–'+n,true)).join('')}</div><div class="hint">How many frets to show. Any other range: Frets, below.</div>`:'')+`</div>`;
   }
   if(S.mode==='chord'){
     h+=`<div class="field"><span class="fl">Chord types</span><div class="chips">${CHORD_GROUPS.filter(g=>INST.chordGroups.indexOf(g[0])>=0).map(g=>chip('cgrp',g[0],S.chordGroupsBy[S.inst].indexOf(g[0])>=0,g[1])).join('')}</div>${INST.id==='ukulele'?'<div class="hint">With four strings, ukulele chord books stop at 7ths and 6ths: C7, Cmaj7, Cm7, Cm7♭5, Cdim7, C6 and Cm6 are all everyday chords. C6 is simply all four strings open.</div>':''}</div>`;
     h+=`<div class="field"><span class="fl">Shapes to find per chord</span><div class="chips">${[1,2,3].map(n=>chip('cshapes',n,S.chordShapes===n,String(n),true)).join('')}</div></div>`;
     h+=`<div class="field"><span class="fl">Lowest note</span><div class="chips">${chip('cbass','1',rootBassOn(),'Must be the root')}${chip('cbass','0',!rootBassOn(),'Any (inversions)')}</div>${INST.id==='ukulele'?'<div class="hint">Most ukulele chords are not in root position, because the G string is tuned high.</div>':''}</div>`;
+  }
+  if(S.mode==='circle'){
+    h+=`<div class="field"><span class="fl">Accidentals</span><div class="chips">${chip('acc','sharp',S.acc==='sharp','Sharps (F♯)')}${chip('acc','flat',S.acc==='flat','Flats (G♭)')}</div><div class="hint">How to name the key with six: F♯ or G♭.</div></div>`;
+    h+=`<div class="field"><span class="fl">Sound</span><div class="chips">${chip('sound','1',S.sound,'Plucked string')}${chip('sound','0',!S.sound,'Off')}</div></div>`;
+    $('settings').innerHTML=h; return;
   }
   let fromOpts='', toOpts='';
   for(let f=0;f<=12;f++) fromOpts+=`<option value="${f}"${f===c.fretStart?' selected':''}>${f===0?'Open':f}</option>`;
@@ -1658,6 +1792,7 @@ $('settings').addEventListener('click',e=>{
   else if(a==='sroot'){ toggleIn(S.scaleRootPcs,+v); }
   else if(a==='sroots'){ S.scaleRootPcs=(v==='nat'?NATURAL:ALL12).slice(); }
   else if(a==='sarea'){ S.scaleArea=v; }
+  else if(a==='sfrets'){ c.fretStart=0; c.fretEnd=+v; }
   else if(a==='cgrp'){ toggleIn(S.chordGroupsBy[S.inst],v); }
   else if(a==='cshapes'){ S.chordShapes=+v; }
   else if(a==='cbass'){ S.rootBass[S.inst]=v==='1'; }
@@ -1674,6 +1809,27 @@ $('settings').addEventListener('change',e=>{
 });
 
 /* ---------- wiring ---------- */
+// circle of fifths: tap a key, a chord, or the controls under the circle
+$('answer').addEventListener('click',e=>{
+  if(S.mode!=='circle') return;
+  const c=S.circle, st=cofState();
+  const sg=e.target.closest('[data-seg]');
+  if(sg){
+    const k=+sg.dataset.k, r=sg.dataset.seg, hit=st.chords.find(x=>x.ring===r&&x.k===k);
+    if(hit){ c.chord=c.chord===hit.d?null:hit.d; if(c.chord!=null){ ensureAudio(); cofPlayChord(hit); } }
+    else { c.i=k; c.minor=r==='n'; c.chord=null; }
+    save(); renderCircle(); return;
+  }
+  const cb=e.target.closest('[data-cofchord]');
+  if(cb){ const d=+cb.dataset.cofchord; c.chord=c.chord===d?null:d; if(c.chord!=null){ ensureAudio(); cofPlayChord(st.chords[d]); } save(); renderCircle(); return; }
+  const b=e.target.closest('[data-cof]'); if(!b) return; const a=b.dataset.cof;
+  if(a==='up'||a==='down'){ c.i=md(c.i+(a==='up'?1:-1),12); c.chord=null; }
+  else if(a==='mode'){ c.minor=b.dataset.v==='1'; c.chord=null; }
+  else if(a==='makekey'&&st.chord){ const ch=st.chord, m=ch.qual==='m'; c.i=FIFTHS.indexOf(m?md(ch.tones[0].pc+3,12):ch.tones[0].pc); c.minor=m; c.chord=null; }
+  else if(a==='playscale'){ ensureAudio(); cofPlayScale(); return; }
+  save(); renderCircle();
+});
+$('answer').addEventListener('change',e=>{ if(e.target.id!=='cofScale') return; S.circle.scale=e.target.value; save(); renderCircle(); });
 $('modes').addEventListener('click',e=>{
   const b=e.target.closest('[data-mode]'); if(!b||b.dataset.mode===S.mode) return;
   S.mode=b.dataset.mode; save(); renderSettings(); newRound();
@@ -1945,7 +2101,7 @@ function puzzleMove(from,to,promo){
   }
 }
 function puzzleSolved(){
-  PZ.phase='done'; B.canMove=false; select(null);
+  PZ.phase='done'; B.canMove=false; select(null); bump('chess');
   if(!PZ.failed&&!PZ.hinted) scorePuzzle(true);
   cFeedback(PZ.failed||PZ.hinted?'bad':'good', PZ.failed||PZ.hinted?'Solved, after a miss.':`Solved! Rating ${PZ.delta>=0?'+':''}${PZ.delta}.`);
   renderChess();
@@ -1962,7 +2118,7 @@ function puzzleSolution(){
   if(!PZ||PZ.phase==='done') return;
   if(!PZ.failed){ PZ.failed=true; scorePuzzle(false); }
   PZ.phase='showing'; B.canMove=false; select(null); clearTimeout(cTimer);
-  const stepOn=()=>{ if(PZ.step>=PZ.moves.length){ PZ.phase='done'; cFeedback('bad','That was the solution. Play through it again with the arrows if you like.'); renderChess(); return; }
+  const stepOn=()=>{ if(PZ.step>=PZ.moves.length){ PZ.phase='done'; bump('chess'); cFeedback('bad','That was the solution. Play through it again with the arrows if you like.'); renderChess(); return; }
     playUci(PZ.moves[PZ.step]); PZ.step++; renderChess(); cTimer=setTimeout(stepOn,700); };
   stepOn();
 }
@@ -2026,7 +2182,7 @@ function drillMove(from,to,promo){
 function drillDone(){
   const f=OPENINGS[OP.fam], l=f.lines[OP.line], id=lineId(f,l), st=Object.assign({},lineStat(id));
   st.n++; if(!OP.mistakes){ st.clean++; st.streak++; } else st.streak=0; st.last=Date.now();
-  CS.lines[id]=st; saveChess(); renderChessSide();
+  CS.lines[id]=st; saveChess(); renderChessSide(); bump('chess');
   OP.done=true; B.canMove=false;
   cFeedback(OP.mistakes?'bad':'good', OP.mistakes?`Line complete with ${OP.mistakes} ${OP.mistakes===1?'mistake':'mistakes'}.`:(st.streak>=3?`Clean run. ${st.streak} in a row: this line is mastered.`:`Clean run. ${st.streak} of 3 in a row to master it.`));
   renderChess();
@@ -2212,7 +2368,7 @@ function wLoad(){
   try{ WD=JSON.parse(LOCAL.getItem(W_DATA_KEY)||'{}')||{}; }catch(e){ WD={}; }
   try{ const p=JSON.parse(LOCAL.getItem(W_PROG_KEY)||'null'); if(p&&p.p) WP=p; }catch(e){}
   LANGS.forEach(l=>{ WP.p[l.id]=WP.p[l.id]||{}; });
-  WP.days=WP.days||{};
+  WP.days=WP.days||{}; wBackfill();
   // a session in progress, or finished today, comes back until midnight in Italy
   try{
     const x=JSON.parse(LOCAL.getItem(W_SESSION_KEY)||'null'), have=x&&x.day===romeDay()&&x.wsn&&byId(x.wsn.lang);
@@ -2221,6 +2377,13 @@ function wLoad(){
       WS.lang=WSN.lang;
     }
   }catch(e){}
+}
+// words seen before the day log existed: each goes under the last day you saw it
+function wBackfill(){
+  LANGS.forEach(l=>Object.entries(WP.p[l.id]||{}).forEach(([id,v])=>{ if(!v.last) return;
+    const d=romeDay(v.last), dl=WP.days[d]||(WP.days[d]={}), ll=dl[l.id]||(dl[l.id]={});
+    if(!ll[id]) ll[id]={ok:wLast(v)?1:0,m:'review',t:v.last}; }));
+  pruneDays(WP.days);
 }
 function wStoreSession(){
   try{
@@ -2245,7 +2408,7 @@ function mergeWords(x){
   Object.entries(x.days||{}).forEach(([d,byLang])=>{ const md=WP.days[d]||(WP.days[d]={});
     Object.entries(byLang||{}).forEach(([lang,ws])=>{ const ml=md[lang]||(md[lang]={});
       Object.entries(ws||{}).forEach(([id,e])=>{ if(!ml[id]||(e.t||0)>(ml[id].t||0)) ml[id]=e; }); }); });
-  pruneDays(WP.days);
+  wBackfill();
   WP.upd=Math.max(WP.upd,x.upd||0);
 }
 async function connectWords(db,uid){
@@ -2375,14 +2538,6 @@ function answerQuiz(optId){
   if(WSN.results[q.id]==null) WSN.results[q.id]=ok;
   renderWords();
 }
-// "I guessed": a right answer you didn't know counts as a miss, so the word comes back sooner
-function guessQuiz(){
-  const q=WSN.q; if(!q||q.pick!==q.id||q.guess) return;
-  q.guess=true; WSN.mistakes++;
-  if(WSN.results[q.id]) WSN.results[q.id]=false;
-  if(WSN.mode!=='learn'&&!WSN.requeued.has(q.id)){ WSN.requeued.add(q.id); WSN.queue.push(q.id); }
-  renderWords();
-}
 function nextQuiz(){
   WSN.qi++;
   if(WSN.qi>=WSN.queue.length) return finishSession();
@@ -2402,7 +2557,7 @@ function finishSession(){
   // the day's log, practice included: it doesn't move the review schedule, but you did see the words
   const dl=WP.days[romeDay(now)]||(WP.days[romeDay(now)]={}), ll=dl[WSN.lang]||(dl[WSN.lang]={});
   WSN.ids.forEach(id=>{ ll[id]={ok:WSN.results[id]?1:0,m:WSN.mode,t:now}; });
-  wSaveProgress();
+  wSaveProgress(); bump('words',WSN.ids.length);
   WSN.phase='done'; renderWords();
 }
 function tapMatch(side,id){
@@ -2525,7 +2680,7 @@ function renderWords(){
     h+=`<article class="wcard q">${q.dir==='w2d'?`<div class="ww">${esc(r.w)}</div>`:`<div class="wd big">${rich(r.d)}</div>`}${q.pick&&r.e?`<div class="we">${rich(r.e)}</div>`:''}</article>`;
     h+=`<ol class="opts">${q.opts.map((id,k)=>{ const o=map.get(id); let c='opt'; if(q.pick){ if(id===q.id) c+=' ok'; else if(id===q.pick) c+=' bad'; else c+=' dim'; }
       return `<li><button type="button" class="${c}" data-opt="${id}" ${q.pick?'disabled':''}><kbd>${k+1}</kbd><span>${q.dir==='w2d'?esc(plain(o.d)):esc(o.w)}</span></button></li>`; }).join('')}</ol>`;
-    if(q.pick) h+=`<div class="actions"><span class="feedback ${q.pick===q.id&&!q.guess?'good':'bad'}">${q.guess?(WSN.mode==='learn'?'Counted as a miss: it comes up for review straight away.':'Counted as a miss: it comes back later in this session.'):q.pick===q.id?'Correct.':`Not quite: it’s “${esc(q.dir==='w2d'?plain(r.d):r.w)}”.`}</span>${q.pick===q.id&&!q.guess?'<button type="button" class="btn quiet sm" data-wact="guess">It was a guess</button>':''}<span class="spacer"></span><button type="button" class="btn primary" data-wact="nextq">${WSN.qi+1>=WSN.queue.length?'Finish':'Next'}</button></div>`;
+    if(q.pick) h+=`<div class="actions"><span class="feedback ${q.pick===q.id?'good':'bad'}">${q.pick===q.id?'Correct.':`Not quite: it’s “${esc(q.dir==='w2d'?plain(r.d):r.w)}”.`}</span><span class="spacer"></span><button type="button" class="btn primary" data-wact="nextq">${WSN.qi+1>=WSN.queue.length?'Finish':'Next'}</button></div>`;
     else h+=`<div class="actions"><button type="button" class="btn quiet" data-wact="quit">Stop</button><span class="spacer"></span><span class="hint">Keys 1–5 choose an answer</span></div>`;
   }
   el.innerHTML=h;
@@ -2539,6 +2694,7 @@ function renderWordsSide(){
   h+=`<div class="field"><span class="fl">Which new words first</span><div class="chips">${[['new','Newest'],['old','Oldest'],['rnd','Random']].map(o=>`<button type="button" class="chip" data-wset="order" data-v="${o[0]}" aria-pressed="${WS.order===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
   h+=`<div class="field"><span class="fl">Review questions</span><div class="chips">${[['mix','Mixed'],['w2d','Word → meaning'],['d2w','Meaning → word']].map(o=>`<button type="button" class="chip" data-wset="dir" data-v="${o[0]}" aria-pressed="${WS.dir===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
   h+=`<div class="field"><span class="fl">Reviews per session</span><div class="chips">${[10,20,40].map(n=>`<button type="button" class="chip mono" data-wset="reviewMax" data-v="${n}" aria-pressed="${WS.reviewMax===n}">${n}</button>`).join('')}</div></div>`;
+  h+=`<div class="field"><span class="fl">Daily goal</span><div class="chips">${[1,5,10,20].map(n=>`<button type="button" class="chip mono" data-wgoal="${n}" aria-pressed="${goalFor('words')===n}">${n}</button>`).join('')}</div><div class="hint">Words to go through each day, in any dictionary, before Words turns green on the start page.</div></div>`;
   $('wsettings').innerHTML=h;
   const st=langStats(WS.lang), L=LANGS.find(l=>l.id===WS.lang);
   $('wstatsSide').innerHTML=`<h2>${L.name}</h2><div class="hint">A learned word comes back the next day. Each right answer waits a little longer (1, 1, 2, 3, 5, 8 days…); a wrong one starts again from tomorrow. A word counts as mastered after four right reviews in a row.</div><div class="totals">${WD[WS.lang]?`${st.total} words with a definition · ${st.learning} learning · ${st.mastered} mastered · ${learnedToday(WS.lang)}${WS.daily?' of '+WS.daily:''} new today`:'Not loaded yet.'}</div><div class="hint" style="margin-top:6px">${wordsSynced?'Progress saved to your account':'Progress saved in this browser'}. ${WSRC?'The words come from your private account, synced from Notion.':'The words themselves stay in your Notion.'}</div>`;
@@ -2578,7 +2734,6 @@ $('wbody').addEventListener('click',e=>{
   else if(a==='match') toMatch();
   else if(a==='restudy'){ WSN.phase='study'; WSN.i=0; renderWords(); }
   else if(a==='nextq') nextQuiz();
-  else if(a==='guess') guessQuiz();
   else if(a==='quit'){ WSN=null; wFeedback('',''); renderWords(); }
   else if(a==='vback') wvBack();
   else if(a==='vprev') wvStep(-1);
@@ -2586,6 +2741,7 @@ $('wbody').addEventListener('click',e=>{
   else if(a==='vpractise') startPractice(WV.ids);
 });
 $('wsettings').addEventListener('click',e=>{
+  const gb=e.target.closest('[data-wgoal]'); if(gb){ setGoal('words',+gb.dataset.wgoal); renderWordsSide(); return; }
   const b=e.target.closest('[data-wset]'); if(!b) return;
   const k=b.dataset.wset, v=b.dataset.v; WS[k]=(k==='batch'||k==='reviewMax'||k==='daily')?+v:v; wSaveSettings(); renderWordsSide(); if(!WSN) renderWords();
 });
@@ -2620,20 +2776,30 @@ function wordsHomeMeta(){
    without counting anything twice. Idle time (no tap or key for 90 s) and
    hidden tabs don't count.
    ===================================================================== */
-const ACT_KEY='fretwise.activity', GOAL_MIN=10, TICK=15000, IDLE=90000;
+const ACT_KEY='fretwise.activity', TICK=15000, IDLE=90000;
 let ACT={d:{},upd:0}, actDoc=null, actDirty=false, lastInput=Date.now();
 const DEV=(()=>{ try{ let d=LOCAL.getItem('fretwise.device'); if(!d){ d=Math.random().toString(36).slice(2,10); LOCAL.setItem('fretwise.device',d); } return d; }catch(e){ return 'dev'; } })();
 const dayKey=t=>{ const d=new Date(t||Date.now()); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 function actLoad(){ try{ const x=JSON.parse(LOCAL.getItem(ACT_KEY)||'null'); if(x&&x.d) ACT=x; }catch(e){} }
 function actStore(){ try{ LOCAL.setItem(ACT_KEY,JSON.stringify(ACT)); }catch(e){} }
-function actPrune(){ const keep=new Set(); for(let i=0;i<60;i++) keep.add(dayKey(Date.now()-i*DAY)); Object.keys(ACT.d).forEach(k=>{ if(!keep.has(k)) delete ACT.d[k]; }); }
+function actPrune(){ const keep=new Set(); for(let i=0;i<60;i++) keep.add(dayKey(Date.now()-i*DAY)); [ACT.d,ACT.x||{}].forEach(o=>Object.keys(o).forEach(k=>{ if(!keep.has(k)) delete o[k]; })); }
 function mergeAct(x){
   if(!x||!x.d) return;
   Object.entries(x.d).forEach(([day,secs])=>{ const mine=ACT.d[day]||(ACT.d[day]={});
     Object.entries(secs||{}).forEach(([k,devs])=>{ const m=mine[k]||(mine[k]={}); Object.entries(devs||{}).forEach(([dv,ms])=>{ m[dv]=Math.max(m[dv]||0,ms||0); }); }); });
+  Object.entries(x.x||{}).forEach(([day,secs])=>{ const X=ACT.x||(ACT.x={}), mine=X[day]||(X[day]={});
+    Object.entries(secs||{}).forEach(([k,devs])=>{ const m=mine[k]||(mine[k]={}); Object.entries(devs||{}).forEach(([dv,n])=>{ m[dv]=Math.max(m[dv]||0,n||0); }); }); });
+  if(x.goals&&(x.goalsT||0)>(ACT.goalsT||0)){ ACT.goals=x.goals; ACT.goalsT=x.goalsT; }
   ACT.upd=Math.max(ACT.upd||0,x.upd||0); actPrune();
 }
-const minutesToday=k=>{ const e=(ACT.d[dayKey()]||{})[k]||{}; return Object.values(e).reduce((a,b)=>a+b,0)/60000; };
+// exercises done per day, section and device (x), and the daily goals for words and paintings
+const doneToday=k=>Object.values(((ACT.x||{})[dayKey()]||{})[k]||{}).reduce((a,b)=>a+b,0);
+const goalFor=k=>(k==='words'||k==='paintings')?((ACT.goals||{})[k]||1):1;
+function bump(k,n){
+  const day=dayKey(), X=ACT.x||(ACT.x={}), e=X[day]||(X[day]={}), m=e[k]||(e[k]={});
+  m[DEV]=(m[DEV]||0)+(n||1); ACT.upd=Date.now(); actStore(); actDirty=true;
+}
+function setGoal(k,n){ ACT.goals=Object.assign({},ACT.goals,{[k]:n}); ACT.goalsT=Date.now(); ACT.upd=Date.now(); actStore(); actDirty=true; pushAct(); }
 const actSection=()=>view==='app'?S.inst:view==='chess'?'chess':view==='words'?'words':view==='paint'?'paintings':null;
 ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,()=>{ lastInput=Date.now(); },true));
 setInterval(()=>{
@@ -2641,7 +2807,7 @@ setInterval(()=>{
   const day=dayKey(), e=ACT.d[day]||(ACT.d[day]={}), m=e[k]||(e[k]={});
   m[DEV]=(m[DEV]||0)+TICK; ACT.upd=Date.now(); actStore(); actDirty=true;
 },TICK);
-async function pushAct(){ if(!actDoc||!actDirty) return; actDirty=false; try{ await actDoc.set({d:ACT.d,upd:ACT.upd,v:1}); }catch(e){ actDirty=true; } }
+async function pushAct(){ if(!actDoc||!actDirty) return; actDirty=false; try{ await actDoc.set({d:ACT.d,x:ACT.x||{},goals:ACT.goals||{},goalsT:ACT.goalsT||0,upd:ACT.upd,v:2}); }catch(e){ actDirty=true; } }
 setInterval(pushAct,60000);
 document.addEventListener('visibilitychange',()=>{ if(document.hidden) pushAct(); });
 async function connectActivity(db,uid){
@@ -2655,9 +2821,10 @@ async function connectActivity(db,uid){
 function renderToday(){
   [['guitar','todayGuitar'],['ukulele','todayUkulele'],['chess','todayChess'],['words','todayWords'],['paintings','todayPaintings']].forEach(([k,id])=>{
     const el=$(id); if(!el) return;
-    const m=minutesToday(k), done=m>=GOAL_MIN, pct=Math.min(100,Math.round(100*m/GOAL_MIN));
+    const n=doneToday(k), g=goalFor(k), done=n>=g, card=el.closest('.pick');
     el.className='today'+(done?' done':'');
-    el.innerHTML=`<span>Today ${m>0&&m<1?'&lt;1':Math.floor(m)} / ${GOAL_MIN} min</span><span class="bar"><i style="width:${pct}%"></i></span>${done?'<span>done</span>':''}`;
+    el.textContent=done?'Done today':g>1?`Today ${n} / ${g}`:'Not done yet today';
+    if(card) card.classList.toggle('done',done);
   });
 }
 
@@ -2668,12 +2835,12 @@ function renderToday(){
    ===================================================================== */
 const PAINT_ON=!!window.FW_WEB;
 const P_KEY='fretwise.paintings', P_SESSION_KEY='fretwise.paintings.session';
-// p: work id -> {n, ok, last, b, k: {artist|title|year: {n, ok, b (box), due, last}}}; days: Rome day -> [{id, kind, ok, t}]
+// p: work id -> {n, ok, last, b (review box), due, r (last answer right), lk (last question asked)}; days: Rome day -> [{id, kind, ok, t}]
 const PS={ask:'mix', fame:'all', p:{}, hist:[], days:{}, upd:0};
 let PDATA=null, pLoading=null, PSN=null, paintDoc=null, pWriting=false, pAgain=false, pRestore=null;
 function pLoad(){
   try{ const x=JSON.parse(LOCAL.getItem(P_KEY)||'null'); if(x) Object.assign(PS,x); }catch(e){}
-  PS.days=PS.days||{};
+  PS.days=PS.days||{}; Object.values(PS.p).forEach(pNorm); pBackfill();
   // a round in progress, or finished today, comes back until midnight in Italy
   try{ const s=JSON.parse(LOCAL.getItem(P_SESSION_KEY)||'null'); if(s&&s.day===romeDay()&&s.psn) pRestore=s.psn; }catch(e){}
 }
@@ -2697,6 +2864,12 @@ function mergePaint(x){
   PS.hist.sort((a,b)=>a.t-b.t); PS.hist=PS.hist.slice(-200); PS.upd=Math.max(PS.upd,x.upd||0);
   Object.entries(x.days||{}).forEach(([d,list])=>{ const mine=PS.days[d]||(PS.days[d]=[]), seen=new Set(mine.map(e=>e.t+e.id));
     list.forEach(e=>{ if(!seen.has(e.t+e.id)) mine.push(e); }); mine.sort((a,b)=>a.t-b.t); });
+  Object.values(PS.p).forEach(pNorm); pBackfill();
+}
+// works seen before the day log existed: each goes under the last day you saw it
+function pBackfill(){
+  Object.entries(PS.p).forEach(([id,v])=>{ if(!v.last) return; const d=romeDay(v.last), l=PS.days[d]||(PS.days[d]=[]);
+    if(!l.some(e=>e.id===id)){ l.push({id,kind:v.lk||null,ok:v.r?1:0,t:v.last}); l.sort((a,b)=>a.t-b.t); } });
   pruneDays(PS.days);
 }
 async function connectPaint(db,uid){
@@ -2717,27 +2890,34 @@ const FAME=[['all','All'],['famous','Famous'],['known','Known'],['deep cut','Dee
 const pPool=()=>(PDATA||[]).filter(x=>PS.fame==='all'||x.fame===PS.fame);
 
 /* ---------- what you know about each work ---------- */
-// A multiple-choice answer can be a lucky guess, so a work only counts as known once the painter,
-// the title and the date have each been right twice in a row. Each question has its own review box.
+// One review box per work. In Mixed the question rotates (painter, title, date); where it hangs is asked
+// only on request. Any right answer may be a lucky guess, so only an answer given when the work is due
+// moves it up a box, and a work counts as known after three right answers on three review days.
 const P_KINDS=['artist','title','year'];
-const P_KIND_NAME={artist:'Painter',title:'Title',year:'Date'};
+const P_KIND_NAME={artist:'Painter',title:'Title',year:'Date',museum:'Where it hangs'};
 const P_DAYS=[0,1,3,7,16,35];
-const pk=(v,k)=>v&&v.k&&v.k[k];
-const pMissed=v=>!!v&&(P_KINDS.some(k=>{ const s=pk(v,k); return s&&s.n&&!s.b; })||(!v.k&&!v.b));
-const pKnown=v=>!!v&&P_KINDS.every(k=>{ const s=pk(v,k); return s&&s.b>=2; });
-const pRightLast=v=>!!v&&!pMissed(v);
-const pDue=v=>!!v&&(pMissed(v)||P_KINDS.some(k=>{ const s=pk(v,k); return s&&s.due<=Date.now(); })||(!v.k&&v.b>=0));
-// the question a seen work needs most: one you missed, then one never asked, then the one due longest ago
-function pWeakKind(v){
-  const asked=P_KINDS.filter(k=>pk(v,k)&&pk(v,k).n);
-  const missed=asked.filter(k=>!pk(v,k).b); if(missed.length) return rnd(missed);
-  const fresh=P_KINDS.filter(k=>asked.indexOf(k)<0); if(fresh.length) return fresh[0];
-  return asked.slice().sort((a,b)=>pk(v,a).due-pk(v,b).due)[0];
+// progress saved by the earlier version, with a box per question, becomes one box per work
+function pNorm(v){
+  if(!v) return v;
+  if(v.k){
+    const ks=Object.entries(v.k).filter(([,x])=>x&&x.n).sort((a,b)=>(b[1].last||0)-(a[1].last||0));
+    if(ks.length){ v.lk=ks[0][0]; v.r=ks[0][1].b>0?1:0; v.due=Math.min(...ks.map(([,x])=>x.due||0)); }
+    delete v.k;
+  }
+  if(v.r==null) v.r=v.b>0?1:0;
+  if(v.due==null) v.due=0;
+  return v;
 }
+const pMissed=v=>!!v&&!v.r;
+const pRightLast=v=>!!v&&!!v.r;
+const pKnown=v=>!!v&&v.b>=3;
+const pDue=v=>!!v&&(v.due||0)<=Date.now();
 function pKindFor(x){
+  if(PS.ask==='museum') return x.museum?'museum':'artist';
   if(PS.ask!=='mix') return PS.ask;
   const v=PS.p[x.id];
-  return v?pWeakKind(v):(Math.random()<.5?'artist':'title');
+  if(!v||!v.lk) return Math.random()<.5?'artist':'title';
+  return P_KINDS[(P_KINDS.indexOf(v.lk)+1)%P_KINDS.length];
 }
 // due reviews first (missed ones before the rest), then works you haven't seen, then the rest
 function pickRound(pool,n){
@@ -2760,6 +2940,11 @@ function paintOptions(x,kind){
     const near=shuffle(others).sort((p,q)=>p.d-q.d).slice(0,8);
     return shuffle([x.artist].concat(shuffle(near).slice(0,3).map(o=>o.a)));
   }
+  if(kind==='museum'){
+    // other collections holding works of about the same time
+    const ms=[]; shuffle(all.filter(p=>p.museum&&p.museum!==x.museum)).sort((p,q)=>yearGap(p,x)-yearGap(q,x)).slice(0,40).forEach(p=>{ if(ms.length<3&&ms.indexOf(p.museum)<0) ms.push(p.museum); });
+    return shuffle([x.museum].concat(ms));
+  }
   if(kind==='year'){
     // other works' dates, at least 20 years from the answer and from each other, in time order
     const ys=[x.year], ok=y=>ys.every(z=>Math.abs(z-y)>=20);
@@ -2773,9 +2958,9 @@ function paintOptions(x,kind){
   const titles=[]; same.concat(shuffle(near)).forEach(p=>{ if(titles.length<3&&titles.indexOf(p.title)<0) titles.push(p.title); });
   return shuffle([x.title].concat(titles));
 }
-const pAnswer=it=>it.kind==='artist'?it.x.artist:it.kind==='year'?String(it.x.year):it.x.title;
-const pRight=it=>it.pick!=null&&it.pick>=0&&it.opts[it.pick]===pAnswer(it)&&!it.guess;
-const P_QUESTION={artist:'Who painted this?',title:'What is this painting called?',year:'When was it painted?'};
+const pAnswer=it=>it.kind==='artist'?it.x.artist:it.kind==='year'?String(it.x.year):it.kind==='museum'?it.x.museum:it.x.title;
+const pRight=it=>it.pick!=null&&it.pick>=0&&it.opts[it.pick]===pAnswer(it);
+const P_QUESTION={artist:'Who painted this?',title:'What is this painting called?',year:'When was it painted?',museum:'Where does it hang today?'};
 function pFeedback(cls,txt){ const el=$('pfeedback'); el.className='feedback'+(cls?' '+cls:''); el.textContent=txt; }
 function startPaint(list){
   const pool=list||pPool();
@@ -2786,28 +2971,19 @@ function startPaint(list){
   pStoreSession(); pFeedback('',''); preloadP(0); preloadP(1); renderPaint();
 }
 function preloadP(i){ const it=PSN&&PSN.items[i]; if(it){ const im=new Image(); im.decoding='async'; im.src=it.x.thumb; } }
-// one answer about one work: its question's box moves up on a right answer and back to 0 on a miss
+// one answer about one work: a miss sends it back to box 0, a right answer on a review day moves it up
 function scorePaint(it,ok){
-  const now=Date.now(), v=Object.assign({n:0,ok:0,b:0},PS.p[it.x.id]); v.k=Object.assign({},v.k);
-  const s=Object.assign({n:0,ok:0,b:0,due:0},v.k[it.kind]);
-  s.n++; s.last=now; if(ok){ s.ok++; s.b=Math.min(P_DAYS.length-1,s.b+1); s.due=startOfDay(now)+P_DAYS[s.b]*DAY; } else { s.b=0; s.due=now; }
-  v.k[it.kind]=s; v.n++; v.last=now; if(ok) v.ok++;
-  v.b=Math.min(...P_KINDS.map(k=>pk(v,k)?pk(v,k).b:0));
+  const now=Date.now(), v=Object.assign({n:0,ok:0,b:0,due:0},PS.p[it.x.id]);
+  v.n++; v.last=now; v.lk=it.kind; v.r=ok?1:0;
+  if(ok){ v.ok++; if((v.due||0)<=now){ v.b=Math.min(P_DAYS.length-1,v.b+1); v.due=startOfDay(now)+P_DAYS[v.b]*DAY; } }
+  else { v.b=0; v.due=now; }
   PS.p[it.x.id]=v;
   const d=romeDay(now), log=PS.days[d]||(PS.days[d]=[]); log.push({id:it.x.id,kind:it.kind,ok:ok?1:0,t:now});
 }
 function answerPaint(k){
   const it=PSN.items[PSN.i]; if(it.pick!=null) return;
   it.pick=k; const ok=pRight(it); if(ok) PSN.right++;
-  scorePaint(it,ok); pSave(); pStoreSession(); renderPaint();
-}
-// "I guessed": a right answer that you didn't know counts as a miss, so the work comes back
-function guessPaint(){
-  const it=PSN.items[PSN.i]; if(!pRight(it)) return;
-  it.guess=true; PSN.right--;
-  const v=PS.p[it.x.id], s=v.k[it.kind]; s.ok--; v.ok--; s.b=0; s.due=Date.now(); v.b=0;
-  const log=PS.days[romeDay()]||[]; for(let i=log.length-1;i>=0;i--) if(log[i].id===it.x.id){ log[i].ok=0; log[i].guess=1; break; }
-  pSave(); pStoreSession(); renderPaint();
+  scorePaint(it,ok); pSave(); pStoreSession(); bump('paintings'); renderPaint();
 }
 function nextPaint(){
   PSN.i++;
@@ -2842,13 +3018,11 @@ function openGallery(f){ PG={src:f,ids:pGalleryIds(f),i:null}; pFeedback('','');
 function openRoundWork(k){ PG={src:'round',ids:PSN.items.map(it=>it.x.id),i:k}; pFeedback('',''); renderPaint(); scrollTo(0,0); }
 function pgStep(d){ const i=PG.i+d; if(i<0||i>=PG.ids.length) return; PG.i=i; renderPaint(); }
 function pgBack(){ if(PG.src==='round'||PG.i==null) PG=null; else PG.i=null; renderPaint(); }
-// what you know about this work, question by question
-function pKindsHtml(v){
+// how this work is going
+function pStatusHtml(v){
   if(!v) return '';
-  return `<div class="vstat">${P_KINDS.map(k=>{ const s=pk(v,k);
-    if(!s||!s.n) return `<span>${P_KIND_NAME[k]}: not asked yet</span>`;
-    return `<span class="${s.b?'ok':'no'}">${P_KIND_NAME[k]}: ${s.b?(s.b>=2?`right ${s.b}× in a row`:'right last time'):'missed last time'}</span>`; }).join('')}</div>`
-    +`<div class="vstat"><span>${pKnown(v)?'Known: painter, title and date each right twice in a row.':pDue(v)?'Comes back in your next round.':`Next review ${inDays(Math.min(...P_KINDS.map(k=>pk(v,k)&&pk(v,k).n?pk(v,k).due:Infinity)))}.`}</span><span>Last seen ${ago(v.last)}</span></div>`;
+  return `<div class="vstat"><span class="${v.r?'ok':'no'}">${v.r?'Right':'Missed'} last time${v.lk?` (${P_KIND_NAME[v.lk].toLowerCase()})`:''}</span><span>Seen ${v.n} ${v.n===1?'time':'times'}, right ${v.ok}</span></div>`
+    +`<div class="vstat"><span>${pKnown(v)?'Known: right on three review days in a row.':`${v.b} of 3 review days right`}</span><span>${pDue(v)?'Due: comes back in your next round':'Next review '+inDays(v.due)}</span><span>Last seen ${ago(v.last)}</span></div>`;
 }
 const dayLabel=d=>{ const t=romeDay(), y=romeDay(Date.now()-DAY); return d===t?'Today':d===y?'Yesterday':new Date(d+'T12:00:00Z').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'}); };
 function galleryHtml(){
@@ -2861,9 +3035,9 @@ function galleryHtml(){
     pr.textContent=x.title; sc.textContent='';
     h+=`<figure class="pframe" style="margin:0"><span class="ploading">Loading the picture…</span><img class="wait" src="${esc(x.thumb)}" alt="${esc(x.title+' by '+x.artist)}" decoding="async"></figure>`;
     h+=pCaption(x);
-    if(it) h+=`<div class="vstat">${it.pick<0?'<span>Skipped this round</span>':pRight(it)?`<span class="ok">${P_KIND_NAME[it.kind]}: right this round</span>`:`<span class="no">${P_KIND_NAME[it.kind]}: ${it.guess?'a lucky guess this round':'missed this round'}</span>${it.guess?'':`<span>You answered “${esc(it.opts[it.pick])}”</span>`}`}</div>`;
-    else if(dr) h+=`<div class="vstat">${dr.kinds.map(e=>`<span class="${e.ok?'ok':'no'}">${P_KIND_NAME[e.kind]}: ${e.ok?'right':e.guess?'lucky guess':'missed'}</span>`).join('')}</div>`;
-    h+=pKindsHtml(v);
+    if(it) h+=`<div class="vstat">${it.pick<0?'<span>Skipped this round</span>':pRight(it)?`<span class="ok">${P_KIND_NAME[it.kind]}: right this round</span>`:`<span class="no">${P_KIND_NAME[it.kind]}: missed this round</span><span>You answered “${esc(it.opts[it.pick])}”</span>`}</div>`;
+    else if(dr) h+=`<div class="vstat">${dr.kinds.map(e=>`<span class="${e.ok?'ok':'no'}">${e.kind?P_KIND_NAME[e.kind]+': ':''}${e.ok?'right':'missed'}</span>`).join('')}</div>`;
+    h+=pStatusHtml(v);
     h+=`<div class="actions"><button type="button" class="btn quiet" data-pact="back">Back</button><span class="spacer"></span><button type="button" class="btn" data-pact="prevw" ${PG.i?'':'disabled'}>Previous</button><button type="button" class="btn primary" data-pact="nextw" ${PG.i<PG.ids.length-1?'':'disabled'}>Next</button></div>`;
     h+=`<div class="pcredit">Image: <a href="${commonsPage(x.image)}" target="_blank" rel="noopener">Wikimedia Commons</a></div>`;
     return h;
@@ -2875,7 +3049,7 @@ function galleryHtml(){
   const days=pDays(); if(days.length) h+=`<div class="chips" role="group" aria-label="By day">${days.map(d=>`<button type="button" class="chip" data-pgal="day:${d}" aria-pressed="${day===d}">${dayLabel(d)} · ${pDayResults(d).length}</button>`).join('')}</div>`;
   const dres=day?new Map(pDayResults(day).map(r=>[r.id,r])):null;
   if(PG.ids.length) h+=`<div class="pgrid">${PG.ids.map((id,k)=>{ const x=pWork(id), ok=dres?dres.get(id).ok:pRightLast(PS.p[id]); return `<button type="button" class="pthumb ${ok?'ok':'no'}" data-pview="${k}"><img src="${esc(pSmall(x))}" alt="" loading="lazy" decoding="async"><span>${esc(x.title)}</span></button>`; }).join('')}</div>`;
-  else h+=`<div class="hint">${PG.src==='missed'?'Nothing to revisit: every work you’ve seen, you got right last time.':PG.src==='known'?'No work is known yet: painter, title and date each need two right answers in a row.':`No works here yet${PS.fame!=='all'?' in this group':''}.`}</div>`;
+  else h+=`<div class="hint">${PG.src==='missed'?'Nothing to revisit: every work you’ve seen, you got right last time.':PG.src==='known'?'No work is known yet: a work needs to be right on three review days in a row.':`No works here yet${PS.fame!=='all'?' in this group':''}.`}</div>`;
   h+=`<div class="actions"><button type="button" class="btn quiet" data-pact="back">Back</button><span class="spacer"></span>${PG.ids.length?`<button type="button" class="btn primary" data-pact="practise">Practise ${Math.min(10,PG.ids.length)} of these</button>`:''}</div>`;
   h+=`<div class="hint">${day?'A green edge: every question about it was right that day. Red: at least one was missed.':'A green edge: right the last time you saw it. Red: missed.'}</div>`;
   return h;
@@ -2901,14 +3075,14 @@ function renderPaint(){
   else if(!PSN||PSN.phase==='done'){
     const d=PSN&&PSN.phase==='done'?PSN:null, pool=pPool(), today=pDayResults(romeDay());
     eb.textContent='Paintings'; sc.textContent='';
-    pr.textContent=d?`${d.right} of ${d.items.filter(o=>o.pick>=0).length} right`:'Name the painter, the painting and its date';
+    pr.textContent=d?`${d.right} of ${d.items.filter(o=>o.pick>=0).length} right`:'Name the painter, the painting or its date';
     if(d) h+=`<ul class="wlist">${d.items.map((it,k)=>`<li class="tap ${it.pick<0?'na':pRight(it)?'ok':'no'}"><button type="button" class="wopen" data-pround="${k}"><b>${esc(it.x.title)}</b><span>${esc(it.x.artist)}${it.x.year?', '+it.x.year:''}</span></button></li>`).join('')}</ul>`;
     const tile=(f,n,label)=>`<button type="button" data-pgal="${f}" ${n?'':'disabled'}><b>${n}</b><span>${label}</span></button>`;
     const due=pool.filter(x=>pDue(PS.p[x.id])).length;
     h+=`<div class="wstats"><div><b>${due}</b><span>due now</span></div>${tile('all',pGalleryIds('all').length,'seen')}${tile('missed',pGalleryIds('missed').length,'to revisit')}${tile('known',pGalleryIds('known').length,'known')}</div>`;
     h+=`<div class="wactions"><button type="button" class="btn primary big" data-pact="start">${d?'Another 10':'Start 10 paintings'}</button>${pGalleryIds('all').length?'<button type="button" class="btn big" data-pgal="all">Your gallery</button>':''}${today.length?`<button type="button" class="btn quiet" data-pgal="day:${romeDay()}">Today · ${today.length} ${today.length===1?'work':'works'}</button>`:''}</div>`;
     if(d) h+=`<div class="hint">Tap a work to look at it again. This round stays here until midnight.</div>`;
-    h+=`<div class="hint">Each round starts with the works due for review (missed ones first), then new ones. A work is known once its painter, title and date have each been right twice in a row. Pictures from Wikimedia Commons (public domain); facts from Wikidata.</div>`;
+    h+=`<div class="hint">Each round starts with the works due for review (missed ones first), then new ones, and each time a work comes back it asks something else about it. A work is known once it’s been right on three review days in a row. Pictures from Wikimedia Commons (public domain); facts from Wikidata.</div>`;
   }else{
     const it=PSN.items[PSN.i], x=it.x, ans=pAnswer(it);
     eb.textContent=`Painting ${PSN.i+1} of ${PSN.items.length}`;
@@ -2917,13 +3091,11 @@ function renderPaint(){
     dots.innerHTML=PSN.items.map((o,k)=>`<span class="dot ${o.pick==null?(k===PSN.i?'cur':''):o.pick<0?'':(pRight(o)?'ok':'no')}"></span>`).join('');
     h+=`<figure class="pframe" style="margin:0"><span class="ploading">Loading the picture…</span><img class="wait" src="${esc(x.thumb)}" alt="${it.pick!=null?esc(x.title+' by '+x.artist):'A painting to identify'}" decoding="async"></figure>`;
     if(it.kind==='title'&&it.pick==null) h+=`<div class="hint">By ${esc(x.artist)}${x.year?`, ${x.year}`:''}</div>`;
-    if(it.kind==='year'&&it.pick==null) h+=`<div class="hint">${esc(x.title)}, by ${esc(x.artist)}</div>`;
+    if((it.kind==='year'||it.kind==='museum')&&it.pick==null) h+=`<div class="hint">${esc(x.title)}, by ${esc(x.artist)}${it.kind==='museum'&&x.year?`, ${x.year}`:''}</div>`;
     h+=`<ol class="popts">${it.opts.map((o,k)=>{ let c='opt'; if(it.pick!=null){ if(o===ans) c+=' ok'; else if(k===it.pick) c+=' bad'; else c+=' dim'; }
       return `<li><button type="button" class="${c}" data-popt="${k}" ${it.pick!=null?'disabled':''}><kbd>${k+1}</kbd><span>${esc(o)}</span></button></li>`; }).join('')}</ol>`;
     if(it.pick!=null){
       h+=pCaption(x);
-      if(pRight(it)) h+=`<div class="actions"><span class="hint">Not sure you knew it?</span><button type="button" class="btn quiet sm" data-pact="guess">It was a guess</button></div>`;
-      else if(it.guess) h+=`<div class="hint">Counted as a miss: this one comes back in your next round.</div>`;
       h+=`<div class="actions"><span class="pcredit">Image: <a href="${commonsPage(x.image)}" target="_blank" rel="noopener">Wikimedia Commons</a></span><span class="spacer"></span><button type="button" class="btn primary" data-pact="next">${PSN.i+1>=PSN.items.length?'Finish':'Next painting'}</button></div>`;
     }
     else h+=`<div class="actions"><button type="button" class="btn quiet" data-pact="quit">Stop</button><span class="spacer"></span><button type="button" class="btn quiet" data-pact="skip">Skip</button></div>`;
@@ -2939,8 +3111,10 @@ function renderPaint(){
 }
 function renderPaintSide(){
   let h='';
-  h+=`<div class="field"><span class="fl">Question</span><div class="chips">${[['mix','Mixed'],['artist','Who painted it?'],['title','What is it called?'],['year','When was it painted?']].map(o=>`<button type="button" class="chip" data-pset="ask" data-v="${o[0]}" aria-pressed="${PS.ask===o[0]}">${o[1]}</button>`).join('')}</div><div class="hint">Mixed asks each work the question it needs most: one you missed, then one you haven’t been asked yet.</div></div>`;
+  h+=`<div class="field"><span class="fl">Question</span><div class="chips">${[['mix','Mixed'],['artist','Who painted it?'],['title','What is it called?'],['year','When was it painted?']].map(o=>`<button type="button" class="chip" data-pset="ask" data-v="${o[0]}" aria-pressed="${PS.ask===o[0]}">${o[1]}</button>`).join('')}</div><div class="hint">Mixed asks something different each time a work comes back: the painter, then the title, then the date.</div></div>`;
+  h+=`<div class="field"><span class="fl">Something else</span><div class="chips"><button type="button" class="chip" data-pset="ask" data-v="museum" aria-pressed="${PS.ask==='museum'}">Where does it hang?</button></div><div class="hint">The museum or collection that owns the original. Kept apart from the main questions.</div></div>`;
   h+=`<div class="field"><span class="fl">Works</span><div class="chips">${FAME.map(o=>`<button type="button" class="chip" data-pset="fame" data-v="${o[0]}" aria-pressed="${PS.fame===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
+  h+=`<div class="field"><span class="fl">Daily goal</span><div class="chips">${[1,5,10,20].map(n=>`<button type="button" class="chip mono" data-pgoal="${n}" aria-pressed="${goalFor('paintings')===n}">${n}</button>`).join('')}</div><div class="hint">Paintings to answer each day before Paintings turns green on the start page.</div></div>`;
   $('psettings').innerHTML=h;
   const last=PS.hist.slice(-20), tot=last.reduce((a,x)=>a+x.n,0), ok=last.reduce((a,x)=>a+x.ok,0);
   $('pstats').innerHTML=`<h2>Your gallery</h2><div class="hint">“Famous” works are covered by many Wikipedias, “deep cuts” by only a few: often lesser-known pieces by great painters.</div><div class="totals">${PDATA?`${Object.keys(PS.p).length} of ${PDATA.length} works seen`:''}${tot?` · ${Math.round(100*ok/tot)}% right in your last ${last.length} ${last.length===1?'round':'rounds'}`:''}</div>`;
@@ -2966,12 +3140,12 @@ $('pbody').addEventListener('click',e=>{
   else if(a==='nextw') pgStep(1);
   else if(a==='practise') startPaint(PG.ids.map(pWork));
   else if(a==='next') nextPaint();
-  else if(a==='guess') guessPaint();
   else if(a==='skip'){ PSN.items[PSN.i].pick=-1; nextPaint(); }
   else if(a==='quit'){ PSN=null; pStoreSession(); pFeedback('',''); renderPaint(); }
   else if(a==='retry') renderPaint();
 });
 $('psettings').addEventListener('click',e=>{
+  const gb=e.target.closest('[data-pgoal]'); if(gb){ setGoal('paintings',+gb.dataset.pgoal); renderPaintSide(); return; }
   const b=e.target.closest('[data-pset]'); if(!b) return;
   PS[b.dataset.pset]=b.dataset.v; pStore(); renderPaintSide();
   if(PG&&PG.src!=='round'){ PG.ids=pGalleryIds(PG.src); PG.i=null; renderPaint(); }
@@ -2993,8 +3167,8 @@ document.addEventListener('keydown',e=>{
 });
 function paintHomeMeta(){
   const n=Object.keys(PS.p).length; if(!n) return 'Not practised yet';
-  const known=Object.values(PS.p).filter(pKnown).length, today=(PS.days[romeDay()]||[]).length;
-  return `${n} works seen · ${known} known${today?` · ${today} answers today`:''}`;
+  const known=Object.values(PS.p).filter(pKnown).length, today=new Set((PS.days[romeDay()]||[]).map(e=>e.id)).size;
+  return `${n} works seen · ${known} known${today?` · ${today} today`:''}`;
 }
 
 // hooks for the web app's sign-in layer (absent inside Claude)

@@ -1,5 +1,6 @@
-// Sends each signed-up device one reminder a day, at the hour chosen in the app, listing what
-// hasn't had its 10 minutes yet today, plus the number of words due. Runs hourly in GitHub Actions.
+// Sends each signed-up device one reminder a day, at the hour chosen in the app, listing the sections
+// not done yet today (one exercise, or the daily goal for words and paintings), plus the number of
+// words due. Runs hourly in GitHub Actions.
 //   FIREBASE_SERVICE_ACCOUNT  service-account key JSON (repository secret)
 //   APP_URL                   where the app lives, opened when the notification is tapped
 //   FORCE=1                   send now, whatever the hour (for a test run)
@@ -20,7 +21,9 @@ function localNow(tz) {
     .formatToParts(new Date()).map(x => [x.type, x.value]));
   return [`${p.year}-${p.month}-${p.day}`, Number(p.hour)];
 }
-const minutes = (act, day, k) => Object.values(((act.d || {})[day] || {})[k] || {}).reduce((a, b) => a + b, 0) / 60000;
+// exercises done that day in a section, added up over devices, and the goal set in the app
+const done = (act, day, k) => Object.values(((act.x || {})[day] || {})[k] || {}).reduce((a, b) => a + b, 0);
+const goalFor = (act, k) => (k === 'words' || k === 'paintings') ? ((act.goals || {})[k] || 1) : 1;
 
 let sent = 0, checked = 0, failed = 0;
 for (const user of await db.collection('users').listDocuments()) {
@@ -29,13 +32,13 @@ for (const user of await db.collection('users').listDocuments()) {
   const tokens = Object.keys((push && push.tokens) || {});
   if (!tokens.length) continue;
   checked++;
-  const tz = push.tz || 'Europe/Madrid', goal = push.goal || 10, hour = push.hour ?? 19;
+  const tz = push.tz || 'Europe/Madrid', hour = push.hour ?? 19;
   const [day, h] = localNow(tz);
   if (!FORCE && (h < hour || push.lastSent === day)) continue;
 
   const act = (await state.doc('activity').get()).data() || {};
   const items = Object.entries(push.items || {}).filter(([, on]) => on).map(([k]) => k);
-  const todo = items.filter(k => minutes(act, day, k) < goal);
+  const todo = items.filter(k => done(act, day, k) < goalFor(act, k));
   let due = 0;
   if (items.includes('words')) {
     const w = (await state.doc('words').get()).data() || {}, now = Date.now();
@@ -43,8 +46,8 @@ for (const user of await db.collection('users').listDocuments()) {
   }
   if (!todo.length && !due && !FORCE) { await state.doc('push').set({ lastSent: day }, { merge: true }); continue; }
 
-  const parts = todo.map(k => { const m = Math.floor(minutes(act, day, k)); return m ? `${NAMES[k]} (${m}/${goal} min)` : NAMES[k]; });
-  const title = todo.length ? `${goal} minutes of practice?` : 'Words to review';
+  const parts = todo.map(k => { const g = goalFor(act, k), n = done(act, day, k); return g > 1 ? `${NAMES[k]} (${n}/${g})` : NAMES[k]; });
+  const title = todo.length ? 'Not done yet today' : 'Words to review';
   const body = [parts.length ? parts.join(' · ') : '', due ? `${due} ${due === 1 ? 'word' : 'words'} due` : ''].filter(Boolean).join('\n') || 'All done for today. Nice work.';
 
   const result=await deliverToDevices({
