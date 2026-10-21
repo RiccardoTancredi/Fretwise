@@ -9,7 +9,7 @@ Live app: **https://riccardotancredi.github.io/Fretwise/**: it installs on a pho
 | Section | What you practise | Data |
 |---|---|---|
 | Guitar, Ukulele | Name the note, find the note, all positions (timed), chords, intervals, scales (major and minor, pentatonic and blues, the modes, and jazz colours such as altered, whole-tone and diminished; one position or the whole neck), and an interactive circle of fifths | — |
-| Chess | Lichess puzzles with a rating, and an opening trainer (77 lines in 20 openings, with the idea of each and why every move is played) | [Lichess puzzle and openings databases](https://database.lichess.org/) (CC0), in `data/puzzles.json` |
+| Chess | Lichess puzzles with a rating (optionally linked to your own Lichess account, so results count there), and an opening trainer (77 lines in 20 openings, with the idea of each and why every move is played) | [Lichess puzzle and openings databases](https://database.lichess.org/) (CC0), in `data/puzzles.json` |
 | Words | 5 new words at a time, matched with their definitions, then spaced reviews. A daily limit of new words per dictionary (10 by default) | Your Notion dictionaries, **private** (see below) |
 | Paintings | Who painted it? What is it called? When? Each question has its own review schedule, and a work counts as known only after two right answers in a row for each | [Wikidata](https://www.wikidata.org/) (CC0) and public-domain images on [Wikimedia Commons](https://commons.wikimedia.org/), in `data/paintings.json` |
 
