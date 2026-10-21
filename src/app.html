@@ -646,9 +646,16 @@ const SCALES=[
   {id:'phr',  name:'Phrygian',         grp:'mode', steps:[0,1,3,5,7,8,10], deg:['1','♭2','♭3','4','5','♭6','♭7']},
   {id:'lyd',  name:'Lydian',           grp:'mode', steps:[0,2,4,6,7,9,11], deg:['1','2','3','♯4','5','6','7']},
   {id:'mix',  name:'Mixolydian',       grp:'mode', steps:[0,2,4,5,7,9,10], deg:['1','2','3','4','5','6','♭7']},
-  {id:'loc',  name:'Locrian',          grp:'mode', steps:[0,1,3,5,6,8,10], deg:['1','♭2','♭3','4','♭5','♭6','♭7']}
+  {id:'loc',  name:'Locrian',          grp:'mode', steps:[0,1,3,5,6,8,10], deg:['1','♭2','♭3','4','♭5','♭6','♭7']},
+  {id:'phrd', name:'Phrygian dominant',grp:'more', steps:[0,1,4,5,7,8,10], deg:['1','♭2','3','4','5','♭6','♭7']},
+  {id:'lydd', name:'Lydian dominant',  grp:'more', steps:[0,2,4,6,7,9,10], deg:['1','2','3','♯4','5','6','♭7']},
+  {id:'alt',  name:'altered',          grp:'more', steps:[0,1,3,4,6,8,10], deg:['1','♭2','♯2','3','♯4','♭6','♭7']},
+  {id:'hung', name:'Hungarian minor',  grp:'more', steps:[0,2,3,6,7,8,11], deg:['1','2','♭3','♯4','5','♭6','7']},
+  {id:'whole',name:'whole-tone',       grp:'more', steps:[0,2,4,6,8,10],   deg:['1','2','3','♯4','♯5','♭7']},
+  {id:'dimwh',name:'diminished (whole-half)',grp:'more', steps:[0,2,3,5,6,8,9,11], deg:['1','2','♭3','4','♭5','♭6','6','7']},
+  {id:'dimhw',name:'diminished (half-whole)',grp:'more', steps:[0,1,3,4,6,7,9,10], deg:['1','♭2','♯2','3','♯4','5','6','♭7']}
 ];
-const SCALE_GROUPS=[['mm','Major and minor'],['pent','Pentatonic and blues'],['mode','Modes']];
+const SCALE_GROUPS=[['mm','Major and minor'],['pent','Pentatonic and blues'],['mode','Modes'],['more','Jazz and other colours']];
 // Chords: each tone is [semitones above the root, degree, required]. Optional tones (a 5th, a 9th under a 13th) may be left out.
 const CHORDS=[
   {id:'maj', sym:'',     name:'major',            grp:'triad',   t:[[0,'1',1],[4,'3',1],[7,'5',1]]},
@@ -700,7 +707,7 @@ const S={
       ukulele:{fretStart:0,fretEnd:12,strings:[true,true,true,true]}}
 };
 const C=()=>S.by[S.inst];
-const freshStats=()=>({pos:{}, total:0, correct:0, rounds:0, best:null});
+const freshStats=()=>({pos:{}, total:0, correct:0, rounds:0, best:null, reset:0});
 let statsAll={guitar:freshStats(), ukulele:freshStats()};
 const ST=()=>statsAll[S.inst];
 const STORE='fretwise.v1';
@@ -724,7 +731,29 @@ function load(){
     if(!INSTRUMENTS[S.inst]) S.inst='guitar';
   }catch(e){}
 }
-function save(){ try{ LOCAL.setItem(STORE, JSON.stringify({settings:S, statsAll})); }catch(e){} }
+function save(){ try{ LOCAL.setItem(STORE, JSON.stringify({settings:S, statsAll})); }catch(e){} pushFretboard(); }
+// the accuracy map and totals are saved to the account too, so they survive this browser's storage
+let fbDoc=null, fbT=null;
+function pushFretboard(){ if(!fbDoc) return; clearTimeout(fbT); fbT=setTimeout(()=>{ fbDoc.set({statsAll,upd:Date.now(),v:1}).catch(()=>{}); },2500); }
+// per instrument: a later reset wins, otherwise the copy with more answers
+function mergeFretboard(x){
+  let mine=false;
+  ['guitar','ukulele'].forEach(i=>{ const r=x&&x.statsAll&&x.statsAll[i], l=statsAll[i];
+    if(!r){ if(l.total||l.reset) mine=true; return; }
+    if((r.reset||0)>(l.reset||0)||((r.reset||0)===(l.reset||0)&&(r.total||0)>(l.total||0))) statsAll[i]=Object.assign(freshStats(),r);
+    else if((l.reset||0)>(r.reset||0)||(l.total||0)>(r.total||0)) mine=true; });
+  return mine;
+}
+async function connectFretboard(db,uid){
+  try{
+    const ref=db.doc('data/users/'+uid+'/fretboard'), s=await ref.get();
+    const mine=mergeFretboard(s.exists?s.data():null); fbDoc=ref;
+    try{ LOCAL.setItem(STORE, JSON.stringify({settings:S, statsAll})); }catch(e){}
+    if(mine) pushFretboard();
+    if(view==='app') renderHeat(); else if(view==='home') renderHome();
+    ref.onSnapshot(sn=>{ const x=sn.exists?sn.data():null; if(!x) return; mergeFretboard(x); if(view==='app') renderHeat(); },()=>{});
+  }catch(e){}
+}
 function setInst(id){ S.inst=id; INST=INSTRUMENTS[id]; STRINGS=INST.strings; NS=STRINGS.length; }
 
 let view='home', Q=null, phase='ask', round=null, qStart=0, advTimer=null;
@@ -997,7 +1026,14 @@ function scaleRootName(rp,sc){
   const a=note(rp), b=(S.acc==='flat'?SHARP:FLAT)[rp];
   return cost(b)<cost(a)?b:a;
 }
-const scaleSpelling=q=>q.scale.steps.map((x,i)=>spellTone(rootNm(q),q.rootPc,x,q.scale.deg[i])).join(' ');
+// a scale note by its letter (F♯ in G major), except where that needs a double sharp or flat, and in
+// eight-note scales, which have more notes than letters: there the plain name, sharps or flats as the root
+function scaleNote(root,rp,sc,i){
+  const t=spellTone(root,rp,sc.steps[i],sc.deg[i]);
+  if(sc.steps.length<=7&&!/♯♯|♭♭/.test(t)) return t;
+  return (/♭/.test(root)?FLAT:/♯/.test(root)?SHARP:(S.acc==='flat'?FLAT:SHARP))[(rp+sc.steps[i])%12];
+}
+const scaleSpelling=q=>q.scale.steps.map((x,i)=>scaleNote(rootNm(q),q.rootPc,q.scale,i)).join(' ');
 // one position: a five-fret box around a root on the instrument's root strings; whole range: every scale note in the fret range
 function makeScaleQ(){
   const scs=SCALES.filter(x=>S.scales.indexOf(x.id)>=0), c=C(), neck=S.scaleArea==='neck';
@@ -1047,7 +1083,7 @@ function cofState(){
   const chords=num.map((n,d)=>({d,num:n,qual:qual[d],name:names[d]+qual[d],ring:COF_SPOTS[minor?'min':'maj'][d][0],k:md(i+COF_SPOTS[minor?'min':'maj'][d][1],12),
     tones:[d,d+2,d+4].map(j=>({pc:md(tonicPc+fam.steps[j%7],12),name:names[j%7]}))}));
   const sc=SCALES.find(x=>x.id===c.scale)||fam;
-  const scaleNames=sc.steps.map((x,j)=>({pc:md(tonicPc+x,12),name:spellTone(tonicName,tonicPc,x,sc.deg[j]),deg:sc.deg[j]}));
+  const scaleNames=sc.steps.map((x,j)=>({pc:md(tonicPc+x,12),name:scaleNote(tonicName,tonicPc,sc,j),deg:sc.deg[j]}));
   return {i,minor,tonicName,tonicPc,fam,chords,sc,scaleNames,sig:cofSig(i),chord:c.chord!=null?chords[c.chord]:null};
 }
 function cofArc(k,r1,r2){
@@ -1362,7 +1398,7 @@ async function connectRuns(){
     if(!db||!user) return;
     const uid=await user.id(); if(!uid||connectedUid===uid) return;
     connectedUid=uid;
-    connectChess(db,uid); connectWords(db,uid); connectActivity(db,uid); connectPaint(db,uid);
+    connectChess(db,uid); connectWords(db,uid); connectActivity(db,uid); connectPaint(db,uid); connectFretboard(db,uid);
     const ref=db.doc('data/users/'+uid+'/fretwise');
     const snap=await ref.get();
     const d=snap.exists?snap.data():null;
@@ -1458,7 +1494,7 @@ function onCell(s,f){
   }
   if(Q.type==='scale'){
     const k=key(s,f);
-    if(f<Q.win[0]||f>Q.win[1]){ setFeedback('info',`Stay inside frets ${Q.win[0]}–${Q.win[1]}.`); return; }
+    if(f<Q.win[0]||f>Q.win[1]){ setFeedback('info',Q.neck?`Stay inside frets ${Q.win[0]}–${Q.win[1]}, the range set in Practice settings.`:`This is one position: the highlighted box, frets ${Q.win[0]}–${Q.win[1]}, picked at random around the root. For the scale everywhere, press Whole neck.`); return; }
     if(k===key(Q.root.s,Q.root.f)) return;
     if(Q.selected.has(k)) Q.selected.delete(k); else { Q.selected.add(k); play(m); }
     setFeedback('',''); render(); return;
@@ -1599,7 +1635,7 @@ function renderPrompt(){
   else if(Q.type==='chord'){ eb=`Chords · ${Q.ch.name} · shape ${Math.min(Q.found.length+1,S.chordShapes)} of ${S.chordShapes}`; pr=`Build ${chordName(Q)}`; }
   else if(Q.type==='ivA'){ eb=`Intervals · every position · ${Q.found.size} of ${Q.targets.length} found`; pr=`Find every ${Q.iv.name} of ${rootNm(Q)}`; }
   else if(Q.type==='iv'){ eb='Intervals · root '+where(Q.root.s,Q.root.f); pr=`Find the ${Q.iv.name} of ${rootNm(Q)}`; }
-  else if(Q.type==='scale'){ eb=Q.neck?`Scales · frets ${Q.win[0]}–${Q.win[1]}, every string`:`Scales · frets ${Q.win[0]}–${Q.win[1]}, root on the ${strName(Q.root.s)}`; pr=`Mark every note of ${rootNm(Q)} ${Q.scale.name}`; }
+  else if(Q.type==='scale'){ eb=Q.neck?`Scales · whole neck, frets ${Q.win[0]}–${Q.win[1]}`:`Scales · one position, frets ${Q.win[0]}–${Q.win[1]}, root on the ${strName(Q.root.s)}`; pr=`Mark every note of ${rootNm(Q)} ${Q.scale.name}`; }
   $('eyebrow').textContent=eb; $('prompt').textContent=pr;
   const sc=$('score'), row=sc.closest('.prompt-row');
   if(S.mode==='all'&&phase!=='summary'){
@@ -1687,7 +1723,7 @@ function renderAnswer(){
   if(!done){
     if(Q.type==='findS'||Q.type==='iv') h+=`<button class="btn quiet" data-act="giveup">Show answer</button>`;
     if(Q.type==='ivA') h+=`<span class="counter">${Q.found.size} / ${Q.targets.length} found</span><span class="spacer"></span><button class="btn quiet" data-act="giveup">Show the rest</button>`;
-    if(Q.type==='scale') h+=`<span class="counter">${Q.selected.size} marked</span><span class="spacer"></span><button class="btn quiet" data-act="clear">Clear</button><button class="btn primary" data-act="check">Check</button>`;
+    if(Q.type==='scale') h+=`<span class="counter">${Q.selected.size} marked</span><span class="spacer"></span>${Q.neck?'':'<button class="btn quiet" data-act="toneck">Whole neck</button>'}<button class="btn quiet" data-act="clear">Clear</button><button class="btn primary" data-act="check">Check</button>`;
     if(Q.type==='name') h+=`<span class="hint">Keys: <kbd>A</kbd>–<kbd>G</kbd> for naturals${S.naturalsOnly?'':`, <kbd>Shift</kbd> for ${S.acc==='flat'?'flat':'sharp'}`}</span>`;
   }else{
     h+=`<button class="btn" data-act="replay">Play again</button><span class="spacer"></span><button class="btn primary" data-act="next">Next</button>`;
@@ -1745,7 +1781,7 @@ function renderSettings(){
       `<div class="field"><span class="fl">Answer</span><div class="chips">${chip('ivall','0',!S.ivAll,'One position')}${chip('ivall','1',S.ivAll,'Every position (hard)')}</div><div class="hint">${S.ivAll?'Tap every position of the interval note in the fret range, on all strings.':'Any position of the right note counts.'}</div></div>`;
   }
   if(S.mode==='scale'){
-    SCALE_GROUPS.forEach(g=>{ h+=`<div class="field"><span class="fl">${g[1]}</span><div class="chips">${SCALES.filter(x=>x.grp===g[0]).map(x=>chip('scale',x.id,S.scales.indexOf(x.id)>=0,x.name[0].toUpperCase()+x.name.slice(1))).join('')}</div>${g[0]==='mode'?'<div class="hint">Ionian is the major scale and Aeolian the natural minor.</div>':''}</div>`; });
+    SCALE_GROUPS.forEach(g=>{ h+=`<div class="field"><span class="fl">${g[1]}</span><div class="chips">${SCALES.filter(x=>x.grp===g[0]).map(x=>chip('scale',x.id,S.scales.indexOf(x.id)>=0,x.name[0].toUpperCase()+x.name.slice(1))).join('')}</div>${g[0]==='mode'?'<div class="hint">Ionian is the major scale and Aeolian the natural minor.</div>':g[0]==='more'?'<div class="hint">Phrygian dominant is the 5th mode of harmonic minor; Lydian dominant and altered come from melodic minor, the sounds of jazz over dominant chords.</div>':''}</div>`; });
     const rs=S.scaleRootPcs, all=rs.length===12, nat=rs.length===7&&NATURAL.every(x=>rs.indexOf(x)>=0);
     h+=`<div class="field"><span class="fl">Keys</span><div class="chips">${chip('sroots','all',all,'All 12')}${chip('sroots','nat',nat,'Naturals')}</div><div class="chips" style="margin-top:6px">${ALL12.map(pc=>chip('sroot',pc,rs.indexOf(pc)>=0,note(pc),true)).join('')}</div></div>`;
     h+=`<div class="field"><span class="fl">Where</span><div class="chips">${chip('sarea','box',S.scaleArea==='box','One position')}${chip('sarea','neck',S.scaleArea==='neck','Whole neck')}</div><div class="hint">${S.scaleArea==='box'?`A root on the ${INST.scaleRoots.map(s=>strName(s)).join(' or ')} and a five-fret box: mark every scale note inside it.`:'Mark every note of the scale on every string, across all the frets shown, then press Check.'}</div>`+
@@ -1854,6 +1890,7 @@ $('answer').addEventListener('click',e=>{
   else if(a==='again') readyRun();
   else if(a==='nextnote'){ S.allPc=+b.dataset.v; save(); readyRun(); }
   else if(a==='giveup') giveUp();
+  else if(a==='toneck'){ S.scaleArea='neck'; save(); renderSettings(); newRound(); }
   else if(a==='check'){ if(Q.type==='chord') checkChord(); else checkScale(); }
   else if(a==='clear'){
     if(Q.type==='chord'){ Q.sel=new Map(); Q.checked=null; setFeedback('',''); }
@@ -1888,7 +1925,7 @@ let resetArmed=false;
 $('resetBtn').addEventListener('click',()=>{
   const b=$('resetBtn');
   if(!resetArmed){ resetArmed=true; b.textContent=`Tap again to erase all ${INST.name.toLowerCase()} progress`; b.classList.add('armed'); setTimeout(()=>{resetArmed=false;b.textContent='Reset progress';b.classList.remove('armed');},4000); return; }
-  statsAll[S.inst]=freshStats(); save();
+  statsAll[S.inst]=Object.assign(freshStats(),{reset:Date.now()}); save();
   // clear this instrument's timed runs everywhere: keep other instruments' runs
   resetAt[S.inst]=Date.now(); runs=runs.filter(r=>(r.inst||'guitar')!==S.inst); saveLocalRuns(); pushRuns();
   resetArmed=false; b.textContent='Reset progress'; b.classList.remove('armed');
@@ -2365,18 +2402,21 @@ const rich=s=>esc(s).replace(/&lt;br\s*\/?&gt;/gi,'<br>');
 const plain=s=>String(s||'').replace(/<br\s*\/?>/gi,' ').replace(/\s+/g,' ').trim();
 function wLoad(){
   try{ Object.assign(WS,JSON.parse(LOCAL.getItem(W_SET_KEY)||'{}')); }catch(e){}
-  try{ WD=JSON.parse(LOCAL.getItem(W_DATA_KEY)||'{}')||{}; }catch(e){ WD={}; }
+  if(WSRC){ try{ LOCAL.removeItem(W_DATA_KEY); localStorage.removeItem(W_DATA_KEY); }catch(e){} }
+  else try{ WD=JSON.parse(LOCAL.getItem(W_DATA_KEY)||'{}')||{}; }catch(e){ WD={}; }
   try{ const p=JSON.parse(LOCAL.getItem(W_PROG_KEY)||'null'); if(p&&p.p) WP=p; }catch(e){}
   LANGS.forEach(l=>{ WP.p[l.id]=WP.p[l.id]||{}; });
   WP.days=WP.days||{}; wBackfill();
   // a session in progress, or finished today, comes back until midnight in Italy
-  try{
-    const x=JSON.parse(LOCAL.getItem(W_SESSION_KEY)||'null'), have=x&&x.day===romeDay()&&x.wsn&&byId(x.wsn.lang);
-    if(have&&x.wsn.ids.every(id=>have.has(id))){
-      WSN=Object.assign(x.wsn,{matched:new Set(x.wsn.matched||[]),requeued:new Set(x.wsn.requeued||[]),selL:null,selR:null,flash:null});
-      WS.lang=WSN.lang;
-    }
-  }catch(e){}
+  try{ const x=JSON.parse(LOCAL.getItem(W_SESSION_KEY)||'null'); if(x&&x.day===romeDay()&&x.wsn) wPending=x.wsn; }catch(e){}
+  wRestore();
+}
+// today's session comes back once its words are loaded
+let wPending=null;
+function wRestore(){
+  if(!wPending) return; const have=byId(wPending.lang); if(!have.size) return;
+  if(wPending.ids.every(id=>have.has(id))){ WSN=Object.assign(wPending,{matched:new Set(wPending.matched||[]),requeued:new Set(wPending.requeued||[]),selL:null,selR:null,flash:null}); WS.lang=WSN.lang; }
+  wPending=null;
 }
 // words seen before the day log existed: each goes under the last day you saw it
 function wBackfill(){
@@ -2392,7 +2432,9 @@ function wStoreSession(){
   }catch(e){}
 }
 const wSaveSettings=()=>{ try{ LOCAL.setItem(W_SET_KEY,JSON.stringify(WS)); }catch(e){} };
-const wSaveData=()=>{ try{ LOCAL.setItem(W_DATA_KEY,JSON.stringify(WD)); }catch(e){} };
+// On the web the dictionaries already sit in Firestore's own offline cache: a second copy here filled
+// the browser's 5 MB of local storage, and every save after that (the fretboard map too) silently failed.
+const wSaveData=()=>{ if(WSRC) return; try{ LOCAL.setItem(W_DATA_KEY,JSON.stringify(WD)); }catch(e){} };
 function wSaveProgress(){ WP.upd=Date.now(); pruneDays(WP.days); try{ LOCAL.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){} pushWords(); }
 let wordsDoc=null, wordsSynced=false, wWriting=false, wAgain=false;
 async function pushWords(){
@@ -2448,7 +2490,7 @@ async function refreshWords(){
   wLoading=(async()=>{
     if(WSRC){
       const got=await WSRC.load();
-      LANGS.forEach(L=>{ if(got[L.id]) WD[L.id]=got[L.id]; }); wSaveData(); return;
+      LANGS.forEach(L=>{ if(got[L.id]) WD[L.id]=got[L.id]; }); wSaveData(); wRestore(); if(view==='home') renderHome(); return;
     }
     const mcp=window.claude&&typeof window.claude.use==='function'?await window.claude.use('mcp'):null;
     if(!mcp) throw {code:'not_granted'};
@@ -3183,5 +3225,6 @@ load(); loadLocalRuns(); loadChess(); wLoad(); actLoad(); pLoad(); setInst(S.ins
 if(window.innerWidth<920) $('settingsPanel').open=false;
 showHome();
 connectRuns();
+if(WSRC&&WSRC.signedIn()) refreshWords();
 })();
 </script>
