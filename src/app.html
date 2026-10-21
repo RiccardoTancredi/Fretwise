@@ -297,6 +297,19 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .wstats b{display:block;font-family:var(--font-display);font-size:1.7rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
 .wstats span{font-size:.78rem;color:var(--muted)}
 .wactions{display:flex;flex-wrap:wrap;gap:8px}
+/* today's plan: review first (yellow), then new (neutral); what you know in green */
+.plan{display:grid;gap:8px}
+.pcard{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface-2)}
+.pcard .pct{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pcard .pct b{font-family:var(--font-display);font-size:1.15rem;font-weight:800}
+.pcard .pct span{font-size:.85rem;color:var(--muted)}
+.pcard .btn{flex-shrink:0}
+.pcard.review{background:color-mix(in srgb,var(--warn) 15%,var(--surface));border-color:color-mix(in srgb,var(--warn) 60%,var(--line))}
+.pcard.review .btn:not(:disabled){background:var(--warn);border-color:var(--warn);color:#2a1a00}
+.pcard.review.idle{background:var(--surface-2);border-color:var(--line)}
+.pcard.done{background:color-mix(in srgb,var(--good) 12%,var(--surface));border-color:color-mix(in srgb,var(--good) 45%,var(--line))}
+.goalin{display:inline-flex;align-items:center;gap:6px;font-size:.85rem;color:var(--muted)}
+.goalin input{width:64px;min-height:34px;border:1px solid var(--line);border-radius:999px;background:var(--surface-2);padding:4px 10px;font:inherit;font-family:var(--font-mono);color:var(--ink)}
 .btn:disabled{opacity:.45;cursor:default}
 .wsync{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
 .wsync .linkbtn{margin-top:0}
@@ -2993,12 +3006,14 @@ function renderWords(){
       if(WSRC) h+=`<div class="wempty"><p>Your Notion dictionaries are copied to your private Fretwise account by a scheduled sync. Only you can read them, after signing in with Google; nothing about them is in the public code.</p>${WSRC.signedIn()?'<button type="button" class="btn primary big" data-wact="load">Load my words</button>':'<button type="button" class="btn primary big" data-wact="signin">Sign in with Google</button>'}</div>`;
       else h+=`<div class="wempty"><p>Fretwise reads the words straight from your Notion Dictionary, using your own Notion connection. The words stay private: they are not stored in this page.</p><button type="button" class="btn primary big" data-wact="load">Load from Notion</button></div>`;
     }else if(WD[WS.lang]){
-      h+=`<div class="wstats"><div><b>${st.due}</b><span>due now</span></div><div><b>${st.fresh}</b><span>new</span></div><button type="button" data-wlist="all" ${st.learning?'':'disabled'}><b>${st.learning}</b><span>learning</span></button><button type="button" data-wlist="mastered" ${st.mastered?'':'disabled'}><b>${st.mastered}</b><span>mastered</span></button></div>`;
-      const left=newLeft(WS.lang), nLearn=Math.min(goalFor('words'),st.fresh,left);
-      h+=`<div class="wactions">
-        <button type="button" class="btn primary big" data-wact="learn" ${nLearn?'':'disabled'}>${st.fresh&&!left?'Daily limit reached':`Learn ${nLearn||''} new ${nLearn===1?'word':'words'}`}</button>
-        <button type="button" class="btn big" data-wact="review" ${st.due?'':'disabled'}>Review ${st.due?Math.min(st.due,WS.reviewMax):''} due</button>
-        <button type="button" class="btn quiet" data-wact="practice" ${st.total>=5?'':'disabled'}>Practise ${goalFor('words')} random</button>${LANGS.filter(l=>usable(l.id).length>=5).length>=2?'<button type="button" class="btn quiet" data-wact="mix">Mix dictionaries</button>':''}${st.learning?'<button type="button" class="btn quiet" data-wlist="all">Your words</button>':''}${wDayLog(WS.lang,romeDay()).length?`<button type="button" class="btn quiet" data-wlist="day:${romeDay()}">Today · ${wDayLog(WS.lang,romeDay()).length}</button>`:''}</div>`;
+      const left=newLeft(WS.lang), nLearn=Math.min(goalFor('words'),st.fresh,left), nRev=Math.min(st.due,WS.reviewMax);
+      // what to do today, in order: review what's due (yellow), then learn new words (neutral); what you know is green
+      h+=`<div class="plan">
+        <div class="pcard review${st.due?'':' idle'}"><div class="pct"><b>Review</b><span>${st.due?`${st.due} due today, missed ones first`:'Nothing due today'}</span></div><button type="button" class="btn big" data-wact="review" ${st.due?'':'disabled'}>${st.due?`Review ${nRev}`:'All caught up'}</button></div>
+        <div class="pcard new"><div class="pct"><b>Learn new</b><span>${st.fresh?`${st.fresh} new ${st.fresh===1?'word':'words'}${WS.daily?` · ${Math.min(left,st.fresh)} left today`:''}`:'You’ve started every word'}</span></div><button type="button" class="btn big${st.due?'':' primary'}" data-wact="learn" ${nLearn?'':'disabled'}>${st.fresh&&!left?'Daily limit reached':nLearn?`Learn ${nLearn}`:'Nothing new'}</button></div>
+        <div class="pcard done"><div class="pct"><b>Known</b><span>${st.mastered} mastered of ${st.learning} started</span></div><button type="button" class="btn quiet" data-wlist="mastered" ${st.mastered?'':'disabled'}>See them</button></div>
+      </div>`;
+      h+=`<div class="wactions"><button type="button" class="btn quiet" data-wact="practice" ${st.total>=5?'':'disabled'}>Practise ${goalFor('words')} random</button>${LANGS.filter(l=>usable(l.id).length>=5).length>=2?'<button type="button" class="btn quiet" data-wact="mix">Mix dictionaries</button>':''}${st.learning?'<button type="button" class="btn quiet" data-wlist="all">Your words</button>':''}${wDayLog(WS.lang,romeDay()).length?`<button type="button" class="btn quiet" data-wlist="day:${romeDay()}">Today · ${wDayLog(WS.lang,romeDay()).length}</button>`:''}</div>`;
       if(st.fresh&&!left) h+=`<div class="hint">You’ve learned ${WS.daily} new ${L.name} words today. They come back for review tomorrow; new words open up again then. You can change the limit in Settings.</div>`;
       if(!st.total) h+=`<div class="hint">No words with a definition in ${L.name} yet.</div>`;
       else if(st.noDef) h+=`<div class="hint">${st.noDef} ${st.noDef===1?'word has':'words have'} no definition yet, so ${st.noDef===1?'it is':'they are'} left out until your bot or you fill ${st.noDef===1?'it':'them'} in.</div>`;
@@ -3010,7 +3025,7 @@ function renderWords(){
     eb.textContent=`Learn · ${L.name} · word ${WSN.i+1} of ${WSN.ids.length}`; pr.textContent='Memorise these words'; sc.textContent='';
     h+=`<article class="wcard"><div class="ww">${esc(r.w)}</div><div class="wd">${rich(r.d)}</div>${r.e?`<div class="we">${rich(r.e)}</div>`:''}${r.s?`<div class="wsrc">Source: ${esc(r.s)}</div>`:''}</article>`;
     h+=`<div class="pips">${WSN.ids.map((x,k)=>`<i class="${k===WSN.i?'on':k<WSN.i?'past':''}"></i>`).join('')}</div>`;
-    h+=`<div class="actions"><button type="button" class="btn quiet" data-wact="quit">Stop</button><span class="spacer"></span><button type="button" class="btn" data-wact="prev" ${WSN.i?'':'disabled'}>Previous</button>${WSN.i<WSN.ids.length-1?'<button type="button" class="btn primary" data-wact="next">Next word</button>':'<button type="button" class="btn primary" data-wact="match">I’m ready: match them</button>'}</div>`;
+    h+=`<div class="actions"><button type="button" class="btn quiet" data-wact="quit">Stop</button><span class="spacer"></span><button type="button" class="btn" data-wact="prev" ${WSN.i?'':'disabled'}>Previous</button>${WSN.i<WSN.ids.length-1?'<button type="button" class="btn primary" data-wact="next">Next word</button>':`<button type="button" class="btn primary" data-wact="match">${WSN.ids.length<3?'I’m ready: check them':'I’m ready: match them'}</button>`}</div>`;
   }else if(WSN.phase==='match'){
     eb.textContent=`Learn · ${L.name} · ${WSN.matched.size} of ${WSN.ids.length} matched`; pr.textContent='Match each word with its definition'; sc.textContent='';
     const cls=(side,id)=>WSN.matched.has(id)?'mt ok':(WSN.flash&&WSN.flash.indexOf(id)>=0?'mt bad':((side==='L'?WSN.selL:WSN.selR)===id?'mt sel':'mt'));
@@ -3039,7 +3054,7 @@ function renderWordsSide(){
   h+=`<div class="field"><span class="fl">Which new words first</span><div class="chips">${[['new','Newest'],['old','Oldest'],['rnd','Random']].map(o=>`<button type="button" class="chip" data-wset="order" data-v="${o[0]}" aria-pressed="${WS.order===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
   h+=`<div class="field"><span class="fl">Review questions</span><div class="chips">${[['mix','Mixed'],['w2d','Word → meaning'],['d2w','Meaning → word']].map(o=>`<button type="button" class="chip" data-wset="dir" data-v="${o[0]}" aria-pressed="${WS.dir===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
   h+=`<div class="field"><span class="fl">Reviews per session</span><div class="chips">${[10,20,40].map(n=>`<button type="button" class="chip mono" data-wset="reviewMax" data-v="${n}" aria-pressed="${WS.reviewMax===n}">${n}</button>`).join('')}</div></div>`;
-  h+=`<div class="field"><span class="fl">Daily goal</span><div class="chips">${[1,5,10,20].map(n=>`<button type="button" class="chip mono" data-wgoal="${n}" aria-pressed="${goalFor('words')===n}">${n}</button>`).join('')}</div><div class="hint">Words to go through each day before Words turns green on the start page, and how many each Learn, Practise or Mix session takes.</div></div>`;
+  h+=`<div class="field"><span class="fl">Daily goal</span><div class="chips">${[1,5,10,20].map(n=>`<button type="button" class="chip mono" data-wgoal="${n}" aria-pressed="${goalFor('words')===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="50" inputmode="numeric" data-wgoalin value="${[1,5,10,20].indexOf(goalFor('words'))<0?goalFor('words'):''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">Words to go through each day before Words turns green on the start page, and how many each Learn, Practise or Mix session takes.</div></div>`;
   $('wsettings').innerHTML=h;
   const st=langStats(WS.lang), L=LANGS.find(l=>l.id===WS.lang);
   $('wstatsSide').innerHTML=`<h2>${L.name}</h2><div class="hint">A learned word comes back the next day. Each right answer waits a little longer (1, 1, 2, 3, 5, 8 days…); a wrong one starts again from tomorrow. A word counts as mastered after four right reviews in a row.</div><div class="totals">${WD[WS.lang]?`${st.total} words with a definition · ${st.learning} learning · ${st.mastered} mastered · ${learnedToday(WS.lang)}${WS.daily?' of '+WS.daily:''} new today`:'Not loaded yet.'}</div><div class="hint" style="margin-top:6px">${wordsSynced?'Progress saved to your account':'Progress saved in this browser'}. ${WSRC?'The words come from your private account, synced from Notion.':'The words themselves stay in your Notion.'}</div>`;
@@ -3077,7 +3092,7 @@ $('wbody').addEventListener('click',e=>{
   else if(a==='mix') startMix();
   else if(a==='next'){ WSN.i++; renderWords(); }
   else if(a==='prev'){ WSN.i=Math.max(0,WSN.i-1); renderWords(); }
-  else if(a==='match') toMatch();
+  else if(a==='match'){ if(WSN.ids.length<3) toQuiz(); else toMatch(); }
   else if(a==='restudy'){ WSN.phase='study'; WSN.i=0; renderWords(); }
   else if(a==='nextq') nextQuiz();
   else if(a==='quit'){ WSN=null; wFeedback('',''); renderWords(); }
@@ -3086,6 +3101,7 @@ $('wbody').addEventListener('click',e=>{
   else if(a==='vnext') wvStep(1);
   else if(a==='vpractise') startPractice(WV.ids);
 });
+$('wsettings').addEventListener('change',e=>{ if(!e.target.matches('[data-wgoalin]')) return; const n=Math.max(1,Math.min(50,Math.round(+e.target.value||0))); if(!+e.target.value) return; setGoal('words',n); renderWordsSide(); if(!WSN||WSN.phase==='done') renderWords(); });
 $('wsettings').addEventListener('click',e=>{
   const gb=e.target.closest('[data-wgoal]'); if(gb){ setGoal('words',+gb.dataset.wgoal); renderWordsSide(); if(!WSN||WSN.phase==='done') renderWords(); return; }
   const b=e.target.closest('[data-wset]'); if(!b) return;
@@ -3350,12 +3366,16 @@ const pAnswer=it=>it.kind==='artist'?it.x.artist:it.kind==='year'?String(it.x.ye
 const pRight=it=>it.pick!=null&&it.pick>=0&&it.opts[it.pick]===pAnswer(it);
 const P_QUESTION={artist:'Who painted this?',title:'What is this painting called?',year:'When was it painted?',museum:'Where does it hang today?',movement:'Which art movement or school is it?'};
 function pFeedback(cls,txt){ const el=$('pfeedback'); el.className='feedback'+(cls?' '+cls:''); el.textContent=txt; }
-function startPaint(list){
+function startPaint(list,mode){
   const pool=(list||pPool()).filter(x=>PS.kinds.some(k=>pCanAsk(x,k)));
   if(!list&&pool.length<4){ pFeedback('info','There are too few works in this group. Choose “All” in Settings.'); return; }
   PG=null;
-  const n=goalFor('paintings'), items=list?shuffle(pool.slice()).slice(0,n):pickRound(pool,Math.min(n,pool.length));
-  PSN={phase:'ask',day:romeDay(),i:0,right:0,items:items.map(x=>{ const kind=pKindFor(x); return {x,kind,opts:paintOptions(x,kind),pick:null}; })};
+  const n=goalFor('paintings'), items=list?shuffle(pool.slice()).slice(0,n)
+    :mode==='review'?shuffle(pool.filter(x=>pDue(PS.p[x.id]))).sort((a,b)=>pMissed(PS.p[b.id])-pMissed(PS.p[a.id])).slice(0,n)
+    :mode==='new'?shuffle(pool.filter(x=>!PS.p[x.id])).slice(0,n)
+    :pickRound(pool,Math.min(n,pool.length));
+  if(!items.length){ pFeedback('info',mode==='review'?'Nothing is due right now.':'There’s nothing new in this group.'); return; }
+  PSN={phase:'ask',mode:mode||'',day:romeDay(),i:0,right:0,items:items.map(x=>{ const kind=pKindFor(x); return {x,kind,opts:paintOptions(x,kind),pick:null}; })};
   pStoreSession(); pFeedback('',''); preloadP(0); preloadP(1); renderPaint();
 }
 function preloadP(i){ const it=PSN&&PSN.items[i]; if(it){ const im=new Image(); im.decoding='async'; im.src=it.x.thumb; } }
@@ -3467,15 +3487,19 @@ function renderPaint(){
     eb.textContent='Paintings'; sc.textContent='';
     pr.textContent=d?`${d.right} of ${d.items.filter(o=>o.pick>=0).length} right`:'Name the painter, the painting or its movement';
     if(d) h+=`<ul class="wlist">${d.items.map((it,k)=>`<li class="tap ${it.pick<0?'na':pRight(it)?'ok':'no'}"><button type="button" class="wopen" data-pround="${k}"><b>${esc(it.x.title)}</b><span>${esc(it.x.artist)}${it.x.year?', '+it.x.year:''}</span></button></li>`).join('')}</ul>`;
-    const tile=(f,n,label)=>`<button type="button" data-pgal="${f}" ${n?'':'disabled'}><b>${n}</b><span>${label}</span></button>`;
-    const due=pool.filter(x=>pDue(PS.p[x.id])).length;
-    h+=`<div class="wstats"><div><b>${due}</b><span>due now</span></div>${tile('all',pGalleryIds('all').length,'seen')}${tile('missed',pGalleryIds('missed').length,'to revisit')}${tile('known',pGalleryIds('known').length,'known')}</div>`;
-    h+=`<div class="wactions"><button type="button" class="btn primary big" data-pact="start">${d?`Another ${goalFor('paintings')}`:`Start ${goalFor('paintings')} ${goalFor('paintings')===1?'painting':'paintings'}`}</button>${pGalleryIds('all').length?'<button type="button" class="btn big" data-pgal="all">Your gallery</button>':''}${today.length?`<button type="button" class="btn quiet" data-pgal="day:${romeDay()}">Today · ${today.length} ${today.length===1?'work':'works'}</button>`:''}</div>`;
+    const n=goalFor('paintings'), due=pool.filter(x=>pDue(PS.p[x.id])).length, fresh=pool.filter(x=>!PS.p[x.id]).length, missed=pGalleryIds('missed').length, known=pGalleryIds('known').length, seen=pGalleryIds('all').length;
+    // what to do today, in order: review what's due (yellow), then new works (neutral); what you know is green
+    h+=`<div class="plan">
+      <div class="pcard review${due?'':' idle'}"><div class="pct"><b>Review</b><span>${due?`${due} due today${missed?`, ${missed} to revisit first`:''}`:'Nothing due today'}</span></div><button type="button" class="btn big" data-pact="review" ${due?'':'disabled'}>${due?`Review ${Math.min(n,due)}`:'All caught up'}</button></div>
+      <div class="pcard new"><div class="pct"><b>Learn new</b><span>${fresh?`${fresh} works you haven’t seen`:'You’ve seen every work in this group'}</span></div><button type="button" class="btn big${due?'':' primary'}" data-pact="new" ${fresh?'':'disabled'}>${fresh?`See ${Math.min(n,fresh)} new`:'Nothing new'}</button></div>
+      <div class="pcard done"><div class="pct"><b>Known</b><span>${known} known of ${seen} seen</span></div><button type="button" class="btn quiet" data-pgal="known" ${known?'':'disabled'}>See them</button></div>
+    </div>`;
+    h+=`<div class="wactions">${seen?'<button type="button" class="btn quiet" data-pgal="all">Your gallery</button>':''}${pDayResults(romeDay()).length?`<button type="button" class="btn quiet" data-pgal="day:${romeDay()}">Today · ${pDayResults(romeDay()).length}</button>`:''}</div>`;
     if(d) h+=`<div class="hint">Tap a work to look at it again. This round stays here until midnight.</div>`;
-    h+=`<div class="hint">Each round starts with the works due for review (missed ones first), then new ones, and each time a work comes back it asks the next of your questions about it. A work is known once it’s been right on three review days in a row. Pictures from Wikimedia Commons (public domain); facts from Wikidata.</div>`;
+    h+=`<div class="hint">Review brings back the works due today, missed ones first; Learn new shows works you haven’t seen. Each time a work comes back it asks the next of your questions about it. A work is known once it’s been right on three review days in a row. Pictures from Wikimedia Commons (public domain); facts from Wikidata.</div>`;
   }else{
     const it=PSN.items[PSN.i], x=it.x, ans=pAnswer(it);
-    eb.textContent=`Painting ${PSN.i+1} of ${PSN.items.length}`;
+    eb.textContent=`${PSN.mode==='review'?'Review · ':PSN.mode==='new'?'New · ':''}Painting ${PSN.i+1} of ${PSN.items.length}`;
     pr.textContent=P_QUESTION[it.kind];
     sc.textContent=`${PSN.right} right`;
     dots.innerHTML=PSN.items.map((o,k)=>`<span class="dot ${o.pick==null?(k===PSN.i?'cur':''):o.pick<0?'':(pRight(o)?'ok':'no')}"></span>`).join('');
@@ -3503,7 +3527,7 @@ function renderPaintSide(){
   let h='';
   h+=`<div class="field"><span class="fl">Questions</span><div class="chips">${[['artist','Who painted it?'],['title','What is it called?'],['movement','Which movement?'],['museum','Where does it hang?']].map(o=>`<button type="button" class="chip" data-pkind="${o[0]}" aria-pressed="${PS.kinds.indexOf(o[0])>=0}">${o[1]}</button>`).join('')}</div><div class="hint">Tick one or more. They take turns: each time a work comes back it asks the next one. Movement and museum only come up for works where the facts are known (about six in ten have a movement).</div></div>`;
   h+=`<div class="field"><span class="fl">Works</span><div class="chips">${FAME.map(o=>`<button type="button" class="chip" data-pset="fame" data-v="${o[0]}" aria-pressed="${PS.fame===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
-  h+=`<div class="field"><span class="fl">Daily goal</span><div class="chips">${[1,5,10,20].map(n=>`<button type="button" class="chip mono" data-pgoal="${n}" aria-pressed="${goalFor('paintings')===n}">${n}</button>`).join('')}</div><div class="hint">Paintings to answer each day before Paintings turns green on the start page, and how many each round asks.</div></div>`;
+  h+=`<div class="field"><span class="fl">Daily goal</span><div class="chips">${[1,5,10,20].map(n=>`<button type="button" class="chip mono" data-pgoal="${n}" aria-pressed="${goalFor('paintings')===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="50" inputmode="numeric" data-pgoalin value="${[1,5,10,20].indexOf(goalFor('paintings'))<0?goalFor('paintings'):''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">Paintings to answer each day before Paintings turns green on the start page, and how many each round asks.</div></div>`;
   $('psettings').innerHTML=h;
   const last=PS.hist.slice(-20), tot=last.reduce((a,x)=>a+x.n,0), ok=last.reduce((a,x)=>a+x.ok,0);
   $('pstats').innerHTML=`<h2>Your gallery</h2><div class="hint">“Famous” works are covered by many Wikipedias, “deep cuts” by only a few: often lesser-known pieces by great painters.</div><div class="totals">${PDATA?`${Object.keys(PS.p).length} of ${PDATA.length} works seen`:''}${tot?` · ${Math.round(100*ok/tot)}% right in your last ${last.length} ${last.length===1?'round':'rounds'}`:''}</div>`;
@@ -3525,6 +3549,8 @@ $('pbody').addEventListener('click',e=>{
   const pr=e.target.closest('[data-pround]'); if(pr){ openRoundWork(+pr.dataset.pround); return; }
   const b=e.target.closest('[data-pact]'); if(!b) return; const a=b.dataset.pact;
   if(a==='start') startPaint();
+  else if(a==='review') startPaint(null,'review');
+  else if(a==='new') startPaint(null,'new');
   else if(a==='back') navBack(pgBack);
   else if(a==='prevw') pgStep(-1);
   else if(a==='nextw') pgStep(1);
@@ -3534,6 +3560,7 @@ $('pbody').addEventListener('click',e=>{
   else if(a==='quit'){ PSN=null; pStoreSession(); pFeedback('',''); renderPaint(); }
   else if(a==='retry') renderPaint();
 });
+$('psettings').addEventListener('change',e=>{ if(!e.target.matches('[data-pgoalin]')) return; const n=Math.max(1,Math.min(50,Math.round(+e.target.value||0))); if(!+e.target.value) return; setGoal('paintings',n); renderPaintSide(); if(!PG&&(!PSN||PSN.phase==='done')) renderPaint(); });
 $('psettings').addEventListener('click',e=>{
   const gb=e.target.closest('[data-pgoal]'); if(gb){ setGoal('paintings',+gb.dataset.pgoal); renderPaintSide(); if(!PG&&(!PSN||PSN.phase==='done')) renderPaint(); return; }
   const kb=e.target.closest('[data-pkind]'); if(kb){ const k=kb.dataset.pkind, i=PS.kinds.indexOf(k); if(i>=0){ if(PS.kinds.length>1) PS.kinds.splice(i,1); } else PS.kinds=P_ALL.filter(x=>x===k||PS.kinds.indexOf(x)>=0); pStore(); renderPaintSide(); if(!PG&&!PSN){ pFeedback('',''); renderPaint(); } return; }
