@@ -8,12 +8,12 @@ Live app: **https://riccardotancredi.github.io/Fretwise/**: it installs on a pho
 
 | Section | What you practise | Data |
 |---|---|---|
-| Guitar, Ukulele | Name the note, find the note, all positions (timed), chords, intervals and scales | — |
+| Guitar, Ukulele | Name the note, find the note, all positions (timed), chords, intervals, and scales (major and minor, pentatonic and blues, the modes; one position or the whole neck) | — |
 | Chess | Lichess puzzles with a rating, and an opening trainer (77 lines in 20 openings, with the idea of each and why every move is played) | [Lichess puzzle and openings databases](https://database.lichess.org/) (CC0), in `data/puzzles.json` |
 | Words | 5 new words at a time, matched with their definitions, then spaced reviews. A daily limit of new words per dictionary (10 by default) | Your Notion dictionaries, **private** (see below) |
-| Paintings | Who painted it? What is it called? | [Wikidata](https://www.wikidata.org/) (CC0) and public-domain images on [Wikimedia Commons](https://commons.wikimedia.org/), in `data/paintings.json` |
+| Paintings | Who painted it? What is it called? When? Each question has its own review schedule, and a work counts as known only after two right answers in a row for each | [Wikidata](https://www.wikidata.org/) (CC0) and public-domain images on [Wikimedia Commons](https://commons.wikimedia.org/), in `data/paintings.json` |
 
-Each section counts the minutes you spend on it today against a 10-minute goal, and a daily notification reminds you of the ones you haven't done.
+Today’s words and paintings stay on screen until midnight (Italian time), and you can look back at what you saw on each of the last 60 days. Each section counts the minutes you spend on it today against a 10-minute goal, and a daily notification reminds you of the ones you haven't done.
 
 ## How your words stay private
 

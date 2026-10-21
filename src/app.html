@@ -53,7 +53,8 @@ button{cursor:pointer}
 .inst-btn svg{flex:none}
 .modes{display:flex;gap:4px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;max-width:100%;overflow-x:auto}
 .modes button{border:0;background:transparent;padding:8px 14px;border-radius:999px;font-weight:700;font-size:.92rem;white-space:nowrap;color:var(--muted)}
-@media (max-width:560px){.modes .long{display:none}.modes{width:100%}.modes button{flex:1;padding:8px 8px;font-size:.86rem}}
+@media (max-width:560px){.modes .long{display:none}.modes{width:100%;gap:2px}.modes button{flex:1 1 auto;padding:8px 5px;font-size:.84rem}}
+@media (max-width:400px){.modes button{padding:8px 3px;font-size:.8rem}}
 .modes button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
 
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;margin-top:16px;align-items:start}
@@ -402,7 +403,8 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
       <button role="tab" data-mode="find" aria-selected="false">Find<span class="long"> the note</span></button>
       <button role="tab" data-mode="all" aria-selected="false">All<span class="long"> positions</span></button>
       <button role="tab" data-mode="chord" aria-selected="false">Chords</button>
-      <button role="tab" data-mode="iv" aria-selected="false">Intervals<span class="long"> &amp; scales</span></button>
+      <button role="tab" data-mode="iv" aria-selected="false">Intervals</button>
+      <button role="tab" data-mode="scale" aria-selected="false">Scales</button>
     </nav>
     <nav class="modes" id="chessModes" role="tablist" aria-label="Chess" hidden>
       <button role="tab" data-ctab="puzzles" aria-selected="true">Puzzles</button>
@@ -604,12 +606,20 @@ function ivRootName(rp,iv){
 }
 const IV_BY_SEMI={}; INTERVALS.forEach(i=>{IV_BY_SEMI[i.semi%12]=IV_BY_SEMI[i.semi%12]||i;}); IV_BY_SEMI[0]=INTERVALS[11];
 const SCALES=[
-  {id:'maj',  name:'major',            steps:[0,2,4,5,7,9,11], deg:['1','2','3','4','5','6','7']},
-  {id:'min',  name:'natural minor',    steps:[0,2,3,5,7,8,10], deg:['1','2','♭3','4','5','♭6','♭7']},
-  {id:'majp', name:'major pentatonic', steps:[0,2,4,7,9],      deg:['1','2','3','5','6']},
-  {id:'minp', name:'minor pentatonic', steps:[0,3,5,7,10],     deg:['1','♭3','4','5','♭7']},
-  {id:'blues',name:'blues',            steps:[0,3,5,6,7,10],   deg:['1','♭3','4','♭5','5','♭7']}
+  {id:'maj',  name:'major',            grp:'mm',   steps:[0,2,4,5,7,9,11], deg:['1','2','3','4','5','6','7']},
+  {id:'min',  name:'natural minor',    grp:'mm',   steps:[0,2,3,5,7,8,10], deg:['1','2','♭3','4','5','♭6','♭7']},
+  {id:'hmin', name:'harmonic minor',   grp:'mm',   steps:[0,2,3,5,7,8,11], deg:['1','2','♭3','4','5','♭6','7']},
+  {id:'mmin', name:'melodic minor',    grp:'mm',   steps:[0,2,3,5,7,9,11], deg:['1','2','♭3','4','5','6','7']},
+  {id:'majp', name:'major pentatonic', grp:'pent', steps:[0,2,4,7,9],      deg:['1','2','3','5','6']},
+  {id:'minp', name:'minor pentatonic', grp:'pent', steps:[0,3,5,7,10],     deg:['1','♭3','4','5','♭7']},
+  {id:'blues',name:'blues',            grp:'pent', steps:[0,3,5,6,7,10],   deg:['1','♭3','4','♭5','5','♭7']},
+  {id:'dor',  name:'Dorian',           grp:'mode', steps:[0,2,3,5,7,9,10], deg:['1','2','♭3','4','5','6','♭7']},
+  {id:'phr',  name:'Phrygian',         grp:'mode', steps:[0,1,3,5,7,8,10], deg:['1','♭2','♭3','4','5','♭6','♭7']},
+  {id:'lyd',  name:'Lydian',           grp:'mode', steps:[0,2,4,6,7,9,11], deg:['1','2','3','♯4','5','6','7']},
+  {id:'mix',  name:'Mixolydian',       grp:'mode', steps:[0,2,4,5,7,9,10], deg:['1','2','3','4','5','6','♭7']},
+  {id:'loc',  name:'Locrian',          grp:'mode', steps:[0,1,3,5,6,8,10], deg:['1','♭2','♭3','4','♭5','♭6','♭7']}
 ];
+const SCALE_GROUPS=[['mm','Major and minor'],['pent','Pentatonic and blues'],['mode','Modes']];
 // Chords: each tone is [semitones above the root, degree, required]. Optional tones (a 5th, a 9th under a 13th) may be left out.
 const CHORDS=[
   {id:'maj', sym:'',     name:'major',            grp:'triad',   t:[[0,'1',1],[4,'3',1],[7,'5',1]]},
@@ -655,7 +665,7 @@ function octaveLinks(ps){
 /* ---------- state ---------- */
 const S={
   inst:'guitar', mode:'name', acc:'sharp', naturalsOnly:false, allPc:0, ivMode:'interval',
-  intervals:['m3','M3','P4','P5','P8'], scales:['minp','maj'], roundLen:10, sound:true,
+  intervals:['m3','M3','P4','P5','P8'], scales:['minp','maj'], scaleRootPcs:ALL12.slice(), scaleArea:'box', roundLen:10, sound:true,
   chordGroupsBy:{guitar:['triad'],ukulele:['triad','seventh']}, ivAll:false, chordShapes:2, rootBass:{guitar:true,ukulele:false},
   by:{guitar:{fretStart:0,fretEnd:12,strings:[true,true,true,true,true,true]},
       ukulele:{fretStart:0,fretEnd:12,strings:[true,true,true,true]}}
@@ -672,7 +682,10 @@ function load(){
     const st=d.settings||{};
     // older versions kept a single (guitar) range and string list at the top level
     if(st.fretStart!=null&&!st.by){ S.by.guitar.fretStart=st.fretStart; S.by.guitar.fretEnd=st.fretEnd; if(Array.isArray(st.strings)&&st.strings.length===6) S.by.guitar.strings=st.strings; }
-    ['mode','lastView','acc','naturalsOnly','allPc','ivMode','ivAll','intervals','scales','roundLen','sound','chordShapes','inst'].forEach(k=>{ if(st[k]!=null) S[k]=st[k]; });
+    ['mode','lastView','acc','naturalsOnly','allPc','ivMode','ivAll','intervals','scales','scaleRootPcs','scaleArea','roundLen','sound','chordShapes','inst'].forEach(k=>{ if(st[k]!=null) S[k]=st[k]; });
+    // scales used to live under Intervals
+    if(S.mode==='iv'&&S.ivMode==='scale'){ S.mode='scale'; S.ivMode='interval'; }
+    S.scales=S.scales.filter(id=>SCALES.some(x=>x.id===id)); if(!S.scales.length) S.scales=['maj'];
     if(st.rootBass) Object.assign(S.rootBass,st.rootBass);
     if(st.chordGroupsBy) Object.assign(S.chordGroupsBy,st.chordGroupsBy); else if(Array.isArray(st.chordGroups)) S.chordGroupsBy.guitar=st.chordGroups;
     S.chordGroupsBy.ukulele=S.chordGroupsBy.ukulele.filter(g=>INSTRUMENTS.ukulele.chordGroups.indexOf(g)>=0); if(!S.chordGroupsBy.ukulele.length) S.chordGroupsBy.ukulele=['triad','seventh'];
@@ -933,7 +946,8 @@ function makeQuestion(){
     return {type:'findA',pc,targets:positions(true,x=>x===pc),found:new Set(),wrong:[]};
   }
   if(S.mode==='chord') return makeChordQ();
-  if(S.ivMode==='interval'){
+  if(S.mode==='scale') return makeScaleQ();
+  {
     const ivs=INTERVALS.filter(i=>S.intervals.indexOf(i.id)>=0);
     for(let t=0;t<40;t++){
       const iv=rnd(ivs), root=rnd(positions(false)), rp=pcOf(root.s,root.f), tp=(rp+iv.semi)%12;
@@ -944,16 +958,40 @@ function makeQuestion(){
       return {type:'iv',root,iv,rootPc:rp,rootName,targetPc:tp,targets,tap:null};
     }
   }
-  const scs=SCALES.filter(x=>S.scales.indexOf(x.id)>=0), sc=rnd(scs), c=C(), roots=[];
-  INST.scaleRoots.forEach(s=>{ for(let f=c.fretStart;f<=c.fretEnd;f++){
-    const lo=Math.max(c.fretStart,f-1), hi=f+3; if(hi<=c.fretEnd) roots.push({s,f,lo,hi}); } });
-  const R=roots.length?rnd(roots):{s:INST.scaleRoots[0],f:c.fretStart,lo:c.fretStart,hi:c.fretEnd};
-  const rp=pcOf(R.s,R.f), expected=new Map();
-  for(let s=0;s<NS;s++) for(let f=R.lo;f<=R.hi;f++){
-    const iv=(pcOf(s,f)-rp+12)%12, i=sc.steps.indexOf(iv);
-    if(i>=0) expected.set(key(s,f),sc.deg[i]);
+  return makeScaleQ();
+}
+
+/* ---------- scales ---------- */
+// name the root so the scale needs the fewest accidentals (E♭ Dorian, not D♯ Dorian with C♯ and F♯♯)
+function scaleRootName(rp,sc){
+  const cost=n=>sc.steps.reduce((a,x,i)=>{ const t=spellTone(n,rp,x,sc.deg[i]); const k=(t.match(/[♯♭]/g)||[]).length; return a+k+(k>1?4:0); },0);
+  const a=note(rp), b=(S.acc==='flat'?SHARP:FLAT)[rp];
+  return cost(b)<cost(a)?b:a;
+}
+const scaleSpelling=q=>q.scale.steps.map((x,i)=>spellTone(rootNm(q),q.rootPc,x,q.scale.deg[i])).join(' ');
+// one position: a five-fret box around a root on the instrument's root strings; whole range: every scale note in the fret range
+function makeScaleQ(){
+  const scs=SCALES.filter(x=>S.scales.indexOf(x.id)>=0), c=C(), neck=S.scaleArea==='neck';
+  for(let t=0;t<60;t++){
+    const sc=rnd(scs), rp=rnd(S.scaleRootPcs), roots=[];
+    if(neck){
+      const on=(INST.scaleRoots.some(s=>rangeFrets().some(f=>pcOf(s,f)===rp))?INST.scaleRoots:STRINGS.map((x,i)=>i));
+      on.forEach(s=>rangeFrets().forEach(f=>{ if(pcOf(s,f)===rp) roots.push({s,f,lo:c.fretStart,hi:c.fretEnd}); }));
+      roots.sort((a,b)=>midiOf(a.s,a.f)-midiOf(b.s,b.f)); roots.length=Math.min(roots.length,1);
+    }else INST.scaleRoots.forEach(s=>{ for(let f=c.fretStart;f<=c.fretEnd;f++){
+      const lo=Math.max(c.fretStart,f-1), hi=f+3; if(hi<=c.fretEnd&&pcOf(s,f)===rp) roots.push({s,f,lo,hi}); } });
+    if(!roots.length) continue;
+    const R=rnd(roots), expected=new Map();
+    for(let s=0;s<NS;s++) for(let f=R.lo;f<=R.hi;f++){
+      const i=sc.steps.indexOf((pcOf(s,f)-rp+12)%12);
+      if(i>=0) expected.set(key(s,f),sc.deg[i]);
+    }
+    return {type:'scale',root:{s:R.s,f:R.f},rootPc:rp,rootName:scaleRootName(rp,sc),scale:sc,win:[R.lo,R.hi],neck,expected,selected:new Set([key(R.s,R.f)])};
   }
-  return {type:'scale',root:{s:R.s,f:R.f},rootPc:rp,scale:sc,win:[R.lo,R.hi],expected,selected:new Set([key(R.s,R.f)])};
+  // the fret range is too short for any chosen root: use the whole range from the lowest note
+  const sc=scs[0], rp=pcOf(0,c.fretStart), expected=new Map();
+  for(let s=0;s<NS;s++) for(let f=c.fretStart;f<=c.fretEnd;f++){ const i=sc.steps.indexOf((pcOf(s,f)-rp+12)%12); if(i>=0) expected.set(key(s,f),sc.deg[i]); }
+  return {type:'scale',root:{s:0,f:c.fretStart},rootPc:rp,rootName:scaleRootName(rp,sc),scale:sc,win:[c.fretStart,c.fretEnd],neck:true,expected,selected:new Set([key(0,c.fretStart)])};
 }
 
 /* ---------- chords ---------- */
@@ -1033,7 +1071,8 @@ function makeChordQ(){
   const ch=CHORDS[0]; return {type:'chord',ch,root:0,rootName:'C',voicings:genVoicings(0,ch),sel:new Map(),found:[],checked:null,mist:0,show:null};
 }
 const selToFrets=sel=>{ const fr=new Array(NS).fill(-1); sel.forEach((f,s)=>{ fr[s]=f; }); return fr; };
-const sameShape=(a,b)=>{ let diff=0; for(let s=0;s<NS;s++) if(a[s]!==b[s]) diff++; return diff<2; };
+// the same shape, give or take one string added or left out: 2120 and 2124 are two different F♯m voicings
+const sameShape=(a,b)=>{ let only=0; for(let s=0;s<NS;s++){ const x=a[s]>=0, y=b[s]>=0; if(x&&y&&a[s]!==b[s]) return false; if(x!==y) only++; } return only<2; };
 function evalShape(q,fr){
   const notes=[]; fr.forEach((f,s)=>{ if(f>=0) notes.push({s,f,pc:pcOf(s,f),midi:midiOf(s,f)}); });
   const wrong=notes.filter(n=>degOf(q,n.pc)==null);
@@ -1327,7 +1366,8 @@ function checkScale(){
   let right=0, extra=0;
   Q.selected.forEach(k=>{ if(Q.expected.has(k)) right++; else extra++; });
   const total=Q.expected.size, ok=right===total&&extra===0;
-  setFeedback(ok?'good':'bad', ok?`Perfect, all ${total} notes.`:`${right} of ${total} notes${extra?`, ${extra} ${extra===1?'note':'notes'} not in the scale`:''}. Missing notes are outlined.`);
+  const sp=`${rootNm(Q)} ${Q.scale.name}: ${scaleSpelling(Q)}.`;
+  setFeedback(ok?'good':'bad', ok?`Perfect, all ${total} notes. ${sp}`:`${right} of ${total} notes${extra?`, ${extra} ${extra===1?'note':'notes'} not in the scale`:''}. Missing notes are outlined. ${sp}`);
   playScale();
   finish(ok,`${rootNm(Q)} ${Q.scale.name}`);
 }
@@ -1431,7 +1471,7 @@ function renderPrompt(){
   else if(Q.type==='chord'){ eb=`Chords · ${Q.ch.name} · shape ${Math.min(Q.found.length+1,S.chordShapes)} of ${S.chordShapes}`; pr=`Build ${chordName(Q)}`; }
   else if(Q.type==='ivA'){ eb=`Intervals · every position · ${Q.found.size} of ${Q.targets.length} found`; pr=`Find every ${Q.iv.name} of ${rootNm(Q)}`; }
   else if(Q.type==='iv'){ eb='Intervals · root '+where(Q.root.s,Q.root.f); pr=`Find the ${Q.iv.name} of ${rootNm(Q)}`; }
-  else if(Q.type==='scale'){ eb=`Scales · frets ${Q.win[0]}–${Q.win[1]}, root on the ${strName(Q.root.s)}`; pr=`Mark every note of ${rootNm(Q)} ${Q.scale.name}`; }
+  else if(Q.type==='scale'){ eb=Q.neck?`Scales · frets ${Q.win[0]}–${Q.win[1]}, every string`:`Scales · frets ${Q.win[0]}–${Q.win[1]}, root on the ${strName(Q.root.s)}`; pr=`Mark every note of ${rootNm(Q)} ${Q.scale.name}`; }
   $('eyebrow').textContent=eb; $('prompt').textContent=pr;
   const sc=$('score'), row=sc.closest('.prompt-row');
   if(S.mode==='all'&&phase!=='summary'){
@@ -1573,10 +1613,14 @@ function chip(act,val,on,label,mono){ return `<button type="button" class="chip$
 function renderSettings(){
   let h=''; const c=C();
   if(S.mode==='iv'){
-    h+=`<div class="field"><span class="fl">Exercise</span><div class="chips">${chip('ivmode','interval',S.ivMode==='interval','Intervals')}${chip('ivmode','scale',S.ivMode==='scale','Scale shapes')}</div></div>`;
-    if(S.ivMode==='interval') h+=`<div class="field"><span class="fl">Intervals to practise</span><div class="chips">${INTERVALS.map(i=>chip('iv',i.id,S.intervals.indexOf(i.id)>=0,i.id==='P8'?'Octave':i.id,true)).join('')}</div><div class="hint">m = minor, M = major, P = perfect, TT = tritone.</div></div>`+
+    h+=`<div class="field"><span class="fl">Intervals to practise</span><div class="chips">${INTERVALS.map(i=>chip('iv',i.id,S.intervals.indexOf(i.id)>=0,i.id==='P8'?'Octave':i.id,true)).join('')}</div><div class="hint">m = minor, M = major, P = perfect, TT = tritone.</div></div>`+
       `<div class="field"><span class="fl">Answer</span><div class="chips">${chip('ivall','0',!S.ivAll,'One position')}${chip('ivall','1',S.ivAll,'Every position (hard)')}</div><div class="hint">${S.ivAll?'Tap every position of the interval note in the fret range, on all strings.':'Any position of the right note counts.'}</div></div>`;
-    else h+=`<div class="field"><span class="fl">Scales</span><div class="chips">${SCALES.map(x=>chip('scale',x.id,S.scales.indexOf(x.id)>=0,x.name[0].toUpperCase()+x.name.slice(1))).join('')}</div><div class="hint">You get a root on the ${INST.scaleRoots.map(s=>strName(s)).join(' or ')} and a five-fret box. Mark every scale note inside it.</div></div>`;
+  }
+  if(S.mode==='scale'){
+    SCALE_GROUPS.forEach(g=>{ h+=`<div class="field"><span class="fl">${g[1]}</span><div class="chips">${SCALES.filter(x=>x.grp===g[0]).map(x=>chip('scale',x.id,S.scales.indexOf(x.id)>=0,x.name[0].toUpperCase()+x.name.slice(1))).join('')}</div>${g[0]==='mode'?'<div class="hint">Ionian is the major scale and Aeolian the natural minor.</div>':''}</div>`; });
+    const rs=S.scaleRootPcs, all=rs.length===12, nat=rs.length===7&&NATURAL.every(x=>rs.indexOf(x)>=0);
+    h+=`<div class="field"><span class="fl">Keys</span><div class="chips">${chip('sroots','all',all,'All 12')}${chip('sroots','nat',nat,'Naturals')}</div><div class="chips" style="margin-top:6px">${ALL12.map(pc=>chip('sroot',pc,rs.indexOf(pc)>=0,note(pc),true)).join('')}</div></div>`;
+    h+=`<div class="field"><span class="fl">Where</span><div class="chips">${chip('sarea','box',S.scaleArea==='box','One position')}${chip('sarea','neck',S.scaleArea==='neck','Whole fret range')}</div><div class="hint">${S.scaleArea==='box'?`A root on the ${INST.scaleRoots.map(s=>strName(s)).join(' or ')} and a five-fret box: mark every scale note inside it.`:'Mark every note of the scale on every string, across the fret range set below. Hard: start with a short range.'}</div></div>`;
   }
   if(S.mode==='chord'){
     h+=`<div class="field"><span class="fl">Chord types</span><div class="chips">${CHORD_GROUPS.filter(g=>INST.chordGroups.indexOf(g[0])>=0).map(g=>chip('cgrp',g[0],S.chordGroupsBy[S.inst].indexOf(g[0])>=0,g[1])).join('')}</div>${INST.id==='ukulele'?'<div class="hint">With four strings, ukulele chord books stop at 7ths and 6ths: C7, Cmaj7, Cm7, Cm7♭5, Cdim7, C6 and Cm6 are all everyday chords. C6 is simply all four strings open.</div>':''}</div>`;
@@ -1608,10 +1652,12 @@ $('settings').addEventListener('click',e=>{
   else if(a==='round'){ S.roundLen=+v; }
   else if(a==='sound'){ S.sound=v==='1'; restart=false; if(S.sound){ ensureAudio(); play(STRINGS[1].midi); } }
   else if(a==='nat'){ S.naturalsOnly=v==='1'; }
-  else if(a==='ivmode'){ S.ivMode=v; }
   else if(a==='ivall'){ S.ivAll=v==='1'; }
   else if(a==='iv'){ toggleIn(S.intervals,v); }
   else if(a==='scale'){ toggleIn(S.scales,v); }
+  else if(a==='sroot'){ toggleIn(S.scaleRootPcs,+v); }
+  else if(a==='sroots'){ S.scaleRootPcs=(v==='nat'?NATURAL:ALL12).slice(); }
+  else if(a==='sarea'){ S.scaleArea=v; }
   else if(a==='cgrp'){ toggleIn(S.chordGroupsBy[S.inst],v); }
   else if(a==='cshapes'){ S.chordShapes=+v; }
   else if(a==='cbass'){ S.rootBass[S.inst]=v==='1'; }
@@ -2148,11 +2194,16 @@ const NOTION='Notion', NOTION_TOOL='notion-query-data-sources';
 // review intervals in days by box: short gaps, so words come back almost daily at first
 const SRS_DAYS=[0,1,1,2,3,5,8,13,21];
 const DAY=86400000;
-const W_SET_KEY='fretwise.words.settings', W_DATA_KEY='fretwise.words.data', W_PROG_KEY='fretwise.words.progress';
+// the day as it is in Italy: today's work stays on screen until midnight there, and the history is kept per day
+const ROME_DAY=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'});
+function romeDay(t){ const o={}; ROME_DAY.formatToParts(new Date(t==null?Date.now():t)).forEach(x=>{ o[x.type]=x.value; }); return o.year+'-'+o.month+'-'+o.day; }
+function pruneDays(days){ const keep=new Set(); for(let i=0;i<61;i++) keep.add(romeDay(Date.now()-i*DAY)); Object.keys(days).forEach(d=>{ if(!keep.has(d)) delete days[d]; }); }
+const W_SET_KEY='fretwise.words.settings', W_DATA_KEY='fretwise.words.data', W_PROG_KEY='fretwise.words.progress', W_SESSION_KEY='fretwise.words.session';
 const WS={lang:'es', batch:5, order:'new', dir:'mix', reviewMax:20, daily:10};
 // the web app reads the words from the owner's private store; inside Claude they come from Notion directly
 const WSRC=window.fretwiseWordsSource||null;
-let WD={}, WP={p:{it:{},en:{},es:{},ca:{}},upd:0}, WSN=null, wLoading=null, wError=null;
+// WP.days: Rome day -> language -> word id -> {ok, m (learn, review or practice), t}
+let WD={}, WP={p:{it:{},en:{},es:{},ca:{}},days:{},upd:0}, WSN=null, wLoading=null, wError=null;
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rich=s=>esc(s).replace(/&lt;br\s*\/?&gt;/gi,'<br>');
 const plain=s=>String(s||'').replace(/<br\s*\/?>/gi,' ').replace(/\s+/g,' ').trim();
@@ -2161,14 +2212,29 @@ function wLoad(){
   try{ WD=JSON.parse(LOCAL.getItem(W_DATA_KEY)||'{}')||{}; }catch(e){ WD={}; }
   try{ const p=JSON.parse(LOCAL.getItem(W_PROG_KEY)||'null'); if(p&&p.p) WP=p; }catch(e){}
   LANGS.forEach(l=>{ WP.p[l.id]=WP.p[l.id]||{}; });
+  WP.days=WP.days||{};
+  // a session in progress, or finished today, comes back until midnight in Italy
+  try{
+    const x=JSON.parse(LOCAL.getItem(W_SESSION_KEY)||'null'), have=x&&x.day===romeDay()&&x.wsn&&byId(x.wsn.lang);
+    if(have&&x.wsn.ids.every(id=>have.has(id))){
+      WSN=Object.assign(x.wsn,{matched:new Set(x.wsn.matched||[]),requeued:new Set(x.wsn.requeued||[]),selL:null,selR:null,flash:null});
+      WS.lang=WSN.lang;
+    }
+  }catch(e){}
+}
+function wStoreSession(){
+  try{
+    if(!WSN) LOCAL.removeItem(W_SESSION_KEY);
+    else LOCAL.setItem(W_SESSION_KEY,JSON.stringify({day:WSN.day,wsn:Object.assign({},WSN,{matched:[...(WSN.matched||[])],requeued:[...(WSN.requeued||[])]})}));
+  }catch(e){}
 }
 const wSaveSettings=()=>{ try{ LOCAL.setItem(W_SET_KEY,JSON.stringify(WS)); }catch(e){} };
 const wSaveData=()=>{ try{ LOCAL.setItem(W_DATA_KEY,JSON.stringify(WD)); }catch(e){} };
-function wSaveProgress(){ WP.upd=Date.now(); try{ LOCAL.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){} pushWords(); }
+function wSaveProgress(){ WP.upd=Date.now(); pruneDays(WP.days); try{ LOCAL.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){} pushWords(); }
 let wordsDoc=null, wordsSynced=false, wWriting=false, wAgain=false;
 async function pushWords(){
   if(!wordsDoc) return; if(wWriting){ wAgain=true; return; } wWriting=true;
-  try{ await wordsDoc.set({p:WP.p,upd:WP.upd,v:1}); }
+  try{ await wordsDoc.set({p:WP.p,days:WP.days,upd:WP.upd,v:1}); }
   catch(e){ if(e&&(e.code==='invalid_argument'||e.code==='revoked'||e.code==='not_granted')){ wordsDoc=null; wordsSynced=false; } }
   wWriting=false; if(wAgain){ wAgain=false; pushWords(); }
 }
@@ -2176,6 +2242,10 @@ function mergeWords(x){
   if(!x||!x.p) return;
   LANGS.forEach(l=>{ const mine=WP.p[l.id]||(WP.p[l.id]={}), theirs=x.p[l.id]||{};
     Object.entries(theirs).forEach(([id,v])=>{ const m=mine[id]; if(!m||(v.last||0)>(m.last||0)) mine[id]=v; }); });
+  Object.entries(x.days||{}).forEach(([d,byLang])=>{ const md=WP.days[d]||(WP.days[d]={});
+    Object.entries(byLang||{}).forEach(([lang,ws])=>{ const ml=md[lang]||(md[lang]={});
+      Object.entries(ws||{}).forEach(([id,e])=>{ if(!ml[id]||(e.t||0)>(ml[id].t||0)) ml[id]=e; }); }); });
+  pruneDays(WP.days);
   WP.upd=Math.max(WP.upd,x.upd||0);
 }
 async function connectWords(db,uid){
@@ -2272,14 +2342,14 @@ function startLearn(){
   if(!left){ wFeedback('info',`That’s ${WS.daily} new words today, your daily limit. Review or practise, or come back tomorrow.`); return; }
   const ids=fresh.slice(0,Math.min(WS.batch,left)).map(r=>r.id);
   if(!ids.length){ wFeedback('info','You have started every word in this dictionary. Review them, or add new words in Notion.'); return; }
-  WSN={mode:'learn',lang,ids,phase:'study',i:0,mistakes:0,matched:new Set(),selL:null,selR:null,results:{}};
+  WSN={mode:'learn',day:romeDay(),lang,ids,phase:'study',i:0,mistakes:0,matched:new Set(),selL:null,selR:null,results:{}};
   wFeedback('',''); renderWords();
 }
 function startReview(){
   const lang=WS.lang, p=WP.p[lang], now=Date.now(), have=byId(lang);
   const ids=Object.entries(p).filter(([id,v])=>v.due<=now&&have.has(id)&&have.get(id).d).sort((a,b)=>a[1].due-b[1].due).slice(0,WS.reviewMax).map(([id])=>id);
   if(!ids.length){ wFeedback('info','Nothing is due right now. Learn some new words, or practise.'); return; }
-  WSN={mode:'review',lang,ids,phase:'quiz',queue:shuffle(ids.slice()),qi:0,mistakes:0,results:{},requeued:new Set()};
+  WSN={mode:'review',day:romeDay(),lang,ids,phase:'quiz',queue:shuffle(ids.slice()),qi:0,mistakes:0,results:{},requeued:new Set()};
   nextQuizQ(); wFeedback('',''); renderWords();
 }
 function startPractice(only){
@@ -2288,7 +2358,7 @@ function startPractice(only){
   if(!rows.length) return;
   WV=null;
   const ids=rows.map(r=>r.id);
-  WSN={mode:'practice',lang,ids,phase:'quiz',queue:ids.slice(),qi:0,mistakes:0,results:{},requeued:new Set()};
+  WSN={mode:'practice',day:romeDay(),lang,ids,phase:'quiz',queue:ids.slice(),qi:0,mistakes:0,results:{},requeued:new Set()};
   nextQuizQ(); wFeedback('',''); renderWords();
 }
 function toMatch(){ WSN.phase='match'; WSN.left=shuffle(WSN.ids.slice()); WSN.right=shuffle(WSN.ids.slice()); WSN.matched=new Set(); WSN.selL=WSN.selR=null; renderWords(); }
@@ -2303,6 +2373,14 @@ function answerQuiz(optId){
   q.pick=optId; const ok=optId===q.id;
   if(!ok){ WSN.mistakes++; if(WSN.mode!=='learn'&&!WSN.requeued.has(q.id)){ WSN.requeued.add(q.id); WSN.queue.push(q.id); } }
   if(WSN.results[q.id]==null) WSN.results[q.id]=ok;
+  renderWords();
+}
+// "I guessed": a right answer you didn't know counts as a miss, so the word comes back sooner
+function guessQuiz(){
+  const q=WSN.q; if(!q||q.pick!==q.id||q.guess) return;
+  q.guess=true; WSN.mistakes++;
+  if(WSN.results[q.id]) WSN.results[q.id]=false;
+  if(WSN.mode!=='learn'&&!WSN.requeued.has(q.id)){ WSN.requeued.add(q.id); WSN.queue.push(q.id); }
   renderWords();
 }
 function nextQuiz(){
@@ -2321,7 +2399,10 @@ function finishSession(){
       else { v.b=1; v.due=today+DAY; }
       p[id]=v; });
   }
-  if(WSN.mode!=='practice') wSaveProgress();
+  // the day's log, practice included: it doesn't move the review schedule, but you did see the words
+  const dl=WP.days[romeDay(now)]||(WP.days[romeDay(now)]={}), ll=dl[WSN.lang]||(dl[WSN.lang]={});
+  WSN.ids.forEach(id=>{ ll[id]={ok:WSN.results[id]?1:0,m:WSN.mode,t:now}; });
+  wSaveProgress();
   WSN.phase='done'; renderWords();
 }
 function tapMatch(side,id){
@@ -2343,7 +2424,11 @@ const W_FILTERS=[['all','All'],['right','Right'],['missed','Missed'],['mastered'
 // was the last answer right? Older saves don't say, so read it from the box when it is unambiguous
 const wLast=v=>v.r!=null?!!v.r:v.b===0?false:v.b>=2?true:v.n<=1;
 const wFilter=(v,f)=>f==='all'||(f==='mastered'?v.b>=5:f==='right'?wLast(v):!wLast(v));
+// a day's words in one dictionary, most recent first
+const wDayLog=(lang,d)=>{ const have=byId(lang); return Object.entries(((WP.days[d]||{})[lang])||{}).filter(([id])=>have.has(id)&&have.get(id).d).sort((a,b)=>b[1].t-a[1].t); };
+const wDays=lang=>Object.keys(WP.days).filter(d=>wDayLog(lang,d).length).sort().reverse().slice(0,14);
 function wListIds(lang,f){
+  if(f.indexOf('day:')===0) return wDayLog(lang,f.slice(4)).map(([id])=>id);
   const p=WP.p[lang]||{}, have=byId(lang);
   return Object.entries(p).filter(([id,v])=>have.has(id)&&have.get(id).d&&wFilter(v,f)).sort((a,b)=>(b[1].last||0)-(a[1].last||0)).map(([id])=>id);
 }
@@ -2357,26 +2442,30 @@ function wordViewHtml(L,map){
   const eb=$('weyebrow'), pr=$('wprompt'), sc=$('wscore'); let h='';
   if(WV.i!=null){
     const id=WV.ids[WV.i], r=map.get(id), v=(WP.p[WS.lang]||{})[id], ses=WV.src==='session'?WSN:null;
+    const day=WV.src.indexOf('day:')===0?WV.src.slice(4):null, de=day&&((WP.days[day]||{})[WS.lang]||{})[id];
     if(!r){ WV.i=null; return wordViewHtml(L,map); }
     eb.textContent=`${L.name} · ${WV.i+1} of ${WV.ids.length}`;
     pr.textContent=ses?'Words from this session':'Your words'; sc.textContent='';
     h+=`<article class="wcard"><div class="ww">${esc(r.w)}</div><div class="wd">${rich(r.d)}</div>${r.e?`<div class="we">${rich(r.e)}</div>`:''}${r.s?`<div class="wsrc">Source: ${esc(r.s)}</div>`:''}</article>`;
     const res=ses?(ses.results[id]?'<span class="ok">Right first time this session</span>':'<span class="no">Missed this session</span>')
+      :de?(de.ok?`<span class="ok">Right ${dayLabel(day).toLowerCase()==='today'?'today':'on '+dayLabel(day)}</span>`:`<span class="no">Missed ${dayLabel(day).toLowerCase()==='today'?'today':'on '+dayLabel(day)}</span>`)
       :v?(wLast(v)?'<span class="ok">Right last time</span>':'<span class="no">Missed last time</span>'):'';
     if(v||res) h+=`<div class="vstat">${res}${v?`<span>Seen ${v.n} ${v.n===1?'time':'times'}, right ${v.ok}</span><span>${nextReviewText(v)}</span>`:''}</div>`;
     h+=`<div class="actions"><button type="button" class="btn quiet" data-wact="vback">Back</button><span class="spacer"></span><button type="button" class="btn" data-wact="vprev" ${WV.i?'':'disabled'}>Previous</button><button type="button" class="btn primary" data-wact="vnext" ${WV.i<WV.ids.length-1?'':'disabled'}>Next</button></div>`;
     return h;
   }
   eb.textContent=`Your words · ${L.name}`;
-  pr.textContent=WV.src==='all'?'Words you’re learning':WV.src==='right'?'Right last time':WV.src==='missed'?'Missed last time':'Mastered words';
+  const day=WV.src.indexOf('day:')===0?WV.src.slice(4):null;
+  pr.textContent=day?`${dayLabel(day)}: the words you saw`:WV.src==='all'?'Words you’re learning':WV.src==='right'?'Right last time':WV.src==='missed'?'Missed last time':'Mastered words';
   sc.textContent=`${WV.ids.length} ${WV.ids.length===1?'word':'words'}`;
   h+=`<div class="langs" role="group" aria-label="Dictionary">${LANGS.map(l=>`<button type="button" class="lang" data-wlang="${l.id}" aria-pressed="${l.id===WS.lang}"><b>${l.name}</b><small>${WD[l.id]?`${wListIds(l.id,'all').length} learning`:'not loaded'}</small></button>`).join('')}</div>`;
   h+=`<div class="chips" role="group" aria-label="Show">${W_FILTERS.map(o=>`<button type="button" class="chip" data-wlist="${o[0]}" aria-pressed="${WV.src===o[0]}">${o[1]} · ${wListIds(WS.lang,o[0]).length}</button>`).join('')}</div>`;
-  const p=WP.p[WS.lang]||{};
-  if(WV.ids.length) h+=`<ul class="wlist">${WV.ids.map((id,k)=>{ const r=map.get(id); return `<li class="tap ${wLast(p[id])?'ok':'no'}"><button type="button" class="wopen" data-wview="${k}"><b>${esc(r.w)}</b><span>${esc(plain(r.d))}</span></button></li>`; }).join('')}</ul>`;
+  const days=wDays(WS.lang); if(days.length) h+=`<div class="chips" role="group" aria-label="By day">${days.map(d=>`<button type="button" class="chip" data-wlist="day:${d}" aria-pressed="${day===d}">${dayLabel(d)} · ${wDayLog(WS.lang,d).length}</button>`).join('')}</div>`;
+  const p=WP.p[WS.lang]||{}, dl=day?((WP.days[day]||{})[WS.lang]||{}):null;
+  if(WV.ids.length) h+=`<ul class="wlist">${WV.ids.map((id,k)=>{ const r=map.get(id); return `<li class="tap ${(dl?dl[id].ok:p[id]&&wLast(p[id]))?'ok':'no'}"><button type="button" class="wopen" data-wview="${k}"><b>${esc(r.w)}</b><span>${esc(plain(r.d))}</span></button></li>`; }).join('')}</ul>`;
   else h+=`<div class="hint">${!WD[WS.lang]?'This dictionary isn’t loaded yet.':WV.src==='all'?`You haven’t started any ${L.name} words yet.`:WV.src==='missed'?'Nothing missed: you got every word right last time.':'No words here yet.'}</div>`;
   h+=`<div class="actions"><button type="button" class="btn quiet" data-wact="vback">Back</button><span class="spacer"></span>${WV.ids.length&&usable(WS.lang).length>=5?`<button type="button" class="btn primary" data-wact="vpractise">Practise ${Math.min(10,WV.ids.length)} of these</button>`:''}</div>`;
-  h+=`<div class="hint">Green: right the last time it came up. Red: missed. Practising doesn’t change your review schedule.</div>`;
+  h+=`<div class="hint">${day?'Green: right first time that day. Red: missed.':'Green: right the last time it came up. Red: missed.'} Practising doesn’t change your review schedule.</div>`;
   return h;
 }
 
@@ -2408,7 +2497,7 @@ function renderWords(){
       h+=`<div class="wactions">
         <button type="button" class="btn primary big" data-wact="learn" ${nLearn?'':'disabled'}>${st.fresh&&!left?'Daily limit reached':`Learn ${nLearn||''} new ${nLearn===1?'word':'words'}`}</button>
         <button type="button" class="btn big" data-wact="review" ${st.due?'':'disabled'}>Review ${st.due?Math.min(st.due,WS.reviewMax):''} due</button>
-        <button type="button" class="btn quiet" data-wact="practice" ${st.total>=5?'':'disabled'}>Practise 10 random</button>${st.learning?'<button type="button" class="btn quiet" data-wlist="all">Your words</button>':''}</div>`;
+        <button type="button" class="btn quiet" data-wact="practice" ${st.total>=5?'':'disabled'}>Practise 10 random</button>${st.learning?'<button type="button" class="btn quiet" data-wlist="all">Your words</button>':''}${wDayLog(WS.lang,romeDay()).length?`<button type="button" class="btn quiet" data-wlist="day:${romeDay()}">Today · ${wDayLog(WS.lang,romeDay()).length}</button>`:''}</div>`;
       if(st.fresh&&!left) h+=`<div class="hint">You’ve learned ${WS.daily} new ${L.name} words today. They come back for review tomorrow; new words open up again then. You can change the limit in Settings.</div>`;
       if(!st.total) h+=`<div class="hint">No words with a definition in ${L.name} yet.</div>`;
       else if(st.noDef) h+=`<div class="hint">${st.noDef} ${st.noDef===1?'word has':'words have'} no definition yet, so ${st.noDef===1?'it is':'they are'} left out until your bot or you fill ${st.noDef===1?'it':'them'} in.</div>`;
@@ -2436,10 +2525,11 @@ function renderWords(){
     h+=`<article class="wcard q">${q.dir==='w2d'?`<div class="ww">${esc(r.w)}</div>`:`<div class="wd big">${rich(r.d)}</div>`}${q.pick&&r.e?`<div class="we">${rich(r.e)}</div>`:''}</article>`;
     h+=`<ol class="opts">${q.opts.map((id,k)=>{ const o=map.get(id); let c='opt'; if(q.pick){ if(id===q.id) c+=' ok'; else if(id===q.pick) c+=' bad'; else c+=' dim'; }
       return `<li><button type="button" class="${c}" data-opt="${id}" ${q.pick?'disabled':''}><kbd>${k+1}</kbd><span>${q.dir==='w2d'?esc(plain(o.d)):esc(o.w)}</span></button></li>`; }).join('')}</ol>`;
-    if(q.pick) h+=`<div class="actions"><span class="feedback ${q.pick===q.id?'good':'bad'}">${q.pick===q.id?'Correct.':`Not quite: it’s “${esc(q.dir==='w2d'?plain(r.d):r.w)}”.`}</span><span class="spacer"></span><button type="button" class="btn primary" data-wact="nextq">${WSN.qi+1>=WSN.queue.length?'Finish':'Next'}</button></div>`;
+    if(q.pick) h+=`<div class="actions"><span class="feedback ${q.pick===q.id&&!q.guess?'good':'bad'}">${q.guess?(WSN.mode==='learn'?'Counted as a miss: it comes up for review straight away.':'Counted as a miss: it comes back later in this session.'):q.pick===q.id?'Correct.':`Not quite: it’s “${esc(q.dir==='w2d'?plain(r.d):r.w)}”.`}</span>${q.pick===q.id&&!q.guess?'<button type="button" class="btn quiet sm" data-wact="guess">It was a guess</button>':''}<span class="spacer"></span><button type="button" class="btn primary" data-wact="nextq">${WSN.qi+1>=WSN.queue.length?'Finish':'Next'}</button></div>`;
     else h+=`<div class="actions"><button type="button" class="btn quiet" data-wact="quit">Stop</button><span class="spacer"></span><span class="hint">Keys 1–5 choose an answer</span></div>`;
   }
   el.innerHTML=h;
+  wStoreSession();
   renderWordsSide();
 }
 function renderWordsSide(){
@@ -2458,7 +2548,10 @@ function openWords(){
   ['home','main','chessMain','modes','chessModes','paintMain'].forEach(id=>$(id).hidden=true); $('wordsMain').hidden=false; $('instBtn').hidden=false;
   $('instName').textContent='Words';
   if(window.innerWidth<920) $('wSettingsPanel').open=false;
-  WSN=null; WV=null; wFeedback('',''); renderWords();
+  // today's session, finished or not, is still here; after midnight it starts afresh
+  if(WSN&&WSN.day!==romeDay()) WSN=null;
+  if(WSN) WS.lang=WSN.lang;
+  WV=null; wFeedback('',''); renderWords();
   // refresh in the background once the viewer has allowed Notion for this page
   if(WSRC){ if(WSRC.signedIn()&&!wLoading) refreshWords(); }
   else if(Object.keys(WD).length&&!wLoading){
@@ -2485,6 +2578,7 @@ $('wbody').addEventListener('click',e=>{
   else if(a==='match') toMatch();
   else if(a==='restudy'){ WSN.phase='study'; WSN.i=0; renderWords(); }
   else if(a==='nextq') nextQuiz();
+  else if(a==='guess') guessQuiz();
   else if(a==='quit'){ WSN=null; wFeedback('',''); renderWords(); }
   else if(a==='vback') wvBack();
   else if(a==='vprev') wvStep(-1);
@@ -2573,15 +2667,27 @@ function renderToday(){
    Web app only: inside Claude a page can't load pictures from other sites.
    ===================================================================== */
 const PAINT_ON=!!window.FW_WEB;
-const P_KEY='fretwise.paintings';
-const PS={ask:'mix', fame:'all', p:{}, hist:[], upd:0};   // p: work id -> {n, ok, b (box), last}
-let PDATA=null, pLoading=null, PSN=null, paintDoc=null, pWriting=false, pAgain=false;
-function pLoad(){ try{ const x=JSON.parse(LOCAL.getItem(P_KEY)||'null'); if(x) Object.assign(PS,x); }catch(e){} }
+const P_KEY='fretwise.paintings', P_SESSION_KEY='fretwise.paintings.session';
+// p: work id -> {n, ok, last, b, k: {artist|title|year: {n, ok, b (box), due, last}}}; days: Rome day -> [{id, kind, ok, t}]
+const PS={ask:'mix', fame:'all', p:{}, hist:[], days:{}, upd:0};
+let PDATA=null, pLoading=null, PSN=null, paintDoc=null, pWriting=false, pAgain=false, pRestore=null;
+function pLoad(){
+  try{ const x=JSON.parse(LOCAL.getItem(P_KEY)||'null'); if(x) Object.assign(PS,x); }catch(e){}
+  PS.days=PS.days||{};
+  // a round in progress, or finished today, comes back until midnight in Italy
+  try{ const s=JSON.parse(LOCAL.getItem(P_SESSION_KEY)||'null'); if(s&&s.day===romeDay()&&s.psn) pRestore=s.psn; }catch(e){}
+}
 function pStore(){ try{ LOCAL.setItem(P_KEY,JSON.stringify(PS)); }catch(e){} }
-function pSave(){ PS.upd=Date.now(); pStore(); pushPaint(); }
+function pSave(){ PS.upd=Date.now(); pruneDays(PS.days); pStore(); pushPaint(); }
+function pStoreSession(){
+  try{
+    if(!PSN) LOCAL.removeItem(P_SESSION_KEY);
+    else LOCAL.setItem(P_SESSION_KEY,JSON.stringify({day:romeDay(),psn:Object.assign({},PSN,{items:PSN.items.map(it=>Object.assign({},it,{x:it.x.id}))})}));
+  }catch(e){}
+}
 async function pushPaint(){
   if(!paintDoc) return; if(pWriting){ pAgain=true; return; } pWriting=true;
-  try{ await paintDoc.set({p:PS.p,hist:PS.hist.slice(-200),upd:PS.upd,v:1}); }catch(e){}
+  try{ await paintDoc.set({p:PS.p,hist:PS.hist.slice(-200),days:PS.days,upd:PS.upd,v:2}); }catch(e){}
   pWriting=false; if(pAgain){ pAgain=false; pushPaint(); }
 }
 function mergePaint(x){
@@ -2589,6 +2695,9 @@ function mergePaint(x){
   Object.entries(x.p||{}).forEach(([id,v])=>{ const m=PS.p[id]; if(!m||(v.last||0)>(m.last||0)) PS.p[id]=v; });
   const have=new Set(PS.hist.map(h=>h.t)); (x.hist||[]).forEach(h=>{ if(!have.has(h.t)) PS.hist.push(h); });
   PS.hist.sort((a,b)=>a.t-b.t); PS.hist=PS.hist.slice(-200); PS.upd=Math.max(PS.upd,x.upd||0);
+  Object.entries(x.days||{}).forEach(([d,list])=>{ const mine=PS.days[d]||(PS.days[d]=[]), seen=new Set(mine.map(e=>e.t+e.id));
+    list.forEach(e=>{ if(!seen.has(e.t+e.id)) mine.push(e); }); mine.sort((a,b)=>a.t-b.t); });
+  pruneDays(PS.days);
 }
 async function connectPaint(db,uid){
   try{
@@ -2606,16 +2715,38 @@ function loadPaintings(){
 }
 const FAME=[['all','All'],['famous','Famous'],['known','Known'],['deep cut','Deep cuts']];
 const pPool=()=>(PDATA||[]).filter(x=>PS.fame==='all'||x.fame===PS.fame);
-// unseen works come up, missed ones come back often, well-known ones rarely
-function pWeight(x){ const v=PS.p[x.id]; if(!v) return 3; if(!v.b) return 6; return 1/(1+v.b); }
-function pickWeighted(list,n){
-  const out=[], pool=list.slice();
-  while(out.length<n&&pool.length){
-    const tot=pool.reduce((a,x)=>a+pWeight(x),0); let r=Math.random()*tot, i=0;
-    for(;i<pool.length-1;i++){ r-=pWeight(pool[i]); if(r<=0) break; }
-    out.push(pool.splice(i,1)[0]);
-  }
-  return out;
+
+/* ---------- what you know about each work ---------- */
+// A multiple-choice answer can be a lucky guess, so a work only counts as known once the painter,
+// the title and the date have each been right twice in a row. Each question has its own review box.
+const P_KINDS=['artist','title','year'];
+const P_KIND_NAME={artist:'Painter',title:'Title',year:'Date'};
+const P_DAYS=[0,1,3,7,16,35];
+const pk=(v,k)=>v&&v.k&&v.k[k];
+const pMissed=v=>!!v&&(P_KINDS.some(k=>{ const s=pk(v,k); return s&&s.n&&!s.b; })||(!v.k&&!v.b));
+const pKnown=v=>!!v&&P_KINDS.every(k=>{ const s=pk(v,k); return s&&s.b>=2; });
+const pRightLast=v=>!!v&&!pMissed(v);
+const pDue=v=>!!v&&(pMissed(v)||P_KINDS.some(k=>{ const s=pk(v,k); return s&&s.due<=Date.now(); })||(!v.k&&v.b>=0));
+// the question a seen work needs most: one you missed, then one never asked, then the one due longest ago
+function pWeakKind(v){
+  const asked=P_KINDS.filter(k=>pk(v,k)&&pk(v,k).n);
+  const missed=asked.filter(k=>!pk(v,k).b); if(missed.length) return rnd(missed);
+  const fresh=P_KINDS.filter(k=>asked.indexOf(k)<0); if(fresh.length) return fresh[0];
+  return asked.slice().sort((a,b)=>pk(v,a).due-pk(v,b).due)[0];
+}
+function pKindFor(x){
+  if(PS.ask!=='mix') return PS.ask;
+  const v=PS.p[x.id];
+  return v?pWeakKind(v):(Math.random()<.5?'artist':'title');
+}
+// due reviews first (missed ones before the rest), then works you haven't seen, then the rest
+function pickRound(pool,n){
+  const due=shuffle(pool.filter(x=>pDue(PS.p[x.id]))).sort((a,b)=>pMissed(PS.p[b.id])-pMissed(PS.p[a.id]));
+  const fresh=shuffle(pool.filter(x=>!PS.p[x.id]));
+  const rest=shuffle(pool.filter(x=>PS.p[x.id]&&!pDue(PS.p[x.id])));
+  const out=due.slice(0,Math.min(6,due.length));
+  for(const l of [fresh,due.slice(out.length),rest]) for(const x of l){ if(out.length>=n) break; if(out.indexOf(x)<0) out.push(x); }
+  return shuffle(out);
 }
 const yearGap=(a,b)=>(a.year==null||b.year==null)?150:Math.abs(a.year-b.year);
 function paintOptions(x,kind){
@@ -2629,74 +2760,124 @@ function paintOptions(x,kind){
     const near=shuffle(others).sort((p,q)=>p.d-q.d).slice(0,8);
     return shuffle([x.artist].concat(shuffle(near).slice(0,3).map(o=>o.a)));
   }
+  if(kind==='year'){
+    // other works' dates, at least 20 years from the answer and from each other, in time order
+    const ys=[x.year], ok=y=>ys.every(z=>Math.abs(z-y)>=20);
+    shuffle(all.map(p=>p.year).filter(y=>y!=null&&Math.abs(y-x.year)<=160)).forEach(y=>{ if(ys.length<4&&ok(y)) ys.push(y); });
+    for(let t=0;ys.length<4&&t<200;t++){ const y=x.year+Math.round((Math.random()*2-1)*120); if(ok(y)) ys.push(y); }
+    return ys.sort((a,b)=>a-b).map(String);
+  }
   // wrong titles: other works by the same painter first, then works of the same period
   const same=shuffle(all.filter(p=>p.artist===x.artist&&p.title!==x.title));
   const near=shuffle(all.filter(p=>p.artist!==x.artist&&p.title!==x.title)).sort((p,q)=>yearGap(p,x)-yearGap(q,x)).slice(0,12);
   const titles=[]; same.concat(shuffle(near)).forEach(p=>{ if(titles.length<3&&titles.indexOf(p.title)<0) titles.push(p.title); });
   return shuffle([x.title].concat(titles));
 }
-const pAnswer=it=>it.kind==='artist'?it.x.artist:it.x.title;
-const pRight=it=>it.pick!=null&&it.pick>=0&&it.opts[it.pick]===pAnswer(it);
+const pAnswer=it=>it.kind==='artist'?it.x.artist:it.kind==='year'?String(it.x.year):it.x.title;
+const pRight=it=>it.pick!=null&&it.pick>=0&&it.opts[it.pick]===pAnswer(it)&&!it.guess;
+const P_QUESTION={artist:'Who painted this?',title:'What is this painting called?',year:'When was it painted?'};
 function pFeedback(cls,txt){ const el=$('pfeedback'); el.className='feedback'+(cls?' '+cls:''); el.textContent=txt; }
 function startPaint(list){
   const pool=list||pPool();
   if(!list&&pool.length<4){ pFeedback('info','There are too few works in this group. Choose “All” in Settings.'); return; }
   PG=null;
-  const items=pickWeighted(pool,Math.min(10,pool.length));
-  PSN={phase:'ask',i:0,right:0,items:items.map(x=>{ const kind=PS.ask==='mix'?(Math.random()<.5?'artist':'title'):PS.ask; return {x,kind,opts:paintOptions(x,kind),pick:null}; })};
-  pFeedback('',''); preloadP(0); preloadP(1); renderPaint();
+  const items=list?shuffle(pool.slice()).slice(0,10):pickRound(pool,Math.min(10,pool.length));
+  PSN={phase:'ask',day:romeDay(),i:0,right:0,items:items.map(x=>{ const kind=pKindFor(x); return {x,kind,opts:paintOptions(x,kind),pick:null}; })};
+  pStoreSession(); pFeedback('',''); preloadP(0); preloadP(1); renderPaint();
 }
 function preloadP(i){ const it=PSN&&PSN.items[i]; if(it){ const im=new Image(); im.decoding='async'; im.src=it.x.thumb; } }
+// one answer about one work: its question's box moves up on a right answer and back to 0 on a miss
+function scorePaint(it,ok){
+  const now=Date.now(), v=Object.assign({n:0,ok:0,b:0},PS.p[it.x.id]); v.k=Object.assign({},v.k);
+  const s=Object.assign({n:0,ok:0,b:0,due:0},v.k[it.kind]);
+  s.n++; s.last=now; if(ok){ s.ok++; s.b=Math.min(P_DAYS.length-1,s.b+1); s.due=startOfDay(now)+P_DAYS[s.b]*DAY; } else { s.b=0; s.due=now; }
+  v.k[it.kind]=s; v.n++; v.last=now; if(ok) v.ok++;
+  v.b=Math.min(...P_KINDS.map(k=>pk(v,k)?pk(v,k).b:0));
+  PS.p[it.x.id]=v;
+  const d=romeDay(now), log=PS.days[d]||(PS.days[d]=[]); log.push({id:it.x.id,kind:it.kind,ok:ok?1:0,t:now});
+}
 function answerPaint(k){
   const it=PSN.items[PSN.i]; if(it.pick!=null) return;
   it.pick=k; const ok=pRight(it); if(ok) PSN.right++;
-  const v=Object.assign({n:0,ok:0,b:0},PS.p[it.x.id]); v.n++; v.last=Date.now();
-  if(ok){ v.ok++; v.b=Math.min(6,(v.b||0)+1); } else v.b=0;
-  PS.p[it.x.id]=v; pSave(); renderPaint();
+  scorePaint(it,ok); pSave(); pStoreSession(); renderPaint();
+}
+// "I guessed": a right answer that you didn't know counts as a miss, so the work comes back
+function guessPaint(){
+  const it=PSN.items[PSN.i]; if(!pRight(it)) return;
+  it.guess=true; PSN.right--;
+  const v=PS.p[it.x.id], s=v.k[it.kind]; s.ok--; v.ok--; s.b=0; s.due=Date.now(); v.b=0;
+  const log=PS.days[romeDay()]||[]; for(let i=log.length-1;i>=0;i--) if(log[i].id===it.x.id){ log[i].ok=0; log[i].guess=1; break; }
+  pSave(); pStoreSession(); renderPaint();
 }
 function nextPaint(){
   PSN.i++;
   if(PSN.i>=PSN.items.length){ PSN.phase='done'; const n=PSN.items.filter(o=>o.pick>=0).length; if(n){ PS.hist.push({t:Date.now(),n,ok:PSN.right}); pSave(); } }
   else preloadP(PSN.i+1);
-  renderPaint();
+  pStoreSession(); renderPaint();
 }
+function restorePaint(){
+  if(!pRestore||!PDATA) return; const s=pRestore; pRestore=null;
+  const items=s.items.map(it=>Object.assign({},it,{x:pWork(it.x)})).filter(it=>it.x);
+  if(items.length===s.items.length) PSN=Object.assign({},s,{items});
+}
+
 /* ---------- looking at the works again ---------- */
-// PG: null, or {src: 'round' | a gallery filter, ids, i: index of the open work or null for the grid}
+// PG: null, or {src: 'round' | a gallery filter | 'day:YYYY-MM-DD', ids, i: index of the open work or null for the grid}
 let PG=null, PMAP=null;
 const pWork=id=>{ if(!PMAP){ PMAP=new Map(); PDATA.forEach(x=>PMAP.set(x.id,x)); } return PMAP.get(id); };
-const P_FILTERS=[['all','All seen'],['right','Right'],['missed','To revisit']];
-// last answer right: the box goes back to 0 on a miss
-const pFilter=(v,f)=>!!v&&(f==='all'||(f==='right'?v.b>0:!v.b));
-const pGalleryIds=f=>pPool().filter(x=>pFilter(PS.p[x.id],f)).sort((a,b)=>(PS.p[b.id].last||0)-(PS.p[a.id].last||0)).map(x=>x.id);
+const P_FILTERS=[['all','All seen'],['right','Right last time'],['missed','To revisit'],['known','Known']];
+const pFilter=(v,f)=>!!v&&(f==='all'||(f==='right'?pRightLast(v):f==='known'?pKnown(v):pMissed(v)));
+// a day's works, most recent first, each with how that day went
+function pDayResults(d){
+  const m=new Map(); (PS.days[d]||[]).forEach(e=>{ const r=m.get(e.id)||{id:e.id,ok:1,kinds:[],t:0}; r.kinds.push(e); if(!e.ok) r.ok=0; r.t=Math.max(r.t,e.t); m.set(e.id,r); });
+  return [...m.values()].filter(r=>pWork(r.id)).sort((a,b)=>b.t-a.t);
+}
+function pGalleryIds(f){
+  if(f.indexOf('day:')===0) return pDayResults(f.slice(4)).map(r=>r.id);
+  return pPool().filter(x=>pFilter(PS.p[x.id],f)).sort((a,b)=>(PS.p[b.id].last||0)-(PS.p[a.id].last||0)).map(x=>x.id);
+}
+const pDays=()=>Object.keys(PS.days).filter(d=>pDayResults(d).length).sort().reverse().slice(0,14);
 const pSmall=x=>String(x.thumb).replace(/([?&]width=)\d+/,'$1320');
 function openGallery(f){ PG={src:f,ids:pGalleryIds(f),i:null}; pFeedback('',''); renderPaint(); scrollTo(0,0); }
 function openRoundWork(k){ PG={src:'round',ids:PSN.items.map(it=>it.x.id),i:k}; pFeedback('',''); renderPaint(); scrollTo(0,0); }
 function pgStep(d){ const i=PG.i+d; if(i<0||i>=PG.ids.length) return; PG.i=i; renderPaint(); }
 function pgBack(){ if(PG.src==='round'||PG.i==null) PG=null; else PG.i=null; renderPaint(); }
+// what you know about this work, question by question
+function pKindsHtml(v){
+  if(!v) return '';
+  return `<div class="vstat">${P_KINDS.map(k=>{ const s=pk(v,k);
+    if(!s||!s.n) return `<span>${P_KIND_NAME[k]}: not asked yet</span>`;
+    return `<span class="${s.b?'ok':'no'}">${P_KIND_NAME[k]}: ${s.b?(s.b>=2?`right ${s.b}× in a row`:'right last time'):'missed last time'}</span>`; }).join('')}</div>`
+    +`<div class="vstat"><span>${pKnown(v)?'Known: painter, title and date each right twice in a row.':pDue(v)?'Comes back in your next round.':`Next review ${inDays(Math.min(...P_KINDS.map(k=>pk(v,k)&&pk(v,k).n?pk(v,k).due:Infinity)))}.`}</span><span>Last seen ${ago(v.last)}</span></div>`;
+}
+const dayLabel=d=>{ const t=romeDay(), y=romeDay(Date.now()-DAY); return d===t?'Today':d===y?'Yesterday':new Date(d+'T12:00:00Z').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'}); };
 function galleryHtml(){
   const eb=$('peyebrow'), pr=$('pprompt'), sc=$('pscore'); let h='';
+  const day=PG.src.indexOf('day:')===0?PG.src.slice(4):null;
   if(PG.i!=null){
     const x=pWork(PG.ids[PG.i]), v=PS.p[x.id], it=PG.src==='round'?PSN.items[PG.i]:null;
-    eb.textContent=`${PG.src==='round'?'This round':'Your gallery'} · ${PG.i+1} of ${PG.ids.length}`;
+    const dr=day?pDayResults(day).find(r=>r.id===x.id):null;
+    eb.textContent=`${PG.src==='round'?'This round':day?dayLabel(day):'Your gallery'} · ${PG.i+1} of ${PG.ids.length}`;
     pr.textContent=x.title; sc.textContent='';
     h+=`<figure class="pframe" style="margin:0"><span class="ploading">Loading the picture…</span><img class="wait" src="${esc(x.thumb)}" alt="${esc(x.title+' by '+x.artist)}" decoding="async"></figure>`;
     h+=pCaption(x);
-    const res=it?(it.pick<0?'<span>Skipped this round</span>':pRight(it)?'<span class="ok">Right this round</span>':`<span class="no">Missed this round</span><span>You answered “${esc(it.opts[it.pick])}”</span>`)
-      :v?(v.b?'<span class="ok">Right last time</span>':'<span class="no">Missed last time</span>'):'';
-    if(v||res) h+=`<div class="vstat">${res}${v?`<span>Seen ${v.n} ${v.n===1?'time':'times'}, right ${v.ok}</span><span>Last seen ${ago(v.last)}</span>`:''}</div>`;
+    if(it) h+=`<div class="vstat">${it.pick<0?'<span>Skipped this round</span>':pRight(it)?`<span class="ok">${P_KIND_NAME[it.kind]}: right this round</span>`:`<span class="no">${P_KIND_NAME[it.kind]}: ${it.guess?'a lucky guess this round':'missed this round'}</span>${it.guess?'':`<span>You answered “${esc(it.opts[it.pick])}”</span>`}`}</div>`;
+    else if(dr) h+=`<div class="vstat">${dr.kinds.map(e=>`<span class="${e.ok?'ok':'no'}">${P_KIND_NAME[e.kind]}: ${e.ok?'right':e.guess?'lucky guess':'missed'}</span>`).join('')}</div>`;
+    h+=pKindsHtml(v);
     h+=`<div class="actions"><button type="button" class="btn quiet" data-pact="back">Back</button><span class="spacer"></span><button type="button" class="btn" data-pact="prevw" ${PG.i?'':'disabled'}>Previous</button><button type="button" class="btn primary" data-pact="nextw" ${PG.i<PG.ids.length-1?'':'disabled'}>Next</button></div>`;
     h+=`<div class="pcredit">Image: <a href="${commonsPage(x.image)}" target="_blank" rel="noopener">Wikimedia Commons</a></div>`;
     return h;
   }
-  const label=P_FILTERS.find(o=>o[0]===PG.src)[1];
-  eb.textContent='Your gallery'+(PS.fame!=='all'?' · '+FAME.find(o=>o[0]===PS.fame)[1]:'');
-  pr.textContent=PG.src==='all'?'Works you’ve seen':PG.src==='right'?'Works you got right last time':'Works to revisit';
+  eb.textContent='Your gallery'+(!day&&PS.fame!=='all'?' · '+FAME.find(o=>o[0]===PS.fame)[1]:'');
+  pr.textContent=day?`${dayLabel(day)}: the works you saw`:PG.src==='all'?'Works you’ve seen':PG.src==='right'?'Right the last time you saw them':PG.src==='known'?'Works you know':'Works to revisit';
   sc.textContent=`${PG.ids.length} ${PG.ids.length===1?'work':'works'}`;
   h+=`<div class="chips" role="group" aria-label="Show">${P_FILTERS.map(o=>`<button type="button" class="chip" data-pgal="${o[0]}" aria-pressed="${PG.src===o[0]}">${o[1]} · ${pGalleryIds(o[0]).length}</button>`).join('')}</div>`;
-  if(PG.ids.length) h+=`<div class="pgrid">${PG.ids.map((id,k)=>{ const x=pWork(id); return `<button type="button" class="pthumb ${PS.p[id].b?'ok':'no'}" data-pview="${k}"><img src="${esc(pSmall(x))}" alt="" loading="lazy" decoding="async"><span>${esc(x.title)}</span></button>`; }).join('')}</div>`;
-  else h+=`<div class="hint">${PG.src==='missed'?'Nothing to revisit: every work you’ve seen, you got right last time.':`No works here yet${PS.fame!=='all'?' in this group':''}.`}</div>`;
+  const days=pDays(); if(days.length) h+=`<div class="chips" role="group" aria-label="By day">${days.map(d=>`<button type="button" class="chip" data-pgal="day:${d}" aria-pressed="${day===d}">${dayLabel(d)} · ${pDayResults(d).length}</button>`).join('')}</div>`;
+  const dres=day?new Map(pDayResults(day).map(r=>[r.id,r])):null;
+  if(PG.ids.length) h+=`<div class="pgrid">${PG.ids.map((id,k)=>{ const x=pWork(id), ok=dres?dres.get(id).ok:pRightLast(PS.p[id]); return `<button type="button" class="pthumb ${ok?'ok':'no'}" data-pview="${k}"><img src="${esc(pSmall(x))}" alt="" loading="lazy" decoding="async"><span>${esc(x.title)}</span></button>`; }).join('')}</div>`;
+  else h+=`<div class="hint">${PG.src==='missed'?'Nothing to revisit: every work you’ve seen, you got right last time.':PG.src==='known'?'No work is known yet: painter, title and date each need two right answers in a row.':`No works here yet${PS.fame!=='all'?' in this group':''}.`}</div>`;
   h+=`<div class="actions"><button type="button" class="btn quiet" data-pact="back">Back</button><span class="spacer"></span>${PG.ids.length?`<button type="button" class="btn primary" data-pact="practise">Practise ${Math.min(10,PG.ids.length)} of these</button>`:''}</div>`;
-  h+=`<div class="hint">A green edge: right the last time you saw it. Red: missed.</div>`;
+  h+=`<div class="hint">${day?'A green edge: every question about it was right that day. Red: at least one was missed.':'A green edge: right the last time you saw it. Red: missed.'}</div>`;
   return h;
 }
 const commonsPage=img=>'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(String(img||'').replace(/ /g,'_'));
@@ -2715,28 +2896,36 @@ function renderPaint(){
     });
     renderPaintSide(); return;
   }
+  restorePaint();
   if(PG) h=galleryHtml();
   else if(!PSN||PSN.phase==='done'){
-    const d=PSN&&PSN.phase==='done'?PSN:null, pool=pPool();
+    const d=PSN&&PSN.phase==='done'?PSN:null, pool=pPool(), today=pDayResults(romeDay());
     eb.textContent='Paintings'; sc.textContent='';
-    pr.textContent=d?`${d.right} of ${d.items.filter(o=>o.pick>=0).length} right`:'Name the painter, or the painting';
+    pr.textContent=d?`${d.right} of ${d.items.filter(o=>o.pick>=0).length} right`:'Name the painter, the painting and its date';
     if(d) h+=`<ul class="wlist">${d.items.map((it,k)=>`<li class="tap ${it.pick<0?'na':pRight(it)?'ok':'no'}"><button type="button" class="wopen" data-pround="${k}"><b>${esc(it.x.title)}</b><span>${esc(it.x.artist)}${it.x.year?', '+it.x.year:''}</span></button></li>`).join('')}</ul>`;
     const tile=(f,n,label)=>`<button type="button" data-pgal="${f}" ${n?'':'disabled'}><b>${n}</b><span>${label}</span></button>`;
-    h+=`<div class="wstats"><div><b>${pool.length}</b><span>works</span></div>${tile('all',pGalleryIds('all').length,'seen')}${tile('right',pGalleryIds('right').length,'right')}${tile('missed',pGalleryIds('missed').length,'to revisit')}</div>`;
-    h+=`<div class="wactions"><button type="button" class="btn primary big" data-pact="start">${d?'Another 10':'Start 10 paintings'}</button>${pGalleryIds('all').length?'<button type="button" class="btn big" data-pgal="all">Your gallery</button>':''}</div>`;
-    if(d) h+=`<div class="hint">Tap a work to look at it again.</div>`;
-    h+=`<div class="hint">Works you miss come back sooner. Pictures from Wikimedia Commons (public domain); facts from Wikidata.</div>`;
+    const due=pool.filter(x=>pDue(PS.p[x.id])).length;
+    h+=`<div class="wstats"><div><b>${due}</b><span>due now</span></div>${tile('all',pGalleryIds('all').length,'seen')}${tile('missed',pGalleryIds('missed').length,'to revisit')}${tile('known',pGalleryIds('known').length,'known')}</div>`;
+    h+=`<div class="wactions"><button type="button" class="btn primary big" data-pact="start">${d?'Another 10':'Start 10 paintings'}</button>${pGalleryIds('all').length?'<button type="button" class="btn big" data-pgal="all">Your gallery</button>':''}${today.length?`<button type="button" class="btn quiet" data-pgal="day:${romeDay()}">Today · ${today.length} ${today.length===1?'work':'works'}</button>`:''}</div>`;
+    if(d) h+=`<div class="hint">Tap a work to look at it again. This round stays here until midnight.</div>`;
+    h+=`<div class="hint">Each round starts with the works due for review (missed ones first), then new ones. A work is known once its painter, title and date have each been right twice in a row. Pictures from Wikimedia Commons (public domain); facts from Wikidata.</div>`;
   }else{
     const it=PSN.items[PSN.i], x=it.x, ans=pAnswer(it);
     eb.textContent=`Painting ${PSN.i+1} of ${PSN.items.length}`;
-    pr.textContent=it.kind==='artist'?'Who painted this?':'What is this painting called?';
+    pr.textContent=P_QUESTION[it.kind];
     sc.textContent=`${PSN.right} right`;
     dots.innerHTML=PSN.items.map((o,k)=>`<span class="dot ${o.pick==null?(k===PSN.i?'cur':''):o.pick<0?'':(pRight(o)?'ok':'no')}"></span>`).join('');
     h+=`<figure class="pframe" style="margin:0"><span class="ploading">Loading the picture…</span><img class="wait" src="${esc(x.thumb)}" alt="${it.pick!=null?esc(x.title+' by '+x.artist):'A painting to identify'}" decoding="async"></figure>`;
     if(it.kind==='title'&&it.pick==null) h+=`<div class="hint">By ${esc(x.artist)}${x.year?`, ${x.year}`:''}</div>`;
+    if(it.kind==='year'&&it.pick==null) h+=`<div class="hint">${esc(x.title)}, by ${esc(x.artist)}</div>`;
     h+=`<ol class="popts">${it.opts.map((o,k)=>{ let c='opt'; if(it.pick!=null){ if(o===ans) c+=' ok'; else if(k===it.pick) c+=' bad'; else c+=' dim'; }
       return `<li><button type="button" class="${c}" data-popt="${k}" ${it.pick!=null?'disabled':''}><kbd>${k+1}</kbd><span>${esc(o)}</span></button></li>`; }).join('')}</ol>`;
-    if(it.pick!=null) h+=pCaption(x)+`<div class="actions"><span class="pcredit">Image: <a href="${commonsPage(x.image)}" target="_blank" rel="noopener">Wikimedia Commons</a></span><span class="spacer"></span><button type="button" class="btn primary" data-pact="next">${PSN.i+1>=PSN.items.length?'Finish':'Next painting'}</button></div>`;
+    if(it.pick!=null){
+      h+=pCaption(x);
+      if(pRight(it)) h+=`<div class="actions"><span class="hint">Not sure you knew it?</span><button type="button" class="btn quiet sm" data-pact="guess">It was a guess</button></div>`;
+      else if(it.guess) h+=`<div class="hint">Counted as a miss: this one comes back in your next round.</div>`;
+      h+=`<div class="actions"><span class="pcredit">Image: <a href="${commonsPage(x.image)}" target="_blank" rel="noopener">Wikimedia Commons</a></span><span class="spacer"></span><button type="button" class="btn primary" data-pact="next">${PSN.i+1>=PSN.items.length?'Finish':'Next painting'}</button></div>`;
+    }
     else h+=`<div class="actions"><button type="button" class="btn quiet" data-pact="quit">Stop</button><span class="spacer"></span><button type="button" class="btn quiet" data-pact="skip">Skip</button></div>`;
   }
   el.innerHTML=h;
@@ -2750,7 +2939,7 @@ function renderPaint(){
 }
 function renderPaintSide(){
   let h='';
-  h+=`<div class="field"><span class="fl">Question</span><div class="chips">${[['mix','Mixed'],['artist','Who painted it?'],['title','What is it called?']].map(o=>`<button type="button" class="chip" data-pset="ask" data-v="${o[0]}" aria-pressed="${PS.ask===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
+  h+=`<div class="field"><span class="fl">Question</span><div class="chips">${[['mix','Mixed'],['artist','Who painted it?'],['title','What is it called?'],['year','When was it painted?']].map(o=>`<button type="button" class="chip" data-pset="ask" data-v="${o[0]}" aria-pressed="${PS.ask===o[0]}">${o[1]}</button>`).join('')}</div><div class="hint">Mixed asks each work the question it needs most: one you missed, then one you haven’t been asked yet.</div></div>`;
   h+=`<div class="field"><span class="fl">Works</span><div class="chips">${FAME.map(o=>`<button type="button" class="chip" data-pset="fame" data-v="${o[0]}" aria-pressed="${PS.fame===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
   $('psettings').innerHTML=h;
   const last=PS.hist.slice(-20), tot=last.reduce((a,x)=>a+x.n,0), ok=last.reduce((a,x)=>a+x.ok,0);
@@ -2761,7 +2950,9 @@ function openPaintings(){
   ['home','main','chessMain','modes','chessModes','wordsMain'].forEach(id=>$(id).hidden=true); $('paintMain').hidden=false; $('instBtn').hidden=false;
   $('instName').textContent='Paintings';
   if(window.innerWidth<920) $('pSettingsPanel').open=false;
-  PSN=null; PG=null; pFeedback('',''); renderPaint();
+  // today's round, finished or not, is still here; after midnight it starts afresh
+  if(PSN&&PSN.day!==romeDay()) PSN=null;
+  PG=null; pFeedback('',''); renderPaint();
 }
 $('pbody').addEventListener('click',e=>{
   const o=e.target.closest('[data-popt]'); if(o){ answerPaint(+o.dataset.popt); return; }
@@ -2775,15 +2966,16 @@ $('pbody').addEventListener('click',e=>{
   else if(a==='nextw') pgStep(1);
   else if(a==='practise') startPaint(PG.ids.map(pWork));
   else if(a==='next') nextPaint();
+  else if(a==='guess') guessPaint();
   else if(a==='skip'){ PSN.items[PSN.i].pick=-1; nextPaint(); }
-  else if(a==='quit'){ PSN=null; pFeedback('',''); renderPaint(); }
+  else if(a==='quit'){ PSN=null; pStoreSession(); pFeedback('',''); renderPaint(); }
   else if(a==='retry') renderPaint();
 });
 $('psettings').addEventListener('click',e=>{
   const b=e.target.closest('[data-pset]'); if(!b) return;
   PS[b.dataset.pset]=b.dataset.v; pStore(); renderPaintSide();
   if(PG&&PG.src!=='round'){ PG.ids=pGalleryIds(PG.src); PG.i=null; renderPaint(); }
-  else if(!PG&&(!PSN||PSN.phase==='done')){ PSN=null; pFeedback('',''); renderPaint(); }
+  else if(!PG&&!PSN){ pFeedback('',''); renderPaint(); }
 });
 document.addEventListener('keydown',e=>{
   if(view!=='paint') return;
@@ -2801,8 +2993,8 @@ document.addEventListener('keydown',e=>{
 });
 function paintHomeMeta(){
   const n=Object.keys(PS.p).length; if(!n) return 'Not practised yet';
-  const last=PS.hist.slice(-20), tot=last.reduce((a,x)=>a+x.n,0), ok=last.reduce((a,x)=>a+x.ok,0);
-  return `${n} works seen${tot?` · ${Math.round(100*ok/tot)}% right lately`:''}`;
+  const known=Object.values(PS.p).filter(pKnown).length, today=(PS.days[romeDay()]||[]).length;
+  return `${n} works seen · ${known} known${today?` · ${today} answers today`:''}`;
 }
 
 // hooks for the web app's sign-in layer (absent inside Claude)
