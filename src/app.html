@@ -383,6 +383,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .cchord.on{background:var(--good);border-color:var(--good);color:var(--on-good)}
 .cchord.on small{color:inherit}
 .cofinfo{font-size:.92rem}
+.cofsep{border:0;border-top:1px solid var(--line);margin:4px 0;width:100%}
 .cofinfo .linkbtn{margin:0 0 0 4px}
 .cneck{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
 .cneck svg{display:block;max-width:none}
@@ -473,14 +474,14 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
       <button class="pick" type="button" data-inst="words">
         <div class="wordmark" aria-hidden="true"><span>Parola</span><span>Word</span><span>Palabra</span><span>Paraula</span><small>what does it mean?</small></div>
         <b>Words</b>
-        <span class="sub">Your Notion dictionaries: learn five at a time, then review</span>
+        <span class="sub">Your Notion dictionaries: learn a few at a time, then review</span>
         <span class="meta" id="metaWords"></span>
         <span class="today" id="todayWords"></span>
       </button>
       <button class="pick" type="button" data-inst="paintings" id="pickPaintings" hidden>
         <div class="gallery" aria-hidden="true"><i style="width:56px;height:72px;background:linear-gradient(160deg,#c9a46a,#5b4a7a 60%,#2c2a38)"></i><i style="width:84px;height:60px;background:linear-gradient(200deg,#9ec1d9,#e8d9a6 55%,#5f7d4f)"></i><i style="width:48px;height:64px;background:radial-gradient(circle at 40% 35%,#f1d7b5,#a2553d 55%,#3a2420)"></i></div>
         <b>Paintings</b>
-        <span class="sub">Who painted it, what is it called, when? Famous works and deep cuts</span>
+        <span class="sub">Who painted it, what is it called, which movement? Famous works and deep cuts</span>
         <span class="meta" id="metaPaintings"></span>
         <span class="today" id="todayPaintings"></span>
       </button>
@@ -1139,7 +1140,16 @@ function cofState(){
     tones:[d,d+2,d+4].map(j=>({pc:md(tonicPc+fam.steps[j%7],12),name:names[j%7]}))}));
   const sc=SCALES.find(x=>x.id===c.scale)||fam;
   const scaleNames=sc.steps.map((x,j)=>({pc:md(tonicPc+x,12),name:scaleNote(tonicName,tonicPc,sc,j),deg:sc.deg[j]}));
-  return {i,minor,tonicName,tonicPc,fam,chords,sc,scaleNames,sig:cofSig(i),chord:c.chord!=null?chords[c.chord]:null};
+  // another seven-note scale on the same tonic has its own chords: stack its thirds (C Lydian: D, not Dm)
+  let schords=null;
+  if(sc!==fam&&sc.steps.length===7) schords=sc.steps.map((x,d)=>{
+    const third=md(sc.steps[(d+2)%7]-x,12), fifth=md(sc.steps[(d+4)%7]-x,12);
+    const q=third===4&&fifth===7?'':third===3&&fifth===7?'m':third===3&&fifth===6?'°':third===4&&fifth===8?'+':'?';
+    const acc=sc.deg[d].replace(/[0-9]/g,''), rn=['I','II','III','IV','V','VI','VII'][d];
+    return {d,qual:q,num:acc+(q==='m'||q==='°'?rn.toLowerCase():rn)+(q==='°'||q==='+'?q:''),name:scaleNames[d].name+q,
+      tones:[d,d+2,d+4].map(j=>({pc:scaleNames[j%7].pc,name:scaleNames[j%7].name}))};
+  });
+  return {i,minor,tonicName,tonicPc,fam,chords,sc,scaleNames,schords,sig:cofSig(i),chord:c.chord!=null?chords[c.chord]:null,schord:schords&&c.schord!=null?schords[c.schord]:null};
 }
 function cofArc(k,r1,r2){
   const C0=200, a0=(k*30-15)*Math.PI/180, a1=(k*30+15)*Math.PI/180;
@@ -1171,7 +1181,9 @@ function renderCircle(){
       <div class="actions cofnav"><button type="button" class="btn sm" data-cof="down" aria-label="Down a fifth">◀ 4th</button><div class="chips" role="group" aria-label="Key">${['Major','Minor'].map((m,j)=>`<button type="button" class="chip" data-cof="mode" data-v="${j}">${m}</button>`).join('')}</div><button type="button" class="btn sm" data-cof="up" aria-label="Up a fifth">5th ▶</button></div>
       <div class="cchords" id="cofChords"></div>
       <div class="cofinfo" id="cofInfo"></div>
+      <hr class="cofsep">
       <div class="row cofscale"><label for="cofScale" class="hint">On the neck</label><select id="cofScale"></select><span class="spacer"></span><button type="button" class="btn sm" data-cof="playscale">Play scale</button></div>
+      <div id="cofSChordsWrap" hidden><div class="eyebrow" id="cofSTitle"></div><div class="cchords" id="cofSChords"></div><div class="cofinfo" id="cofSInfo"></div></div>
       <div class="cneck" id="cofNeckWrap"><svg id="cofNeck" role="img" aria-label="Scale on the neck"></svg></div>
       <div class="hint">Tap a key to make it the key; tap one of its chords (the coloured segments, or the buttons) to see it on the neck. Neighbours on the circle are a fifth apart and differ by one sharp or flat. Swipe the neck sideways to see it all.</div></div>`;
   }
@@ -1197,13 +1209,22 @@ function renderCircle(){
   const ch=st.chord;
   $('cofInfo').innerHTML=ch?`<b>${ch.name}</b>: ${ch.tones.map(t=>t.name).join(' ')}. The ${ch.num} chord of ${st.tonicName} ${st.minor?'minor':'major'}.${ch.qual!=='°'?` <button type="button" class="linkbtn" data-cof="makekey">Make ${ch.name} the key</button>`:''}`
     :`${st.tonicName} ${st.minor?'minor':'major'}: ${st.fam.steps.map((x,j)=>spellTone(st.tonicName,st.tonicPc,x,st.fam.deg[j])).join(' ')}. ${st.minor?`Relative major: ${cofMaj(st.i)}.`:`Relative minor: ${cofMin(st.i)}m.`}`;
+  // the chosen scale's own chords, under the line
+  $('cofSChordsWrap').hidden=!st.schords;
+  if(st.schords){
+    $('cofSTitle').textContent=`Chords of ${st.tonicName} ${st.sc.name}`;
+    $('cofSChords').innerHTML=st.schords.map(c=>`<button type="button" class="cchord${st.schord&&st.schord.d===c.d?' on':''}" data-cofschord="${c.d}"><small>${c.num}</small><b>${c.name}</b></button>`).join('');
+    const sc2=st.schord, diff=st.schords.filter(c=>c.name!==st.chords[c.d].name);
+    $('cofSInfo').innerHTML=sc2?`<b>${sc2.name}</b>: ${sc2.tones.map(t=>t.name).join(' ')}. The ${sc2.num} chord of ${st.tonicName} ${st.sc.name}.`
+      :diff.length?`Different from ${st.tonicName} ${st.minor?'minor':'major'}: ${diff.map(c=>`${c.name} for ${st.chords[c.d].name}`).join(', ')}.`:'';
+  }
   const sel=$('cofScale');
   sel.innerHTML=`<option value="">${st.tonicName} ${st.minor?'natural minor':'major'} (the key)</option>`+SCALES.filter(x=>x.id!==st.fam.id).map(x=>`<option value="${x.id}"${S.circle.scale===x.id?' selected':''}>${st.tonicName} ${x.name}</option>`).join('');
   // the neck: chord tones filled, the rest of the scale outlined, the tonic marked
-  const tones=ch?new Map(ch.tones.map(t=>[t.pc,t.name])):null, names=new Map(st.scaleNames.map(t=>[t.pc,t.name]));
+  const nc=st.schord||ch, tones=nc?new Map(nc.tones.map(t=>[t.pc,t.name])):null, names=new Map(st.scaleNames.map(t=>[t.pc,t.name]));
   const M=[]; for(let s=0;s<NS;s++) for(let f=0;f<=15;f++){
     const pc=pcOf(s,f);
-    if(tones&&tones.has(pc)) M.push({s,f,kind:pc===ch.tones[0].pc?'root':'good',label:tones.get(pc)});
+    if(tones&&tones.has(pc)) M.push({s,f,kind:pc===nc.tones[0].pc?'root':'good',label:tones.get(pc)});
     else if(names.has(pc)) M.push({s,f,kind:tones?'ghost':pc===st.tonicPc?'root':'reveal',label:names.get(pc)});
   }
   const nW=NS<=4?860:1000;
@@ -1825,8 +1846,13 @@ function showHome(){
   renderHome();
   const last=document.querySelector(`.pick[data-inst="${S.lastView||S.inst}"]`); if(last) last.focus({preventScroll:true});
 }
+// Opening a section adds a step to the browser history, so the phone's back button returns to the
+// start page instead of leaving the app; the header's back button takes the same step back.
+function enterSection(){ try{ if(!(history.state&&history.state.fwSection)) history.pushState({fwSection:1},''); }catch(e){} }
+window.addEventListener('popstate',()=>{ if(view!=='home') showHome(); });
+function goHome(){ if(history.state&&history.state.fwSection) history.back(); else showHome(); }
 function openApp(id){
-  S.lastView=id;
+  S.lastView=id; enterSection();
   if(id==='chess'){ save(); openChess(); return; }
   if(id==='words'){ save(); openWords(); return; }
   if(id==='paintings'){ save(); openPaintings(); return; }
@@ -1836,7 +1862,7 @@ function openApp(id){
   renderSettings(); newRound();
 }
 document.querySelectorAll('button.pick[data-inst]').forEach(b=>b.addEventListener('click',()=>openApp(b.dataset.inst)));
-$('instBtn').addEventListener('click',showHome);
+$('instBtn').addEventListener('click',goHome);
 
 /* ---------- settings ---------- */
 function chip(act,val,on,label,mono){ return `<button type="button" class="chip${mono?' mono':''}" data-act="${act}" data-v="${val}" aria-pressed="${on}">${label}</button>`; }
@@ -1926,20 +1952,22 @@ $('answer').addEventListener('click',e=>{
   const sg=e.target.closest('[data-seg]');
   if(sg){
     const k=+sg.dataset.k, r=sg.dataset.seg, hit=st.chords.find(x=>x.ring===r&&x.k===k);
-    if(hit){ c.chord=c.chord===hit.d?null:hit.d; if(c.chord!=null){ ensureAudio(); cofPlayChord(hit); } }
-    else { c.i=k; c.minor=r==='n'; c.chord=null; }
+    if(hit){ c.chord=c.chord===hit.d?null:hit.d; c.schord=null; if(c.chord!=null){ ensureAudio(); cofPlayChord(hit); } }
+    else { c.i=k; c.minor=r==='n'; c.chord=null; c.schord=null; }
     save(); renderCircle(); return;
   }
   const cb=e.target.closest('[data-cofchord]');
-  if(cb){ const d=+cb.dataset.cofchord; c.chord=c.chord===d?null:d; if(c.chord!=null){ ensureAudio(); cofPlayChord(st.chords[d]); } save(); renderCircle(); return; }
+  if(cb){ const d=+cb.dataset.cofchord; c.chord=c.chord===d?null:d; c.schord=null; if(c.chord!=null){ ensureAudio(); cofPlayChord(st.chords[d]); } save(); renderCircle(); return; }
+  const sb=e.target.closest('[data-cofschord]');
+  if(sb&&st.schords){ const d=+sb.dataset.cofschord; c.schord=c.schord===d?null:d; c.chord=null; if(c.schord!=null){ ensureAudio(); cofPlayChord(st.schords[d]); } save(); renderCircle(); return; }
   const b=e.target.closest('[data-cof]'); if(!b) return; const a=b.dataset.cof;
-  if(a==='up'||a==='down'){ c.i=md(c.i+(a==='up'?1:-1),12); c.chord=null; }
-  else if(a==='mode'){ c.minor=b.dataset.v==='1'; c.chord=null; }
+  if(a==='up'||a==='down'){ c.i=md(c.i+(a==='up'?1:-1),12); c.chord=null; c.schord=null; }
+  else if(a==='mode'){ c.minor=b.dataset.v==='1'; c.chord=null; c.schord=null; }
   else if(a==='makekey'&&st.chord){ const ch=st.chord, m=ch.qual==='m'; c.i=FIFTHS.indexOf(m?md(ch.tones[0].pc+3,12):ch.tones[0].pc); c.minor=m; c.chord=null; }
   else if(a==='playscale'){ ensureAudio(); cofPlayScale(); return; }
   save(); renderCircle();
 });
-$('answer').addEventListener('change',e=>{ if(e.target.id!=='cofScale') return; S.circle.scale=e.target.value; save(); renderCircle(); });
+$('answer').addEventListener('change',e=>{ if(e.target.id!=='cofScale') return; S.circle.scale=e.target.value; S.circle.schord=null; save(); renderCircle(); });
 $('modes').addEventListener('click',e=>{
   const b=e.target.closest('[data-mode]'); if(!b||b.dataset.mode===S.mode) return;
   S.mode=b.dataset.mode; save(); renderSettings(); newRound();
@@ -2494,7 +2522,7 @@ function wLoad(){
 // today's session comes back once its words are loaded
 let wPending=null;
 function wRestore(){
-  if(!wPending) return; const have=byId(wPending.lang); if(!have.size) return;
+  if(!wPending) return; const have=sesMap(wPending); if(!have.size) return;
   if(wPending.ids.every(id=>have.has(id))){ WSN=Object.assign(wPending,{matched:new Set(wPending.matched||[]),requeued:new Set(wPending.requeued||[]),selL:null,selR:null,flash:null}); WS.lang=WSN.lang; }
   wPending=null;
 }
@@ -2607,6 +2635,9 @@ function errorCopy(e){
 /* ---------- picking words ---------- */
 const usable=lang=>((WD[lang]&&WD[lang].rows)||[]).filter(r=>r.d);
 const byId=lang=>{ const m=new Map(); ((WD[lang]&&WD[lang].rows)||[]).forEach(r=>m.set(r.id,r)); return m; };
+// a session's words: one dictionary, or several when it mixes them (langOf: word id -> dictionary)
+const sesMap=w=>w&&w.mix?new Map(LANGS.flatMap(l=>[...byId(l.id)])):byId(w?w.lang:WS.lang);
+const sesLang=(w,id)=>w&&w.mix?w.langOf[id]:w.lang;
 const startOfDay=t=>{ const d=new Date(t); d.setHours(0,0,0,0); return d.getTime(); };
 const learnedToday=lang=>{ const t0=startOfDay(Date.now()); return Object.values(WP.p[lang]||{}).filter(v=>(v.learned||0)>=t0).length; };
 const newLeft=lang=>WS.daily?Math.max(0,WS.daily-learnedToday(lang)):Infinity;
@@ -2633,7 +2664,7 @@ function startLearn(){
   else shuffle(fresh);
   const left=newLeft(lang);
   if(!left){ wFeedback('info',`That’s ${WS.daily} new words today, your daily limit. Review or practise, or come back tomorrow.`); return; }
-  const ids=fresh.slice(0,Math.min(WS.batch,left)).map(r=>r.id);
+  const ids=fresh.slice(0,Math.min(goalFor('words'),left)).map(r=>r.id);
   if(!ids.length){ wFeedback('info','You have started every word in this dictionary. Review them, or add new words in Notion.'); return; }
   WSN={mode:'learn',day:romeDay(),lang,ids,phase:'study',i:0,mistakes:0,matched:new Set(),selL:null,selR:null,results:{}};
   wFeedback('',''); renderWords();
@@ -2645,8 +2676,20 @@ function startReview(){
   WSN={mode:'review',day:romeDay(),lang,ids,phase:'quiz',queue:shuffle(ids.slice()),qi:0,mistakes:0,results:{},requeued:new Set()};
   nextQuizQ(); wFeedback('',''); renderWords();
 }
+// practice across dictionaries: at least one word from each, ten in all, from the words you've started where there are any
+function startMix(){
+  const langs=LANGS.filter(l=>usable(l.id).length>=5);
+  if(langs.length<2){ wFeedback('info','Mixing needs at least two dictionaries, each with five words or more.'); return; }
+  const pools=langs.map(l=>{ const all=usable(l.id), started=all.filter(r=>(WP.p[l.id]||{})[r.id]); return {l:l.id,rows:shuffle((started.length?started:all).slice())}; });
+  const ids=[], langOf={};
+  pools.forEach(p=>{ const r=p.rows.shift(); ids.push(r.id); langOf[r.id]=p.l; });
+  for(const x of shuffle(pools.flatMap(p=>p.rows.map(r=>({r,l:p.l}))))){ if(ids.length>=Math.max(goalFor('words'),langs.length)) break; ids.push(x.r.id); langOf[x.r.id]=x.l; }
+  shuffle(ids); WV=null;
+  WSN={mode:'practice',mix:true,langOf,day:romeDay(),lang:WS.lang,ids,phase:'quiz',queue:ids.slice(),qi:0,mistakes:0,results:{},requeued:new Set()};
+  nextQuizQ(); wFeedback('',''); renderWords();
+}
 function startPractice(only){
-  const lang=WS.lang, all=usable(lang), rows=shuffle((only?all.filter(r=>only.indexOf(r.id)>=0):all).slice()).slice(0,10);
+  const lang=WS.lang, all=usable(lang), rows=shuffle((only?all.filter(r=>only.indexOf(r.id)>=0):all).slice()).slice(0,goalFor('words'));
   if(all.length<5){ wFeedback('info','This dictionary needs at least five words with a definition.'); return; }
   if(!rows.length) return;
   WV=null;
@@ -2659,7 +2702,7 @@ function toQuiz(){ WSN.phase='quiz'; WSN.queue=shuffle(WSN.ids.slice()); WSN.qi=
 function nextQuizQ(){
   const id=WSN.queue[WSN.qi];
   const dir=WSN.mode==='learn'?'w2d':WS.dir==='mix'?(Math.random()<0.5?'w2d':'d2w'):WS.dir;
-  WSN.q={id,dir,opts:optionsFor(WSN.lang,id,dir==='w2d'?'d':'w').map(r=>r.id),pick:null};
+  WSN.q={id,dir,opts:optionsFor(sesLang(WSN,id),id,dir==='w2d'?'d':'w').map(r=>r.id),pick:null};
 }
 function answerQuiz(optId){
   const q=WSN.q; if(!q||q.pick) return;
@@ -2685,8 +2728,8 @@ function finishSession(){
       p[id]=v; });
   }
   // the day's log, practice included: it doesn't move the review schedule, but you did see the words
-  const dl=WP.days[romeDay(now)]||(WP.days[romeDay(now)]={}), ll=dl[WSN.lang]||(dl[WSN.lang]={});
-  WSN.ids.forEach(id=>{ ll[id]={ok:WSN.results[id]?1:0,m:WSN.mode,t:now}; });
+  const dl=WP.days[romeDay(now)]||(WP.days[romeDay(now)]={});
+  WSN.ids.forEach(id=>{ const lg=sesLang(WSN,id), ll=dl[lg]||(dl[lg]={}); ll[id]={ok:WSN.results[id]?1:0,m:WSN.mode,t:now}; });
   wSaveProgress(); bump('words',WSN.ids.length);
   WSN.phase='done'; renderWords();
 }
@@ -2726,10 +2769,10 @@ const nextReviewText=v=>v.due<=Date.now()?'Due for review now':(v.b>=5?'Mastered
 function wordViewHtml(L,map){
   const eb=$('weyebrow'), pr=$('wprompt'), sc=$('wscore'); let h='';
   if(WV.i!=null){
-    const id=WV.ids[WV.i], r=map.get(id), v=(WP.p[WS.lang]||{})[id], ses=WV.src==='session'?WSN:null;
+    const ses=WV.src==='session'?WSN:null, id=WV.ids[WV.i], r=map.get(id), v=(WP.p[ses?sesLang(ses,id):WS.lang]||{})[id];
     const day=WV.src.indexOf('day:')===0?WV.src.slice(4):null, de=day&&((WP.days[day]||{})[WS.lang]||{})[id];
     if(!r){ WV.i=null; return wordViewHtml(L,map); }
-    eb.textContent=`${L.name} · ${WV.i+1} of ${WV.ids.length}`;
+    eb.textContent=`${ses&&ses.mix?LANGS.find(l=>l.id===sesLang(ses,id)).name:L.name} · ${WV.i+1} of ${WV.ids.length}`;
     pr.textContent=ses?'Words from this session':'Your words'; sc.textContent='';
     h+=`<article class="wcard"><div class="ww">${esc(r.w)}</div><div class="wd">${rich(r.d)}</div>${r.e?`<div class="we">${rich(r.e)}</div>`:''}${r.s?`<div class="wsrc">Source: ${esc(r.s)}</div>`:''}</article>`;
     const res=ses?(ses.results[id]?'<span class="ok">Right first time this session</span>':'<span class="no">Missed this session</span>')
@@ -2749,7 +2792,7 @@ function wordViewHtml(L,map){
   const p=WP.p[WS.lang]||{}, dl=day?((WP.days[day]||{})[WS.lang]||{}):null;
   if(WV.ids.length) h+=`<ul class="wlist">${WV.ids.map((id,k)=>{ const r=map.get(id); return `<li class="tap ${(dl?dl[id].ok:p[id]&&wLast(p[id]))?'ok':'no'}"><button type="button" class="wopen" data-wview="${k}"><b>${esc(r.w)}</b><span>${esc(plain(r.d))}</span></button></li>`; }).join('')}</ul>`;
   else h+=`<div class="hint">${!WD[WS.lang]?'This dictionary isn’t loaded yet.':WV.src==='all'?`You haven’t started any ${L.name} words yet.`:WV.src==='missed'?'Nothing missed: you got every word right last time.':'No words here yet.'}</div>`;
-  h+=`<div class="actions"><button type="button" class="btn quiet" data-wact="vback">Back</button><span class="spacer"></span>${WV.ids.length&&usable(WS.lang).length>=5?`<button type="button" class="btn primary" data-wact="vpractise">Practise ${Math.min(10,WV.ids.length)} of these</button>`:''}</div>`;
+  h+=`<div class="actions"><button type="button" class="btn quiet" data-wact="vback">Back</button><span class="spacer"></span>${WV.ids.length&&usable(WS.lang).length>=5?`<button type="button" class="btn primary" data-wact="vpractise">Practise ${Math.min(goalFor('words'),WV.ids.length)} of these</button>`:''}</div>`;
   h+=`<div class="hint">${day?'Green: right first time that day. Red: missed.':'Green: right the last time it came up. Red: missed.'} Practising doesn’t change your review schedule.</div>`;
   return h;
 }
@@ -2759,7 +2802,7 @@ function wFeedback(cls,txt){ const el=$('wfeedback'); if(!el) return; el.classNa
 function ago(t){ if(!t) return 'never'; const m=Math.round((Date.now()-t)/60000); return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'; }
 function renderWords(){
   if(view!=='words') return;
-  const L=LANGS.find(l=>l.id===WS.lang), st=langStats(WS.lang), map=byId(WS.lang);
+  const L=LANGS.find(l=>l.id===WS.lang), st=langStats(WS.lang), map=WSN&&WSN.mix?sesMap(WSN):byId(WS.lang);
   const eb=$('weyebrow'), pr=$('wprompt'), sc=$('wscore'), el=$('wbody'); let h='';
   if(WV) h=wordViewHtml(L,map);
   else if(!WSN||WSN.phase==='done'){
@@ -2778,11 +2821,11 @@ function renderWords(){
       else h+=`<div class="wempty"><p>Fretwise reads the words straight from your Notion Dictionary, using your own Notion connection. The words stay private: they are not stored in this page.</p><button type="button" class="btn primary big" data-wact="load">Load from Notion</button></div>`;
     }else if(WD[WS.lang]){
       h+=`<div class="wstats"><div><b>${st.due}</b><span>due now</span></div><div><b>${st.fresh}</b><span>new</span></div><button type="button" data-wlist="all" ${st.learning?'':'disabled'}><b>${st.learning}</b><span>learning</span></button><button type="button" data-wlist="mastered" ${st.mastered?'':'disabled'}><b>${st.mastered}</b><span>mastered</span></button></div>`;
-      const left=newLeft(WS.lang), nLearn=Math.min(WS.batch,st.fresh,left);
+      const left=newLeft(WS.lang), nLearn=Math.min(goalFor('words'),st.fresh,left);
       h+=`<div class="wactions">
         <button type="button" class="btn primary big" data-wact="learn" ${nLearn?'':'disabled'}>${st.fresh&&!left?'Daily limit reached':`Learn ${nLearn||''} new ${nLearn===1?'word':'words'}`}</button>
         <button type="button" class="btn big" data-wact="review" ${st.due?'':'disabled'}>Review ${st.due?Math.min(st.due,WS.reviewMax):''} due</button>
-        <button type="button" class="btn quiet" data-wact="practice" ${st.total>=5?'':'disabled'}>Practise 10 random</button>${st.learning?'<button type="button" class="btn quiet" data-wlist="all">Your words</button>':''}${wDayLog(WS.lang,romeDay()).length?`<button type="button" class="btn quiet" data-wlist="day:${romeDay()}">Today · ${wDayLog(WS.lang,romeDay()).length}</button>`:''}</div>`;
+        <button type="button" class="btn quiet" data-wact="practice" ${st.total>=5?'':'disabled'}>Practise ${goalFor('words')} random</button>${LANGS.filter(l=>usable(l.id).length>=5).length>=2?'<button type="button" class="btn quiet" data-wact="mix">Mix dictionaries</button>':''}${st.learning?'<button type="button" class="btn quiet" data-wlist="all">Your words</button>':''}${wDayLog(WS.lang,romeDay()).length?`<button type="button" class="btn quiet" data-wlist="day:${romeDay()}">Today · ${wDayLog(WS.lang,romeDay()).length}</button>`:''}</div>`;
       if(st.fresh&&!left) h+=`<div class="hint">You’ve learned ${WS.daily} new ${L.name} words today. They come back for review tomorrow; new words open up again then. You can change the limit in Settings.</div>`;
       if(!st.total) h+=`<div class="hint">No words with a definition in ${L.name} yet.</div>`;
       else if(st.noDef) h+=`<div class="hint">${st.noDef} ${st.noDef===1?'word has':'words have'} no definition yet, so ${st.noDef===1?'it is':'they are'} left out until your bot or you fill ${st.noDef===1?'it':'them'} in.</div>`;
@@ -2804,10 +2847,10 @@ function renderWords(){
   }else if(WSN.phase==='quiz'){
     const q=WSN.q, r=map.get(q.id), total=WSN.queue.length;
     const label=WSN.mode==='learn'?'Check':WSN.mode==='review'?'Review':'Practice';
-    eb.textContent=`${label} · ${L.name} · ${Math.min(WSN.qi+1,total)} of ${total}`;
+    eb.textContent=`${label} · ${WSN.mix?'mixed dictionaries':L.name} · ${Math.min(WSN.qi+1,total)} of ${total}`;
     pr.textContent=q.dir==='w2d'?'What does this word mean?':'Which word has this meaning?';
     sc.textContent='';
-    h+=`<article class="wcard q">${q.dir==='w2d'?`<div class="ww">${esc(r.w)}</div>`:`<div class="wd big">${rich(r.d)}</div>`}${q.pick&&r.e?`<div class="we">${rich(r.e)}</div>`:''}</article>`;
+    h+=`<article class="wcard q">${WSN.mix?`<div class="wsrc">${LANGS.find(l=>l.id===sesLang(WSN,q.id)).name}</div>`:''}${q.dir==='w2d'?`<div class="ww">${esc(r.w)}</div>`:`<div class="wd big">${rich(r.d)}</div>`}${q.pick&&r.e?`<div class="we">${rich(r.e)}</div>`:''}</article>`;
     h+=`<ol class="opts">${q.opts.map((id,k)=>{ const o=map.get(id); let c='opt'; if(q.pick){ if(id===q.id) c+=' ok'; else if(id===q.pick) c+=' bad'; else c+=' dim'; }
       return `<li><button type="button" class="${c}" data-opt="${id}" ${q.pick?'disabled':''}><kbd>${k+1}</kbd><span>${q.dir==='w2d'?esc(plain(o.d)):esc(o.w)}</span></button></li>`; }).join('')}</ol>`;
     if(q.pick) h+=`<div class="actions"><span class="feedback ${q.pick===q.id?'good':'bad'}">${q.pick===q.id?'Correct.':`Not quite: it’s “${esc(q.dir==='w2d'?plain(r.d):r.w)}”.`}</span><span class="spacer"></span><button type="button" class="btn primary" data-wact="nextq">${WSN.qi+1>=WSN.queue.length?'Finish':'Next'}</button></div>`;
@@ -2819,12 +2862,11 @@ function renderWords(){
 }
 function renderWordsSide(){
   let h='';
-  h+=`<div class="field"><span class="fl">New words per session</span><div class="chips">${[3,5,8,10].map(n=>`<button type="button" class="chip mono" data-wset="batch" data-v="${n}" aria-pressed="${WS.batch===n}">${n}</button>`).join('')}</div></div>`;
   h+=`<div class="field"><span class="fl">New words per day, per dictionary</span><div class="chips">${[[5,'5'],[10,'10'],[15,'15'],[20,'20'],[0,'No limit']].map(o=>`<button type="button" class="chip${o[0]?' mono':''}" data-wset="daily" data-v="${o[0]}" aria-pressed="${WS.daily===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
   h+=`<div class="field"><span class="fl">Which new words first</span><div class="chips">${[['new','Newest'],['old','Oldest'],['rnd','Random']].map(o=>`<button type="button" class="chip" data-wset="order" data-v="${o[0]}" aria-pressed="${WS.order===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
   h+=`<div class="field"><span class="fl">Review questions</span><div class="chips">${[['mix','Mixed'],['w2d','Word → meaning'],['d2w','Meaning → word']].map(o=>`<button type="button" class="chip" data-wset="dir" data-v="${o[0]}" aria-pressed="${WS.dir===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
   h+=`<div class="field"><span class="fl">Reviews per session</span><div class="chips">${[10,20,40].map(n=>`<button type="button" class="chip mono" data-wset="reviewMax" data-v="${n}" aria-pressed="${WS.reviewMax===n}">${n}</button>`).join('')}</div></div>`;
-  h+=`<div class="field"><span class="fl">Daily goal</span><div class="chips">${[1,5,10,20].map(n=>`<button type="button" class="chip mono" data-wgoal="${n}" aria-pressed="${goalFor('words')===n}">${n}</button>`).join('')}</div><div class="hint">Words to go through each day, in any dictionary, before Words turns green on the start page.</div></div>`;
+  h+=`<div class="field"><span class="fl">Daily goal</span><div class="chips">${[1,5,10,20].map(n=>`<button type="button" class="chip mono" data-wgoal="${n}" aria-pressed="${goalFor('words')===n}">${n}</button>`).join('')}</div><div class="hint">Words to go through each day before Words turns green on the start page, and how many each Learn, Practise or Mix session takes.</div></div>`;
   $('wsettings').innerHTML=h;
   const st=langStats(WS.lang), L=LANGS.find(l=>l.id===WS.lang);
   $('wstatsSide').innerHTML=`<h2>${L.name}</h2><div class="hint">A learned word comes back the next day. Each right answer waits a little longer (1, 1, 2, 3, 5, 8 days…); a wrong one starts again from tomorrow. A word counts as mastered after four right reviews in a row.</div><div class="totals">${WD[WS.lang]?`${st.total} words with a definition · ${st.learning} learning · ${st.mastered} mastered · ${learnedToday(WS.lang)}${WS.daily?' of '+WS.daily:''} new today`:'Not loaded yet.'}</div><div class="hint" style="margin-top:6px">${wordsSynced?'Progress saved to your account':'Progress saved in this browser'}. ${WSRC?'The words come from your private account, synced from Notion.':'The words themselves stay in your Notion.'}</div>`;
@@ -2859,6 +2901,7 @@ $('wbody').addEventListener('click',e=>{
   else if(a==='learn') startLearn();
   else if(a==='review') startReview();
   else if(a==='practice') startPractice();
+  else if(a==='mix') startMix();
   else if(a==='next'){ WSN.i++; renderWords(); }
   else if(a==='prev'){ WSN.i=Math.max(0,WSN.i-1); renderWords(); }
   else if(a==='match') toMatch();
@@ -2871,7 +2914,7 @@ $('wbody').addEventListener('click',e=>{
   else if(a==='vpractise') startPractice(WV.ids);
 });
 $('wsettings').addEventListener('click',e=>{
-  const gb=e.target.closest('[data-wgoal]'); if(gb){ setGoal('words',+gb.dataset.wgoal); renderWordsSide(); return; }
+  const gb=e.target.closest('[data-wgoal]'); if(gb){ setGoal('words',+gb.dataset.wgoal); renderWordsSide(); if(!WSN||WSN.phase==='done') renderWords(); return; }
   const b=e.target.closest('[data-wset]'); if(!b) return;
   const k=b.dataset.wset, v=b.dataset.v; WS[k]=(k==='batch'||k==='reviewMax'||k==='daily')?+v:v; wSaveSettings(); renderWordsSide(); if(!WSN) renderWords();
 });
@@ -2976,11 +3019,14 @@ function renderToday(){
 const PAINT_ON=!!window.FW_WEB;
 const P_KEY='fretwise.paintings', P_SESSION_KEY='fretwise.paintings.session';
 // p: work id -> {n, ok, last, b (review box), due, r (last answer right), lk (last question asked)}; days: Rome day -> [{id, kind, ok, t}]
-const PS={ask:'mix', fame:'all', p:{}, hist:[], days:{}, upd:0};
+const PS={kinds:['artist','title','movement'], fame:'all', p:{}, hist:[], days:{}, upd:0};
 let PDATA=null, pLoading=null, PSN=null, paintDoc=null, pWriting=false, pAgain=false, pRestore=null;
 function pLoad(){
   try{ const x=JSON.parse(LOCAL.getItem(P_KEY)||'null'); if(x) Object.assign(PS,x); }catch(e){}
-  PS.days=PS.days||{}; Object.values(PS.p).forEach(pNorm); pBackfill(); if(pClean()){ PS.upd=Date.now(); pStore(); }
+  PS.days=PS.days||{}; Object.values(PS.p).forEach(pNorm);
+  // the single "ask" setting became a set of questions; the date question became the art movement
+  if(PS.ask){ PS.kinds=PS.ask==='mix'?['artist','title','movement']:[PS.ask==='year'?'movement':PS.ask]; delete PS.ask; }
+  PS.kinds=(PS.kinds||[]).filter(k=>P_ALL.indexOf(k)>=0); if(!PS.kinds.length) PS.kinds=['artist','title','movement']; pBackfill(); if(pClean()){ PS.upd=Date.now(); pStore(); }
   // a round in progress, or finished today, comes back until midnight in Italy
   try{ const s=JSON.parse(LOCAL.getItem(P_SESSION_KEY)||'null'); if(s&&s.day===romeDay()&&s.psn&&!(s.day===CLEAR_DAY&&!(s.t>CLEAR_TO))) pRestore=s.psn; }catch(e){}
 }
@@ -3043,8 +3089,16 @@ const pPool=()=>(PDATA||[]).filter(x=>PS.fame==='all'||x.fame===PS.fame);
 // One review box per work. In Mixed the question rotates (painter, title, date); where it hangs is asked
 // only on request. Any right answer may be a lucky guess, so only an answer given when the work is due
 // moves it up a box, and a work counts as known after three right answers on three review days.
-const P_KINDS=['artist','title','year'];
-const P_KIND_NAME={artist:'Painter',title:'Title',year:'Date',museum:'Where it hangs'};
+const P_ALL=['artist','title','movement','museum'];
+const P_KIND_NAME={artist:'Painter',title:'Title',movement:'Movement',museum:'Where it hangs',year:'Date'};
+// Wikidata names the same movement several ways; one name each, so a right answer never has a near-twin
+const MV_SAME={'Baroque painting':'Baroque','Italian Baroque painting':'Baroque','Spanish Baroque painting':'Baroque','Neoclassical painting':'Neoclassicism',
+  'Romantic painting':'Romanticism','German Romanticism':'Romanticism','Troubadour style painting':'Troubadour style','Orientalist painting':'Orientalism',
+  'realism':'Realism','French Realism':'Realism','neoplasticism':'De Stijl','pointillism':'Neo-impressionism',
+  'Florentine Renaissance art':'Renaissance','English Renaissance':'Renaissance','Italian Renaissance':'Renaissance'};
+const mvOf=x=>{ const m=x&&x.movement; if(!m) return ''; const c=MV_SAME[m]||m; return c[0].toUpperCase()+c.slice(1); };
+// questions a work can be asked: the movement and the museum only where the data has them
+const pCanAsk=(x,k)=>k==='movement'?!!mvOf(x):k==='museum'?!!x.museum:true;
 const P_DAYS=[0,1,3,7,16,35];
 // progress saved by the earlier version, with a box per question, becomes one box per work
 function pNorm(v){
@@ -3062,19 +3116,20 @@ const pMissed=v=>!!v&&!v.r;
 const pRightLast=v=>!!v&&!!v.r;
 const pKnown=v=>!!v&&v.b>=3;
 const pDue=v=>!!v&&(v.due||0)<=Date.now();
+// the ticked questions take turns: each time a work comes back it gets the next one it can be asked
 function pKindFor(x){
-  if(PS.ask==='museum') return x.museum?'museum':'artist';
-  if(PS.ask!=='mix') return PS.ask;
-  const v=PS.p[x.id];
-  if(!v||!v.lk) return Math.random()<.5?'artist':'title';
-  return P_KINDS[(P_KINDS.indexOf(v.lk)+1)%P_KINDS.length];
+  const ks=PS.kinds.filter(k=>pCanAsk(x,k)); if(!ks.length) return pCanAsk(x,'artist')?'artist':'title';
+  const v=PS.p[x.id], i=v&&v.lk?PS.kinds.indexOf(v.lk):-1;
+  if(i<0) return rnd(ks);
+  for(let j=1;j<=PS.kinds.length;j++){ const k=PS.kinds[(i+j)%PS.kinds.length]; if(ks.indexOf(k)>=0) return k; }
+  return ks[0];
 }
 // due reviews first (missed ones before the rest), then works you haven't seen, then the rest
 function pickRound(pool,n){
   const due=shuffle(pool.filter(x=>pDue(PS.p[x.id]))).sort((a,b)=>pMissed(PS.p[b.id])-pMissed(PS.p[a.id]));
   const fresh=shuffle(pool.filter(x=>!PS.p[x.id]));
   const rest=shuffle(pool.filter(x=>PS.p[x.id]&&!pDue(PS.p[x.id])));
-  const out=due.slice(0,Math.min(6,due.length));
+  const out=due.slice(0,Math.min(Math.ceil(n*0.6),due.length));   // about 6 in 10 from reviews, the rest new
   for(const l of [fresh,due.slice(out.length),rest]) for(const x of l){ if(out.length>=n) break; if(out.indexOf(x)<0) out.push(x); }
   return shuffle(out);
 }
@@ -3095,6 +3150,16 @@ function paintOptions(x,kind){
     const ms=[]; shuffle(all.filter(p=>p.museum&&p.museum!==x.museum)).sort((p,q)=>yearGap(p,x)-yearGap(q,x)).slice(0,40).forEach(p=>{ if(ms.length<3&&ms.indexOf(p.museum)<0) ms.push(p.museum); });
     return shuffle([x.museum].concat(ms));
   }
+  if(kind==='movement'){
+    // movements of about the same time, so the answer isn't given away by the century
+    const yrs=new Map(); all.forEach(p=>{ const m=mvOf(p); if(m&&p.year!=null){ (yrs.get(m)||yrs.set(m,[]).get(m)).push(p.year); } });
+    const ans=mvOf(x), mid=m=>{ const v=yrs.get(m).slice().sort((a,b)=>a-b); return v[v.length>>1]; };
+    // a name inside the other is too close a call ("Renaissance", "High Renaissance"); Neo-, Post- and Proto- movements are their own
+    const close=m=>{ const a=ans.toLowerCase(), b=m.toLowerCase(); if(a.indexOf(b)<0&&b.indexOf(a)<0) return false; return !/^(neo|post|proto)-/.test(a.length>=b.length?a:b); };
+    const others=[...yrs.keys()].filter(m=>m!==ans&&!close(m)).map(m=>({m,d:Math.abs(mid(m)-(x.year||mid(ans)))}));
+    const near=shuffle(others).sort((p,q)=>p.d-q.d).slice(0,6);
+    return shuffle([ans].concat(shuffle(near).slice(0,3).map(o=>o.m)));
+  }
   if(kind==='year'){
     // other works' dates, at least 20 years from the answer and from each other, in time order
     const ys=[x.year], ok=y=>ys.every(z=>Math.abs(z-y)>=20);
@@ -3108,15 +3173,15 @@ function paintOptions(x,kind){
   const titles=[]; same.concat(shuffle(near)).forEach(p=>{ if(titles.length<3&&titles.indexOf(p.title)<0) titles.push(p.title); });
   return shuffle([x.title].concat(titles));
 }
-const pAnswer=it=>it.kind==='artist'?it.x.artist:it.kind==='year'?String(it.x.year):it.kind==='museum'?it.x.museum:it.x.title;
+const pAnswer=it=>it.kind==='artist'?it.x.artist:it.kind==='year'?String(it.x.year):it.kind==='museum'?it.x.museum:it.kind==='movement'?mvOf(it.x):it.x.title;
 const pRight=it=>it.pick!=null&&it.pick>=0&&it.opts[it.pick]===pAnswer(it);
-const P_QUESTION={artist:'Who painted this?',title:'What is this painting called?',year:'When was it painted?',museum:'Where does it hang today?'};
+const P_QUESTION={artist:'Who painted this?',title:'What is this painting called?',year:'When was it painted?',museum:'Where does it hang today?',movement:'Which art movement or school is it?'};
 function pFeedback(cls,txt){ const el=$('pfeedback'); el.className='feedback'+(cls?' '+cls:''); el.textContent=txt; }
 function startPaint(list){
-  const pool=list||pPool();
+  const pool=(list||pPool()).filter(x=>PS.kinds.some(k=>pCanAsk(x,k)));
   if(!list&&pool.length<4){ pFeedback('info','There are too few works in this group. Choose “All” in Settings.'); return; }
   PG=null;
-  const items=list?shuffle(pool.slice()).slice(0,10):pickRound(pool,Math.min(10,pool.length));
+  const n=goalFor('paintings'), items=list?shuffle(pool.slice()).slice(0,n):pickRound(pool,Math.min(n,pool.length));
   PSN={phase:'ask',day:romeDay(),i:0,right:0,items:items.map(x=>{ const kind=pKindFor(x); return {x,kind,opts:paintOptions(x,kind),pick:null}; })};
   pStoreSession(); pFeedback('',''); preloadP(0); preloadP(1); renderPaint();
 }
@@ -3200,7 +3265,7 @@ function galleryHtml(){
   const dres=day?new Map(pDayResults(day).map(r=>[r.id,r])):null;
   if(PG.ids.length) h+=`<div class="pgrid">${PG.ids.map((id,k)=>{ const x=pWork(id), ok=dres?dres.get(id).ok:pRightLast(PS.p[id]); return `<button type="button" class="pthumb ${ok?'ok':'no'}" data-pview="${k}"><img src="${esc(pSmall(x))}" alt="" loading="lazy" decoding="async"><span>${esc(x.title)}</span></button>`; }).join('')}</div>`;
   else h+=`<div class="hint">${PG.src==='missed'?'Nothing to revisit: every work you’ve seen, you got right last time.':PG.src==='known'?'No work is known yet: a work needs to be right on three review days in a row.':`No works here yet${PS.fame!=='all'?' in this group':''}.`}</div>`;
-  h+=`<div class="actions"><button type="button" class="btn quiet" data-pact="back">Back</button><span class="spacer"></span>${PG.ids.length?`<button type="button" class="btn primary" data-pact="practise">Practise ${Math.min(10,PG.ids.length)} of these</button>`:''}</div>`;
+  h+=`<div class="actions"><button type="button" class="btn quiet" data-pact="back">Back</button><span class="spacer"></span>${PG.ids.length?`<button type="button" class="btn primary" data-pact="practise">Practise ${Math.min(goalFor('paintings'),PG.ids.length)} of these</button>`:''}</div>`;
   h+=`<div class="hint">${day?'A green edge: every question about it was right that day. Red: at least one was missed.':'A green edge: right the last time you saw it. Red: missed.'}</div>`;
   return h;
 }
@@ -3225,14 +3290,14 @@ function renderPaint(){
   else if(!PSN||PSN.phase==='done'){
     const d=PSN&&PSN.phase==='done'?PSN:null, pool=pPool(), today=pDayResults(romeDay());
     eb.textContent='Paintings'; sc.textContent='';
-    pr.textContent=d?`${d.right} of ${d.items.filter(o=>o.pick>=0).length} right`:'Name the painter, the painting or its date';
+    pr.textContent=d?`${d.right} of ${d.items.filter(o=>o.pick>=0).length} right`:'Name the painter, the painting or its movement';
     if(d) h+=`<ul class="wlist">${d.items.map((it,k)=>`<li class="tap ${it.pick<0?'na':pRight(it)?'ok':'no'}"><button type="button" class="wopen" data-pround="${k}"><b>${esc(it.x.title)}</b><span>${esc(it.x.artist)}${it.x.year?', '+it.x.year:''}</span></button></li>`).join('')}</ul>`;
     const tile=(f,n,label)=>`<button type="button" data-pgal="${f}" ${n?'':'disabled'}><b>${n}</b><span>${label}</span></button>`;
     const due=pool.filter(x=>pDue(PS.p[x.id])).length;
     h+=`<div class="wstats"><div><b>${due}</b><span>due now</span></div>${tile('all',pGalleryIds('all').length,'seen')}${tile('missed',pGalleryIds('missed').length,'to revisit')}${tile('known',pGalleryIds('known').length,'known')}</div>`;
-    h+=`<div class="wactions"><button type="button" class="btn primary big" data-pact="start">${d?'Another 10':'Start 10 paintings'}</button>${pGalleryIds('all').length?'<button type="button" class="btn big" data-pgal="all">Your gallery</button>':''}${today.length?`<button type="button" class="btn quiet" data-pgal="day:${romeDay()}">Today · ${today.length} ${today.length===1?'work':'works'}</button>`:''}</div>`;
+    h+=`<div class="wactions"><button type="button" class="btn primary big" data-pact="start">${d?`Another ${goalFor('paintings')}`:`Start ${goalFor('paintings')} ${goalFor('paintings')===1?'painting':'paintings'}`}</button>${pGalleryIds('all').length?'<button type="button" class="btn big" data-pgal="all">Your gallery</button>':''}${today.length?`<button type="button" class="btn quiet" data-pgal="day:${romeDay()}">Today · ${today.length} ${today.length===1?'work':'works'}</button>`:''}</div>`;
     if(d) h+=`<div class="hint">Tap a work to look at it again. This round stays here until midnight.</div>`;
-    h+=`<div class="hint">Each round starts with the works due for review (missed ones first), then new ones, and each time a work comes back it asks something else about it. A work is known once it’s been right on three review days in a row. Pictures from Wikimedia Commons (public domain); facts from Wikidata.</div>`;
+    h+=`<div class="hint">Each round starts with the works due for review (missed ones first), then new ones, and each time a work comes back it asks the next of your questions about it. A work is known once it’s been right on three review days in a row. Pictures from Wikimedia Commons (public domain); facts from Wikidata.</div>`;
   }else{
     const it=PSN.items[PSN.i], x=it.x, ans=pAnswer(it);
     eb.textContent=`Painting ${PSN.i+1} of ${PSN.items.length}`;
@@ -3241,7 +3306,7 @@ function renderPaint(){
     dots.innerHTML=PSN.items.map((o,k)=>`<span class="dot ${o.pick==null?(k===PSN.i?'cur':''):o.pick<0?'':(pRight(o)?'ok':'no')}"></span>`).join('');
     h+=`<figure class="pframe" style="margin:0"><span class="ploading">Loading the picture…</span><img class="wait" src="${esc(x.thumb)}" alt="${it.pick!=null?esc(x.title+' by '+x.artist):'A painting to identify'}" decoding="async"></figure>`;
     if(it.kind==='title'&&it.pick==null) h+=`<div class="hint">By ${esc(x.artist)}${x.year?`, ${x.year}`:''}</div>`;
-    if((it.kind==='year'||it.kind==='museum')&&it.pick==null) h+=`<div class="hint">${esc(x.title)}, by ${esc(x.artist)}${it.kind==='museum'&&x.year?`, ${x.year}`:''}</div>`;
+    if((it.kind==='year'||it.kind==='museum'||it.kind==='movement')&&it.pick==null) h+=`<div class="hint">${esc(x.title)}, by ${esc(x.artist)}${it.kind==='museum'&&x.year?`, ${x.year}`:''}</div>`;
     h+=`<ol class="popts">${it.opts.map((o,k)=>{ let c='opt'; if(it.pick!=null){ if(o===ans) c+=' ok'; else if(k===it.pick) c+=' bad'; else c+=' dim'; }
       return `<li><button type="button" class="${c}" data-popt="${k}" ${it.pick!=null?'disabled':''}><kbd>${k+1}</kbd><span>${esc(o)}</span></button></li>`; }).join('')}</ol>`;
     if(it.pick!=null){
@@ -3261,10 +3326,9 @@ function renderPaint(){
 }
 function renderPaintSide(){
   let h='';
-  h+=`<div class="field"><span class="fl">Question</span><div class="chips">${[['mix','Mixed'],['artist','Who painted it?'],['title','What is it called?'],['year','When was it painted?']].map(o=>`<button type="button" class="chip" data-pset="ask" data-v="${o[0]}" aria-pressed="${PS.ask===o[0]}">${o[1]}</button>`).join('')}</div><div class="hint">Mixed asks something different each time a work comes back: the painter, then the title, then the date.</div></div>`;
-  h+=`<div class="field"><span class="fl">Something else</span><div class="chips"><button type="button" class="chip" data-pset="ask" data-v="museum" aria-pressed="${PS.ask==='museum'}">Where does it hang?</button></div><div class="hint">The museum or collection that owns the original. Kept apart from the main questions.</div></div>`;
+  h+=`<div class="field"><span class="fl">Questions</span><div class="chips">${[['artist','Who painted it?'],['title','What is it called?'],['movement','Which movement?'],['museum','Where does it hang?']].map(o=>`<button type="button" class="chip" data-pkind="${o[0]}" aria-pressed="${PS.kinds.indexOf(o[0])>=0}">${o[1]}</button>`).join('')}</div><div class="hint">Tick one or more. They take turns: each time a work comes back it asks the next one. Movement and museum only come up for works where the facts are known (about six in ten have a movement).</div></div>`;
   h+=`<div class="field"><span class="fl">Works</span><div class="chips">${FAME.map(o=>`<button type="button" class="chip" data-pset="fame" data-v="${o[0]}" aria-pressed="${PS.fame===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
-  h+=`<div class="field"><span class="fl">Daily goal</span><div class="chips">${[1,5,10,20].map(n=>`<button type="button" class="chip mono" data-pgoal="${n}" aria-pressed="${goalFor('paintings')===n}">${n}</button>`).join('')}</div><div class="hint">Paintings to answer each day before Paintings turns green on the start page.</div></div>`;
+  h+=`<div class="field"><span class="fl">Daily goal</span><div class="chips">${[1,5,10,20].map(n=>`<button type="button" class="chip mono" data-pgoal="${n}" aria-pressed="${goalFor('paintings')===n}">${n}</button>`).join('')}</div><div class="hint">Paintings to answer each day before Paintings turns green on the start page, and how many each round asks.</div></div>`;
   $('psettings').innerHTML=h;
   const last=PS.hist.slice(-20), tot=last.reduce((a,x)=>a+x.n,0), ok=last.reduce((a,x)=>a+x.ok,0);
   $('pstats').innerHTML=`<h2>Your gallery</h2><div class="hint">“Famous” works are covered by many Wikipedias, “deep cuts” by only a few: often lesser-known pieces by great painters.</div><div class="totals">${PDATA?`${Object.keys(PS.p).length} of ${PDATA.length} works seen`:''}${tot?` · ${Math.round(100*ok/tot)}% right in your last ${last.length} ${last.length===1?'round':'rounds'}`:''}</div>`;
@@ -3295,7 +3359,8 @@ $('pbody').addEventListener('click',e=>{
   else if(a==='retry') renderPaint();
 });
 $('psettings').addEventListener('click',e=>{
-  const gb=e.target.closest('[data-pgoal]'); if(gb){ setGoal('paintings',+gb.dataset.pgoal); renderPaintSide(); return; }
+  const gb=e.target.closest('[data-pgoal]'); if(gb){ setGoal('paintings',+gb.dataset.pgoal); renderPaintSide(); if(!PG&&(!PSN||PSN.phase==='done')) renderPaint(); return; }
+  const kb=e.target.closest('[data-pkind]'); if(kb){ const k=kb.dataset.pkind, i=PS.kinds.indexOf(k); if(i>=0){ if(PS.kinds.length>1) PS.kinds.splice(i,1); } else PS.kinds=P_ALL.filter(x=>x===k||PS.kinds.indexOf(x)>=0); pStore(); renderPaintSide(); if(!PG&&!PSN){ pFeedback('',''); renderPaint(); } return; }
   const b=e.target.closest('[data-pset]'); if(!b) return;
   PS[b.dataset.pset]=b.dataset.v; pStore(); renderPaintSide();
   if(PG&&PG.src!=='round'){ PG.ids=pGalleryIds(PG.src); PG.i=null; renderPaint(); }
@@ -3331,6 +3396,8 @@ window.fretwiseApp={
 
 load(); loadLocalRuns(); loadChess(); wLoad(); actLoad(); pLoad(); setInst(S.inst);
 if(window.innerWidth<920) $('settingsPanel').open=false;
+// a reload inside a section starts on the start page: make that the base step again
+try{ if(history.state&&history.state.fwSection) history.replaceState(null,''); }catch(e){}
 showHome();
 connectRuns();
 if(WSRC&&WSRC.signedIn()) refreshWords();
