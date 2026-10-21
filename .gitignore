@@ -6,3 +6,5 @@ dist/
 *-firebase-adminsdk-*.json
 .env
 push.sh
+# local Claude Code settings and preview config
+.claude/
