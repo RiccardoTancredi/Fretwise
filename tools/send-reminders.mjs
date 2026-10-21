@@ -22,7 +22,9 @@ function localNow(tz) {
   return [`${p.year}-${p.month}-${p.day}`, Number(p.hour)];
 }
 // exercises done that day in a section, added up over devices, and the goal set in the app
-const done = (act, day, k) => Object.values(((act.x || {})[day] || {})[k] || {}).reduce((a, b) => a + b, 0);
+// 21 October 2026 was wiped in the app (chess excepted): that day only counters written after it count
+const done = (act, day, k) => Object.entries(((act.x || {})[day] || {})[k] || {})
+  .filter(([dev]) => !(day === '2026-10-21' && k !== 'chess') || dev.endsWith('~')).reduce((a, [, n]) => a + n, 0);
 const goalFor = (act, k) => (k === 'words' || k === 'paintings') ? ((act.goals || {})[k] || 1) : 1;
 
 let sent = 0, checked = 0, failed = 0;

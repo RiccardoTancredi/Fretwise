@@ -1354,8 +1354,19 @@ function miniChord(fr,root){
 const fretsText=fr=>fr.some(f=>f>9)?fr.map(f=>f<0?'x':f).join('-'):fr.map(f=>f<0?'x':f).join('');
 
 /* ---------- round flow ---------- */
-function newRound(){
-  clearTimeout(advTimer); stopClock(); round={results:[]};
+// The round in progress is kept per instrument and exercise, so leaving it (for another exercise, the
+// start page, or the app) and coming back carries on where you were. Changing a setting starts afresh.
+const ROUNDS_KEY='fretwise.rounds';
+const roundKey=()=>S.inst+':'+S.mode;
+function roundsAll(){ try{ return JSON.parse(LOCAL.getItem(ROUNDS_KEY)||'{}')||{}; }catch(e){ return {}; } }
+function storeRound(){ const a=roundsAll(); a[roundKey()]={results:round.results,n:S.roundLen,t:Date.now()}; try{ LOCAL.setItem(ROUNDS_KEY,JSON.stringify(a)); }catch(e){} }
+function dropRound(){ const a=roundsAll(); if(!a[roundKey()]) return; delete a[roundKey()]; try{ LOCAL.setItem(ROUNDS_KEY,JSON.stringify(a)); }catch(e){} }
+function newRound(fresh){
+  clearTimeout(advTimer); stopClock();
+  const saved=fresh?null:roundsAll()[roundKey()];
+  if(saved&&inClear(saved.t)) saved.results=[];
+  if(fresh) dropRound();
+  round={results:saved&&saved.n===S.roundLen&&saved.results.length<S.roundLen?saved.results:[]};
   if(S.mode==='circle'){ Q=null; phase='circle'; setFeedback('',''); return render(); }
   if(S.mode==='all') return readyRun();
   nextQuestion();
@@ -1374,7 +1385,7 @@ function recordPos(s,f,ok,ms){
 function finish(ok,label){
   const ms=performance.now()-qStart, st=ST();
   phase='answered';
-  round.results.push({ok,ms,label});
+  round.results.push({ok,ms,label}); storeRound();
   st.total++; if(ok) st.correct++; bump(S.inst);
   if(Q.type==='name') recordPos(Q.s,Q.f,ok,ms);
   if(Q.type==='findS') Q.frets.forEach(f=>recordPos(Q.s,f,ok,ms));
@@ -1383,7 +1394,7 @@ function finish(ok,label){
   if(ok&&(Q.type==='name'||Q.type==='findS')) advTimer=setTimeout(nextQuestion,1100);
 }
 function showSummary(){
-  phase='summary';
+  phase='summary'; dropRound();
   const n=round.results.length, c=round.results.filter(r=>r.ok).length, st=ST();
   st.rounds++; if(!st.best||c/n>st.best.c/st.best.n) st.best={c,n};
   save(); render();
@@ -1428,12 +1439,12 @@ const RUNS_KEY=STORE+'.runs';
 const cfgKey=()=>`${C().fretStart}-${C().fretEnd}|${C().strings.map(b=>b?1:0).join('')}`;
 const runsFor=(pc,cfg)=>runs.filter(r=>(r.inst||'guitar')===S.inst&&r.pc===pc&&r.cfg===cfg);
 function loadLocalRuns(){
-  try{ const d=JSON.parse(LOCAL.getItem(RUNS_KEY)||'null'); if(d&&Array.isArray(d.runs)){ runs=d.runs; resetAt=normReset(d.resetAt); } }catch(e){}
+  try{ const d=JSON.parse(LOCAL.getItem(RUNS_KEY)||'null'); if(d&&Array.isArray(d.runs)){ runs=d.runs.filter(r=>!inClear(r.t)); resetAt=normReset(d.resetAt); if(runs.length!==d.runs.length) saveLocalRuns(); } }catch(e){}
 }
 function saveLocalRuns(){ try{ LOCAL.setItem(RUNS_KEY,JSON.stringify({runs,resetAt})); }catch(e){} }
 function mergeRuns(remote,remoteReset){
   const rr=normReset(remoteReset); Object.keys(resetAt).forEach(k=>{ resetAt[k]=Math.max(resetAt[k],rr[k]); });
-  const byId=new Map(); remote.concat(runs).forEach(r=>{ if(r&&r.id&&r.t>resetAt[r.inst||'guitar']) byId.set(r.id,r); });
+  const byId=new Map(); remote.concat(runs).forEach(r=>{ if(r&&r.id&&r.t>resetAt[r.inst||'guitar']&&!inClear(r.t)) byId.set(r.id,r); });
   runs=[...byId.values()].sort((a,b)=>a.t-b.t).slice(-MAXRUNS);
 }
 async function pushRuns(){
@@ -1897,14 +1908,14 @@ $('settings').addEventListener('click',e=>{
   else if(a==='cbass'){ S.rootBass[S.inst]=v==='1'; }
   else if(a==='preset'){ const p=v.split('-').map(Number); c.fretStart=p[0]; c.fretEnd=p[1]; }
   save(); renderSettings();
-  if(restart) newRound(); else render();
+  if(restart) newRound(true); else render();
 });
 $('settings').addEventListener('change',e=>{
   const c=C();
   if(e.target.id==='fromFret'){ c.fretStart=+e.target.value; if(c.fretEnd<c.fretStart+3) c.fretEnd=Math.min(15,c.fretStart+3); }
   else if(e.target.id==='toFret'){ c.fretEnd=+e.target.value; }
   else return;
-  save(); renderSettings(); newRound();
+  save(); renderSettings(); newRound(true);
 });
 
 /* ---------- wiring ---------- */
@@ -1948,12 +1959,12 @@ $('answer').addEventListener('click',e=>{
   const k=e.target.closest('[data-pc]'); if(k){ answerName(+k.dataset.pc); return; }
   const b=e.target.closest('[data-act]'); if(!b) return;
   const a=b.dataset.act;
-  if(a==='next'){ if(phase==='summary') newRound(); else nextQuestion(); }
+  if(a==='next'){ if(phase==='summary') newRound(true); else nextQuestion(); }
   else if(a==='start') startRun();
   else if(a==='again') readyRun();
   else if(a==='nextnote'){ S.allPc=+b.dataset.v; save(); readyRun(); }
   else if(a==='giveup') giveUp();
-  else if(a==='toneck'){ S.scaleArea='neck'; save(); renderSettings(); newRound(); }
+  else if(a==='toneck'){ S.scaleArea='neck'; save(); renderSettings(); newRound(true); }
   else if(a==='check'){ if(Q.type==='chord') checkChord(); else checkScale(); }
   else if(a==='clear'){
     if(Q.type==='chord'){ Q.sel=new Map(); Q.checked=null; setFeedback('',''); }
@@ -1973,7 +1984,7 @@ document.addEventListener('keydown',e=>{
   if(S.mode==='chord'&&e.key==='Enter'&&tg!=='BUTTON'&&phase==='ask'){ e.preventDefault(); checkChord(); return; }
   if(S.mode!=='all'&&(e.key==='Enter'||e.key===' ')&&(phase==='answered'||phase==='summary')){
     if(tg==='BUTTON'&&e.key===' ') return;
-    e.preventDefault(); if(phase==='summary') newRound(); else nextQuestion(); return;
+    e.preventDefault(); if(phase==='summary') newRound(true); else nextQuestion(); return;
   }
   if(phase==='ask'&&Q&&Q.type==='name'){
     const l=e.key.toLowerCase(); if(!(l in LETTER_PC)) return;
@@ -2453,6 +2464,12 @@ const DAY=86400000;
 // the day as it is in Italy: today's work stays on screen until midnight there, and the history is kept per day
 const ROME_DAY=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'});
 function romeDay(t){ const o={}; ROME_DAY.formatToParts(new Date(t==null?Date.now():t)).forEach(x=>{ o[x.type]=x.value; }); return o.year+'-'+o.month+'-'+o.day; }
+// One-off: on 21 October 2026 the owner asked to wipe that day's progress, chess excepted, after a day
+// of testing. Whatever was done that day up to CLEAR_TO is dropped on load and after every sync, so a
+// device or the account still holding it can't bring it back; anything done after it is kept.
+const CLEAR_DAY='2026-10-21', CLEAR_FROM=Date.UTC(2026,9,20,22,0), CLEAR_TO=1792594300017;
+const inClear=t=>t>=CLEAR_FROM&&t<=CLEAR_TO;
+const CLEAR_TAG='~';   // that day's exercise counters count only device keys written after the wipe
 function pruneDays(days){ const keep=new Set(); for(let i=0;i<61;i++) keep.add(romeDay(Date.now()-i*DAY)); Object.keys(days).forEach(d=>{ if(!keep.has(d)) delete days[d]; }); }
 const W_SET_KEY='fretwise.words.settings', W_DATA_KEY='fretwise.words.data', W_PROG_KEY='fretwise.words.progress', W_SESSION_KEY='fretwise.words.session';
 const WS={lang:'es', batch:5, order:'new', dir:'mix', reviewMax:20, daily:10};
@@ -2469,9 +2486,9 @@ function wLoad(){
   else try{ WD=JSON.parse(LOCAL.getItem(W_DATA_KEY)||'{}')||{}; }catch(e){ WD={}; }
   try{ const p=JSON.parse(LOCAL.getItem(W_PROG_KEY)||'null'); if(p&&p.p) WP=p; }catch(e){}
   LANGS.forEach(l=>{ WP.p[l.id]=WP.p[l.id]||{}; });
-  WP.days=WP.days||{}; wBackfill();
+  WP.days=WP.days||{}; wBackfill(); if(wClean()){ WP.upd=Date.now(); try{ LOCAL.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){} }
   // a session in progress, or finished today, comes back until midnight in Italy
-  try{ const x=JSON.parse(LOCAL.getItem(W_SESSION_KEY)||'null'); if(x&&x.day===romeDay()&&x.wsn) wPending=x.wsn; }catch(e){}
+  try{ const x=JSON.parse(LOCAL.getItem(W_SESSION_KEY)||'null'); if(x&&x.day===romeDay()&&x.wsn&&!(x.day===CLEAR_DAY&&!(x.t>CLEAR_TO))) wPending=x.wsn; }catch(e){}
   wRestore();
 }
 // today's session comes back once its words are loaded
@@ -2480,6 +2497,14 @@ function wRestore(){
   if(!wPending) return; const have=byId(wPending.lang); if(!have.size) return;
   if(wPending.ids.every(id=>have.has(id))){ WSN=Object.assign(wPending,{matched:new Set(wPending.matched||[]),requeued:new Set(wPending.requeued||[]),selL:null,selR:null,flash:null}); WS.lang=WSN.lang; }
   wPending=null;
+}
+// the wiped day: words first learned then are new again, and the day's log goes
+let wNeedPush=false;
+function wClean(){
+  let ch=false;
+  LANGS.forEach(l=>{ const p=WP.p[l.id]||{}; Object.keys(p).forEach(id=>{ if(inClear(p[id].learned||0)){ delete p[id]; ch=true; } }); });
+  Object.values(WP.days[CLEAR_DAY]||{}).forEach(ws=>Object.keys(ws||{}).forEach(id=>{ if(inClear(ws[id].t||0)){ delete ws[id]; ch=true; } }));
+  return ch;
 }
 // words seen before the day log existed: each goes under the last day you saw it
 function wBackfill(){
@@ -2491,7 +2516,7 @@ function wBackfill(){
 function wStoreSession(){
   try{
     if(!WSN) LOCAL.removeItem(W_SESSION_KEY);
-    else LOCAL.setItem(W_SESSION_KEY,JSON.stringify({day:WSN.day,wsn:Object.assign({},WSN,{matched:[...(WSN.matched||[])],requeued:[...(WSN.requeued||[])]})}));
+    else LOCAL.setItem(W_SESSION_KEY,JSON.stringify({day:WSN.day,t:Date.now(),wsn:Object.assign({},WSN,{matched:[...(WSN.matched||[])],requeued:[...(WSN.requeued||[])]})}));
   }catch(e){}
 }
 const wSaveSettings=()=>{ try{ LOCAL.setItem(W_SET_KEY,JSON.stringify(WS)); }catch(e){} };
@@ -2513,15 +2538,15 @@ function mergeWords(x){
   Object.entries(x.days||{}).forEach(([d,byLang])=>{ const md=WP.days[d]||(WP.days[d]={});
     Object.entries(byLang||{}).forEach(([lang,ws])=>{ const ml=md[lang]||(md[lang]={});
       Object.entries(ws||{}).forEach(([id,e])=>{ if(!ml[id]||(e.t||0)>(ml[id].t||0)) ml[id]=e; }); }); });
-  wBackfill();
+  wBackfill(); if(wClean()){ WP.upd=Date.now(); wNeedPush=true; }
   WP.upd=Math.max(WP.upd,x.upd||0);
 }
 async function connectWords(db,uid){
   try{
     const ref=db.doc('data/users/'+uid+'/words'); const s=await ref.get(), d=s.exists?s.data():null, localUpd=WP.upd;
     mergeWords(d); wordsDoc=ref; wordsSynced=true; try{ LOCAL.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){}
-    if(!d||localUpd>(d.upd||0)) await pushWords();
-    ref.onSnapshot(sn=>{ const x=sn.exists?sn.data():null; if(!x||x.upd===WP.upd) return; mergeWords(x); try{ LOCAL.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){} if(view==='words'&&(!WSN||WSN.phase==='done')) renderWords(); else if(view==='home') renderHome(); },()=>{ wordsSynced=false; });
+    if(!d||localUpd>(d.upd||0)||wNeedPush){ wNeedPush=false; await pushWords(); }
+    ref.onSnapshot(sn=>{ const x=sn.exists?sn.data():null; if(!x||x.upd===WP.upd) return; mergeWords(x); try{ LOCAL.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){} if(wNeedPush){ wNeedPush=false; pushWords(); } if(view==='words'&&(!WSN||WSN.phase==='done')) renderWords(); else if(view==='home') renderHome(); },()=>{ wordsSynced=false; });
   }catch(e){}
 }
 
@@ -2907,11 +2932,12 @@ function loggedToday(k){
   if(k==='chess') return CS.hist.filter(h=>(h.t||0)>=t0).length+Object.values(CS.lines).filter(x=>(x.last||0)>=t0).length;
   return runs.filter(r=>(r.inst||'guitar')===k&&r.t>=t0).length;
 }
-const doneToday=k=>Math.max(Object.values(((ACT.x||{})[dayKey()]||{})[k]||{}).reduce((a,b)=>a+b,0),loggedToday(k));
+const doneToday=k=>{ const day=dayKey(), e=((ACT.x||{})[day]||{})[k]||{};
+  return Math.max(Object.entries(e).filter(([dv])=>!(day===CLEAR_DAY&&k!=='chess')||dv.endsWith(CLEAR_TAG)).reduce((a,[,n])=>a+n,0),loggedToday(k)); };
 const goalFor=k=>(k==='words'||k==='paintings')?((ACT.goals||{})[k]||1):1;
 function bump(k,n){
-  const day=dayKey(), X=ACT.x||(ACT.x={}), e=X[day]||(X[day]={}), m=e[k]||(e[k]={});
-  m[DEV]=(m[DEV]||0)+(n||1); ACT.upd=Date.now(); actStore(); actDirty=true;
+  const day=dayKey(), X=ACT.x||(ACT.x={}), e=X[day]||(X[day]={}), m=e[k]||(e[k]={}), dv=DEV+(day===CLEAR_DAY&&Date.now()>CLEAR_TO?CLEAR_TAG:'');
+  m[dv]=(m[dv]||0)+(n||1); ACT.upd=Date.now(); actStore(); actDirty=true;
 }
 function setGoal(k,n){ ACT.goals=Object.assign({},ACT.goals,{[k]:n}); ACT.goalsT=Date.now(); ACT.upd=Date.now(); actStore(); actDirty=true; pushAct(); }
 const actSection=()=>view==='app'?S.inst:view==='chess'?'chess':view==='words'?'words':view==='paint'?'paintings':null;
@@ -2954,16 +2980,16 @@ const PS={ask:'mix', fame:'all', p:{}, hist:[], days:{}, upd:0};
 let PDATA=null, pLoading=null, PSN=null, paintDoc=null, pWriting=false, pAgain=false, pRestore=null;
 function pLoad(){
   try{ const x=JSON.parse(LOCAL.getItem(P_KEY)||'null'); if(x) Object.assign(PS,x); }catch(e){}
-  PS.days=PS.days||{}; Object.values(PS.p).forEach(pNorm); pBackfill();
+  PS.days=PS.days||{}; Object.values(PS.p).forEach(pNorm); pBackfill(); if(pClean()){ PS.upd=Date.now(); pStore(); }
   // a round in progress, or finished today, comes back until midnight in Italy
-  try{ const s=JSON.parse(LOCAL.getItem(P_SESSION_KEY)||'null'); if(s&&s.day===romeDay()&&s.psn) pRestore=s.psn; }catch(e){}
+  try{ const s=JSON.parse(LOCAL.getItem(P_SESSION_KEY)||'null'); if(s&&s.day===romeDay()&&s.psn&&!(s.day===CLEAR_DAY&&!(s.t>CLEAR_TO))) pRestore=s.psn; }catch(e){}
 }
 function pStore(){ try{ LOCAL.setItem(P_KEY,JSON.stringify(PS)); }catch(e){} }
 function pSave(){ PS.upd=Date.now(); pruneDays(PS.days); pStore(); pushPaint(); }
 function pStoreSession(){
   try{
     if(!PSN) LOCAL.removeItem(P_SESSION_KEY);
-    else LOCAL.setItem(P_SESSION_KEY,JSON.stringify({day:romeDay(),psn:Object.assign({},PSN,{items:PSN.items.map(it=>Object.assign({},it,{x:it.x.id}))})}));
+    else LOCAL.setItem(P_SESSION_KEY,JSON.stringify({day:romeDay(),t:Date.now(),psn:Object.assign({},PSN,{items:PSN.items.map(it=>Object.assign({},it,{x:it.x.id}))})}));
   }catch(e){}
 }
 async function pushPaint(){
@@ -2978,7 +3004,17 @@ function mergePaint(x){
   PS.hist.sort((a,b)=>a.t-b.t); PS.hist=PS.hist.slice(-200); PS.upd=Math.max(PS.upd,x.upd||0);
   Object.entries(x.days||{}).forEach(([d,list])=>{ const mine=PS.days[d]||(PS.days[d]=[]), seen=new Set(mine.map(e=>e.t+e.id));
     list.forEach(e=>{ if(!seen.has(e.t+e.id)) mine.push(e); }); mine.sort((a,b)=>a.t-b.t); });
-  Object.values(PS.p).forEach(pNorm); pBackfill();
+  Object.values(PS.p).forEach(pNorm); pBackfill(); if(pClean()){ PS.upd=Date.now(); pNeedPush=true; }
+}
+// the wiped day: works seen only then are unseen again, and the day's answers and rounds go
+let pNeedPush=false;
+function pClean(){
+  let ch=false; const cnt={};
+  (PS.days[CLEAR_DAY]||[]).forEach(e=>{ if(inClear(e.t)) cnt[e.id]=(cnt[e.id]||0)+1; });
+  Object.entries(PS.p).forEach(([id,v])=>{ if(inClear(v.last||0)&&(v.n||0)<=(cnt[id]||0)){ delete PS.p[id]; ch=true; } });
+  if(PS.days[CLEAR_DAY]){ const l=PS.days[CLEAR_DAY].filter(e=>!inClear(e.t)); if(l.length!==PS.days[CLEAR_DAY].length){ PS.days[CLEAR_DAY]=l; ch=true; } }
+  const h=PS.hist.filter(x=>!inClear(x.t)); if(h.length!==PS.hist.length){ PS.hist=h; ch=true; }
+  return ch;
 }
 // works seen before the day log existed: each goes under the last day you saw it
 function pBackfill(){
@@ -2989,8 +3025,8 @@ function pBackfill(){
 async function connectPaint(db,uid){
   try{
     const ref=db.doc('data/users/'+uid+'/paintings'); const s=await ref.get(), d=s.exists?s.data():null, lu=PS.upd;
-    mergePaint(d); paintDoc=ref; pStore(); if(!d||lu>(d.upd||0)) await pushPaint();
-    ref.onSnapshot(sn=>{ const x=sn.exists?sn.data():null; if(!x||x.upd===PS.upd) return; mergePaint(x); pStore(); if(view==='paint'&&(!PSN||PSN.phase==='done')) renderPaint(); else if(view==='home') renderHome(); },()=>{});
+    mergePaint(d); paintDoc=ref; pStore(); if(!d||lu>(d.upd||0)||pNeedPush){ pNeedPush=false; await pushPaint(); }
+    ref.onSnapshot(sn=>{ const x=sn.exists?sn.data():null; if(!x||x.upd===PS.upd) return; mergePaint(x); pStore(); if(pNeedPush){ pNeedPush=false; pushPaint(); } if(view==='paint'&&(!PSN||PSN.phase==='done')) renderPaint(); else if(view==='home') renderHome(); },()=>{});
   }catch(e){}
 }
 function loadPaintings(){
