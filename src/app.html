@@ -92,7 +92,10 @@ h1{font-family:var(--font-display);font-weight:800;font-size:clamp(1.35rem,3.6vw
 .dot.ok{background:var(--good)}
 .dot.no{background:var(--bad)}
 .score{font-family:var(--font-mono);font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
-.score.timer{font-family:var(--font-display);font-weight:800;font-size:1.5rem;color:var(--ink);letter-spacing:-.01em}
+.score.timer{font-family:var(--font-display);font-weight:800;font-size:1.5rem;color:var(--ink);letter-spacing:-.01em;white-space:nowrap}
+/* the timer grows from "9.9 s" to "10.0 s": it must never push the fretboard down mid-question */
+.prompt-row.timed{flex-wrap:nowrap}
+@media (max-width:520px){.prompt-row.timed{flex-wrap:wrap}.prompt-row.timed .round{flex-basis:100%;align-items:flex-start}}
 
 .board-wrap{width:100%;min-width:0}
 .board-wrap svg{display:block;width:100%;height:auto;user-select:none;-webkit-user-select:none;touch-action:manipulation}
@@ -328,6 +331,28 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .wlist li{display:flex;gap:10px;align-items:baseline;padding:8px 10px;border-radius:10px;background:var(--surface-2);border-left:4px solid var(--good)}
 .wlist li.no{border-left-color:var(--bad)}
 .wlist li span{color:var(--muted);font-size:.9rem}
+/* rows and tiles you can tap to look at a word or a painting again */
+.wlist li.tap{padding:0}
+.wopen{display:flex;gap:10px;align-items:baseline;width:100%;min-width:0;text-align:left;background:none;border:0;border-radius:10px;padding:8px 10px;font:inherit;color:inherit;cursor:pointer}
+.wopen span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wopen::after{content:'›';color:var(--muted);font-weight:700}
+.wopen:hover{background:var(--accent-soft)}
+.wlist li.na{border-left-color:var(--line)}
+.wstats button{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.wstats button:hover{border-color:var(--accent)}
+.wstats button:disabled{cursor:default;opacity:1}
+.wstats button:disabled:hover{border-color:var(--line)}
+.wstats button span{color:var(--accent)}
+.wstats button:disabled span{color:var(--muted)}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.pthumb{display:flex;flex-direction:column;gap:5px;padding:6px;border:1px solid var(--line);border-bottom:3px solid var(--good);border-radius:10px;background:var(--surface-2);text-align:left;font:inherit;color:inherit;cursor:pointer;min-width:0}
+.pthumb.no{border-bottom-color:var(--bad)}
+.pthumb:hover{border-color:var(--accent)}
+.pthumb img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;background:var(--line)}
+.pthumb span{font-size:.78rem;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.vstat{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:.86rem;color:var(--muted)}
+.vstat .ok{color:var(--good);font-weight:700}
+.vstat .no{color:var(--bad);font-weight:700}
 .pick .wordmark{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;padding:14px 4px 4px;min-height:96px;font-family:var(--font-display);font-weight:800;font-size:1.35rem;letter-spacing:-.01em}
 .pick .wordmark span:nth-child(2n){color:var(--accent)}
 .pick .wordmark small{flex-basis:100%;font-family:var(--font-body);font-weight:400;font-size:.85rem;color:var(--muted)}
@@ -1404,15 +1429,15 @@ function renderPrompt(){
   else if(Q.type==='iv'){ eb='Intervals · root '+where(Q.root.s,Q.root.f); pr=`Find the ${Q.iv.name} of ${rootNm(Q)}`; }
   else if(Q.type==='scale'){ eb=`Scales · frets ${Q.win[0]}–${Q.win[1]}, root on the ${strName(Q.root.s)}`; pr=`Mark every note of ${rootNm(Q)} ${Q.scale.name}`; }
   $('eyebrow').textContent=eb; $('prompt').textContent=pr;
-  const sc=$('score');
+  const sc=$('score'), row=sc.closest('.prompt-row');
   if(S.mode==='all'&&phase!=='summary'){
-    $('dots').innerHTML=''; sc.classList.add('timer');
+    $('dots').innerHTML=''; sc.classList.add('timer'); row.classList.add('timed');
     if(phase==='ask') sc.textContent=((performance.now()-qStart)/1000).toFixed(1)+' s';
     else if(phase==='answered') sc.textContent=fmtS(runs.length?runs[runs.length-1].ms:null);
     else { const c=runsFor(Q.pc,cfgKey()).filter(r=>r.ok); sc.textContent=c.length?'Best '+fmtS(Math.min(...c.map(r=>r.ms))):'No time yet'; }
     return;
   }
-  sc.classList.remove('timer');
+  sc.classList.remove('timer'); row.classList.remove('timed');
   let d='';
   for(let i=0;i<S.roundLen;i++){
     const r=round.results[i];
@@ -2244,9 +2269,11 @@ function startReview(){
   WSN={mode:'review',lang,ids,phase:'quiz',queue:shuffle(ids.slice()),qi:0,mistakes:0,results:{},requeued:new Set()};
   nextQuizQ(); wFeedback('',''); renderWords();
 }
-function startPractice(){
-  const lang=WS.lang, rows=shuffle(usable(lang).slice()).slice(0,10);
-  if(rows.length<5){ wFeedback('info','This dictionary needs at least five words with a definition.'); return; }
+function startPractice(only){
+  const lang=WS.lang, all=usable(lang), rows=shuffle((only?all.filter(r=>only.indexOf(r.id)>=0):all).slice()).slice(0,10);
+  if(all.length<5){ wFeedback('info','This dictionary needs at least five words with a definition.'); return; }
+  if(!rows.length) return;
+  WV=null;
   const ids=rows.map(r=>r.id);
   WSN={mode:'practice',lang,ids,phase:'quiz',queue:ids.slice(),qi:0,mistakes:0,results:{},requeued:new Set()};
   nextQuizQ(); wFeedback('',''); renderWords();
@@ -2273,10 +2300,10 @@ function nextQuiz(){
 function finishSession(){
   const p=WP.p[WSN.lang], now=Date.now(), today=startOfDay(now);
   if(WSN.mode==='learn'){
-    WSN.ids.forEach(id=>{ const ok=WSN.results[id]; p[id]={b:ok?1:0,due:ok?today+SRS_DAYS[1]*DAY:now,n:1,ok:ok?1:0,last:now,learned:now}; });
+    WSN.ids.forEach(id=>{ const ok=WSN.results[id]; p[id]={b:ok?1:0,due:ok?today+SRS_DAYS[1]*DAY:now,n:1,ok:ok?1:0,r:ok?1:0,last:now,learned:now}; });
   }else if(WSN.mode==='review'){
     WSN.ids.forEach(id=>{ const v=Object.assign({b:1,n:0,ok:0},p[id]), ok=WSN.results[id];
-      v.n++; v.last=now;
+      v.n++; v.last=now; v.r=ok?1:0;
       if(ok){ v.ok++; v.b=Math.min(SRS_DAYS.length-1,(v.b||0)+1); v.due=today+SRS_DAYS[v.b]*DAY; }
       else { v.b=1; v.due=today+DAY; }
       p[id]=v; });
@@ -2296,6 +2323,50 @@ function tapMatch(side,id){
   renderWords();
 }
 
+/* ---------- looking at the words again ---------- */
+// WV: null, or {src: 'session' | a list filter, ids, i: index of the open word or null for the list}
+let WV=null;
+const W_FILTERS=[['all','All'],['right','Right'],['missed','Missed'],['mastered','Mastered']];
+// was the last answer right? Older saves don't say, so read it from the box when it is unambiguous
+const wLast=v=>v.r!=null?!!v.r:v.b===0?false:v.b>=2?true:v.n<=1;
+const wFilter=(v,f)=>f==='all'||(f==='mastered'?v.b>=5:f==='right'?wLast(v):!wLast(v));
+function wListIds(lang,f){
+  const p=WP.p[lang]||{}, have=byId(lang);
+  return Object.entries(p).filter(([id,v])=>have.has(id)&&have.get(id).d&&wFilter(v,f)).sort((a,b)=>(b[1].last||0)-(a[1].last||0)).map(([id])=>id);
+}
+function openWordList(f){ WV={src:f,ids:wListIds(WS.lang,f),i:null}; wFeedback('',''); renderWords(); scrollTo(0,0); }
+function openSessionWord(k){ WV={src:'session',ids:WSN.ids.slice(),i:k}; wFeedback('',''); renderWords(); scrollTo(0,0); }
+function wvStep(d){ const i=WV.i+d; if(i<0||i>=WV.ids.length) return; WV.i=i; renderWords(); }
+function wvBack(){ if(WV.src==='session'||WV.i==null) WV=null; else WV.i=null; renderWords(); }
+function inDays(t){ const d=Math.round((startOfDay(t)-startOfDay(Date.now()))/DAY); return d<=0?'today':d===1?'tomorrow':`in ${d} days`; }
+const nextReviewText=v=>v.due<=Date.now()?'Due for review now':(v.b>=5?'Mastered · next review ':'Next review ')+inDays(v.due);
+function wordViewHtml(L,map){
+  const eb=$('weyebrow'), pr=$('wprompt'), sc=$('wscore'); let h='';
+  if(WV.i!=null){
+    const id=WV.ids[WV.i], r=map.get(id), v=(WP.p[WS.lang]||{})[id], ses=WV.src==='session'?WSN:null;
+    if(!r){ WV.i=null; return wordViewHtml(L,map); }
+    eb.textContent=`${L.name} · ${WV.i+1} of ${WV.ids.length}`;
+    pr.textContent=ses?'Words from this session':'Your words'; sc.textContent='';
+    h+=`<article class="wcard"><div class="ww">${esc(r.w)}</div><div class="wd">${rich(r.d)}</div>${r.e?`<div class="we">${rich(r.e)}</div>`:''}${r.s?`<div class="wsrc">Source: ${esc(r.s)}</div>`:''}</article>`;
+    const res=ses?(ses.results[id]?'<span class="ok">Right first time this session</span>':'<span class="no">Missed this session</span>')
+      :v?(wLast(v)?'<span class="ok">Right last time</span>':'<span class="no">Missed last time</span>'):'';
+    if(v||res) h+=`<div class="vstat">${res}${v?`<span>Seen ${v.n} ${v.n===1?'time':'times'}, right ${v.ok}</span><span>${nextReviewText(v)}</span>`:''}</div>`;
+    h+=`<div class="actions"><button type="button" class="btn quiet" data-wact="vback">Back</button><span class="spacer"></span><button type="button" class="btn" data-wact="vprev" ${WV.i?'':'disabled'}>Previous</button><button type="button" class="btn primary" data-wact="vnext" ${WV.i<WV.ids.length-1?'':'disabled'}>Next</button></div>`;
+    return h;
+  }
+  eb.textContent=`Your words · ${L.name}`;
+  pr.textContent=WV.src==='all'?'Words you’re learning':WV.src==='right'?'Right last time':WV.src==='missed'?'Missed last time':'Mastered words';
+  sc.textContent=`${WV.ids.length} ${WV.ids.length===1?'word':'words'}`;
+  h+=`<div class="langs" role="group" aria-label="Dictionary">${LANGS.map(l=>`<button type="button" class="lang" data-wlang="${l.id}" aria-pressed="${l.id===WS.lang}"><b>${l.name}</b><small>${WD[l.id]?`${wListIds(l.id,'all').length} learning`:'not loaded'}</small></button>`).join('')}</div>`;
+  h+=`<div class="chips" role="group" aria-label="Show">${W_FILTERS.map(o=>`<button type="button" class="chip" data-wlist="${o[0]}" aria-pressed="${WV.src===o[0]}">${o[1]} · ${wListIds(WS.lang,o[0]).length}</button>`).join('')}</div>`;
+  const p=WP.p[WS.lang]||{};
+  if(WV.ids.length) h+=`<ul class="wlist">${WV.ids.map((id,k)=>{ const r=map.get(id); return `<li class="tap ${wLast(p[id])?'ok':'no'}"><button type="button" class="wopen" data-wview="${k}"><b>${esc(r.w)}</b><span>${esc(plain(r.d))}</span></button></li>`; }).join('')}</ul>`;
+  else h+=`<div class="hint">${!WD[WS.lang]?'This dictionary isn’t loaded yet.':WV.src==='all'?`You haven’t started any ${L.name} words yet.`:WV.src==='missed'?'Nothing missed: you got every word right last time.':'No words here yet.'}</div>`;
+  h+=`<div class="actions"><button type="button" class="btn quiet" data-wact="vback">Back</button><span class="spacer"></span>${WV.ids.length&&usable(WS.lang).length>=5?`<button type="button" class="btn primary" data-wact="vpractise">Practise ${Math.min(10,WV.ids.length)} of these</button>`:''}</div>`;
+  h+=`<div class="hint">Green: right the last time it came up. Red: missed. Practising doesn’t change your review schedule.</div>`;
+  return h;
+}
+
 /* ---------- rendering ---------- */
 function wFeedback(cls,txt){ const el=$('wfeedback'); if(!el) return; el.className='feedback'+(cls?' '+cls:''); el.textContent=txt; }
 function ago(t){ if(!t) return 'never'; const m=Math.round((Date.now()-t)/60000); return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'; }
@@ -2303,28 +2374,28 @@ function renderWords(){
   if(view!=='words') return;
   const L=LANGS.find(l=>l.id===WS.lang), st=langStats(WS.lang), map=byId(WS.lang);
   const eb=$('weyebrow'), pr=$('wprompt'), sc=$('wscore'), el=$('wbody'); let h='';
-  if(!WSN||WSN.phase==='done'){
+  if(WV) h=wordViewHtml(L,map);
+  else if(!WSN||WSN.phase==='done'){
     const done=WSN&&WSN.phase==='done'?WSN:null;
     eb.textContent=`Words · ${L.name}`;
     pr.textContent=done?(done.mode==='learn'?`${done.ids.length} new words learned`:done.mode==='review'?'Review complete':'Practice complete'):'Your dictionaries';
     sc.textContent='';
     h+=`<div class="langs" role="group" aria-label="Dictionary">${LANGS.map(l=>{ const s=langStats(l.id); return `<button type="button" class="lang" data-wlang="${l.id}" aria-pressed="${l.id===WS.lang}"><b>${l.name}</b><small>${WD[l.id]?`${s.total} words${s.due?` · ${s.due} due`:''}`:'not loaded'}</small></button>`; }).join('')}</div>`;
     if(done){
-      const items=done.ids.map(id=>map.get(id)).filter(Boolean);
       const right=done.ids.filter(id=>done.results[id]).length;
       h+=`<div class="wsum"><b>${right}/${done.ids.length}</b> right first time${done.mistakes?` · ${done.mistakes} ${done.mistakes===1?'mistake':'mistakes'} in total`:''}${done.mode==='learn'?'. They come back for review tomorrow.':done.mode==='review'?'. Correct words wait longer before coming back.':'. Practice doesn’t change your review schedule.'}</div>`;
-      h+=`<ul class="wlist">${items.map(r=>`<li class="${done.results[r.id]?'ok':'no'}"><b>${esc(r.w)}</b><span>${esc(plain(r.d))}</span></li>`).join('')}</ul>`;
+      h+=`<ul class="wlist">${done.ids.map((id,k)=>{ const r=map.get(id); return r?`<li class="tap ${done.results[id]?'ok':'no'}"><button type="button" class="wopen" data-wsession="${k}"><b>${esc(r.w)}</b><span>${esc(plain(r.d))}</span></button></li>`:''; }).join('')}</ul><div class="hint">Tap a word to see it again.</div>`;
     }
     if(!WD[WS.lang]&&!wLoading){
       if(WSRC) h+=`<div class="wempty"><p>Your Notion dictionaries are copied to your private Fretwise account by a scheduled sync. Only you can read them, after signing in with Google; nothing about them is in the public code.</p>${WSRC.signedIn()?'<button type="button" class="btn primary big" data-wact="load">Load my words</button>':'<button type="button" class="btn primary big" data-wact="signin">Sign in with Google</button>'}</div>`;
       else h+=`<div class="wempty"><p>Fretwise reads the words straight from your Notion Dictionary, using your own Notion connection. The words stay private: they are not stored in this page.</p><button type="button" class="btn primary big" data-wact="load">Load from Notion</button></div>`;
     }else if(WD[WS.lang]){
-      h+=`<div class="wstats"><div><b>${st.due}</b><span>due now</span></div><div><b>${st.fresh}</b><span>new</span></div><div><b>${st.learning}</b><span>learning</span></div><div><b>${st.mastered}</b><span>mastered</span></div></div>`;
+      h+=`<div class="wstats"><div><b>${st.due}</b><span>due now</span></div><div><b>${st.fresh}</b><span>new</span></div><button type="button" data-wlist="all" ${st.learning?'':'disabled'}><b>${st.learning}</b><span>learning</span></button><button type="button" data-wlist="mastered" ${st.mastered?'':'disabled'}><b>${st.mastered}</b><span>mastered</span></button></div>`;
       const left=newLeft(WS.lang), nLearn=Math.min(WS.batch,st.fresh,left);
       h+=`<div class="wactions">
         <button type="button" class="btn primary big" data-wact="learn" ${nLearn?'':'disabled'}>${st.fresh&&!left?'Daily limit reached':`Learn ${nLearn||''} new ${nLearn===1?'word':'words'}`}</button>
         <button type="button" class="btn big" data-wact="review" ${st.due?'':'disabled'}>Review ${st.due?Math.min(st.due,WS.reviewMax):''} due</button>
-        <button type="button" class="btn quiet" data-wact="practice" ${st.total>=5?'':'disabled'}>Practise 10 random</button></div>`;
+        <button type="button" class="btn quiet" data-wact="practice" ${st.total>=5?'':'disabled'}>Practise 10 random</button>${st.learning?'<button type="button" class="btn quiet" data-wlist="all">Your words</button>':''}</div>`;
       if(st.fresh&&!left) h+=`<div class="hint">You’ve learned ${WS.daily} new ${L.name} words today. They come back for review tomorrow; new words open up again then. You can change the limit in Settings.</div>`;
       if(!st.total) h+=`<div class="hint">No words with a definition in ${L.name} yet.</div>`;
       else if(st.noDef) h+=`<div class="hint">${st.noDef} ${st.noDef===1?'word has':'words have'} no definition yet, so ${st.noDef===1?'it is':'they are'} left out until your bot or you fill ${st.noDef===1?'it':'them'} in.</div>`;
@@ -2374,7 +2445,7 @@ function openWords(){
   ['home','main','chessMain','modes','chessModes','paintMain'].forEach(id=>$(id).hidden=true); $('wordsMain').hidden=false; $('instBtn').hidden=false;
   $('instName').textContent='Words';
   if(window.innerWidth<920) $('wSettingsPanel').open=false;
-  WSN=null; wFeedback('',''); renderWords();
+  WSN=null; WV=null; wFeedback('',''); renderWords();
   // refresh in the background once the viewer has allowed Notion for this page
   if(WSRC){ if(WSRC.signedIn()&&!wLoading) refreshWords(); }
   else if(Object.keys(WD).length&&!wLoading){
@@ -2382,7 +2453,10 @@ function openWords(){
   }
 }
 $('wbody').addEventListener('click',e=>{
-  const lb=e.target.closest('[data-wlang]'); if(lb){ WS.lang=lb.dataset.wlang; wSaveSettings(); WSN=null; wFeedback('',''); renderWords(); return; }
+  const lb=e.target.closest('[data-wlang]'); if(lb){ WS.lang=lb.dataset.wlang; wSaveSettings(); WSN=null; if(WV){ const f=WV.src==='session'?'all':WV.src; WV={src:f,ids:wListIds(WS.lang,f),i:null}; } wFeedback('',''); renderWords(); return; }
+  const wl=e.target.closest('[data-wlist]'); if(wl){ openWordList(wl.dataset.wlist); return; }
+  const wv=e.target.closest('[data-wview]'); if(wv){ WV.i=+wv.dataset.wview; renderWords(); scrollTo(0,0); return; }
+  const ws=e.target.closest('[data-wsession]'); if(ws){ openSessionWord(+ws.dataset.wsession); return; }
   const ml=e.target.closest('[data-ml]'); if(ml){ tapMatch('L',ml.dataset.ml); return; }
   const mr=e.target.closest('[data-mr]'); if(mr){ tapMatch('R',mr.dataset.mr); return; }
   const op=e.target.closest('[data-opt]'); if(op){ answerQuiz(op.dataset.opt); return; }
@@ -2399,14 +2473,25 @@ $('wbody').addEventListener('click',e=>{
   else if(a==='restudy'){ WSN.phase='study'; WSN.i=0; renderWords(); }
   else if(a==='nextq') nextQuiz();
   else if(a==='quit'){ WSN=null; wFeedback('',''); renderWords(); }
+  else if(a==='vback') wvBack();
+  else if(a==='vprev') wvStep(-1);
+  else if(a==='vnext') wvStep(1);
+  else if(a==='vpractise') startPractice(WV.ids);
 });
 $('wsettings').addEventListener('click',e=>{
   const b=e.target.closest('[data-wset]'); if(!b) return;
   const k=b.dataset.wset, v=b.dataset.v; WS[k]=(k==='batch'||k==='reviewMax'||k==='daily')?+v:v; wSaveSettings(); renderWordsSide(); if(!WSN) renderWords();
 });
 document.addEventListener('keydown',e=>{
-  if(view!=='words'||!WSN) return;
+  if(view!=='words') return;
   const tg=e.target&&e.target.tagName; if(tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT') return;
+  if(WV){
+    if(WV.i!=null&&e.key==='ArrowLeft') wvStep(-1);
+    else if(WV.i!=null&&e.key==='ArrowRight') wvStep(1);
+    else if(e.key==='Escape') wvBack();
+    return;
+  }
+  if(!WSN) return;
   if(WSN.phase==='quiz'){
     if(!WSN.q.pick&&/^[1-5]$/.test(e.key)){ const id=WSN.q.opts[+e.key-1]; if(id){ e.preventDefault(); answerQuiz(id); } }
     else if(WSN.q.pick&&(e.key==='Enter'||e.key===' ')&&tg!=='BUTTON'){ e.preventDefault(); nextQuiz(); }
@@ -2540,9 +2625,10 @@ function paintOptions(x,kind){
 const pAnswer=it=>it.kind==='artist'?it.x.artist:it.x.title;
 const pRight=it=>it.pick!=null&&it.pick>=0&&it.opts[it.pick]===pAnswer(it);
 function pFeedback(cls,txt){ const el=$('pfeedback'); el.className='feedback'+(cls?' '+cls:''); el.textContent=txt; }
-function startPaint(){
-  const pool=pPool();
-  if(pool.length<4){ pFeedback('info','There are too few works in this group. Choose “All” in Settings.'); return; }
+function startPaint(list){
+  const pool=list||pPool();
+  if(!list&&pool.length<4){ pFeedback('info','There are too few works in this group. Choose “All” in Settings.'); return; }
+  PG=null;
   const items=pickWeighted(pool,Math.min(10,pool.length));
   PSN={phase:'ask',i:0,right:0,items:items.map(x=>{ const kind=PS.ask==='mix'?(Math.random()<.5?'artist':'title'):PS.ask; return {x,kind,opts:paintOptions(x,kind),pick:null}; })};
   pFeedback('',''); preloadP(0); preloadP(1); renderPaint();
@@ -2561,6 +2647,45 @@ function nextPaint(){
   else preloadP(PSN.i+1);
   renderPaint();
 }
+/* ---------- looking at the works again ---------- */
+// PG: null, or {src: 'round' | a gallery filter, ids, i: index of the open work or null for the grid}
+let PG=null, PMAP=null;
+const pWork=id=>{ if(!PMAP){ PMAP=new Map(); PDATA.forEach(x=>PMAP.set(x.id,x)); } return PMAP.get(id); };
+const P_FILTERS=[['all','All seen'],['right','Right'],['missed','To revisit']];
+// last answer right: the box goes back to 0 on a miss
+const pFilter=(v,f)=>!!v&&(f==='all'||(f==='right'?v.b>0:!v.b));
+const pGalleryIds=f=>pPool().filter(x=>pFilter(PS.p[x.id],f)).sort((a,b)=>(PS.p[b.id].last||0)-(PS.p[a.id].last||0)).map(x=>x.id);
+const pSmall=x=>String(x.thumb).replace(/([?&]width=)\d+/,'$1320');
+function openGallery(f){ PG={src:f,ids:pGalleryIds(f),i:null}; pFeedback('',''); renderPaint(); scrollTo(0,0); }
+function openRoundWork(k){ PG={src:'round',ids:PSN.items.map(it=>it.x.id),i:k}; pFeedback('',''); renderPaint(); scrollTo(0,0); }
+function pgStep(d){ const i=PG.i+d; if(i<0||i>=PG.ids.length) return; PG.i=i; renderPaint(); }
+function pgBack(){ if(PG.src==='round'||PG.i==null) PG=null; else PG.i=null; renderPaint(); }
+function galleryHtml(){
+  const eb=$('peyebrow'), pr=$('pprompt'), sc=$('pscore'); let h='';
+  if(PG.i!=null){
+    const x=pWork(PG.ids[PG.i]), v=PS.p[x.id], it=PG.src==='round'?PSN.items[PG.i]:null;
+    eb.textContent=`${PG.src==='round'?'This round':'Your gallery'} · ${PG.i+1} of ${PG.ids.length}`;
+    pr.textContent=x.title; sc.textContent='';
+    h+=`<figure class="pframe" style="margin:0"><span class="ploading">Loading the picture…</span><img class="wait" src="${esc(x.thumb)}" alt="${esc(x.title+' by '+x.artist)}" decoding="async"></figure>`;
+    h+=pCaption(x);
+    const res=it?(it.pick<0?'<span>Skipped this round</span>':pRight(it)?'<span class="ok">Right this round</span>':`<span class="no">Missed this round</span><span>You answered “${esc(it.opts[it.pick])}”</span>`)
+      :v?(v.b?'<span class="ok">Right last time</span>':'<span class="no">Missed last time</span>'):'';
+    if(v||res) h+=`<div class="vstat">${res}${v?`<span>Seen ${v.n} ${v.n===1?'time':'times'}, right ${v.ok}</span><span>Last seen ${ago(v.last)}</span>`:''}</div>`;
+    h+=`<div class="actions"><button type="button" class="btn quiet" data-pact="back">Back</button><span class="spacer"></span><button type="button" class="btn" data-pact="prevw" ${PG.i?'':'disabled'}>Previous</button><button type="button" class="btn primary" data-pact="nextw" ${PG.i<PG.ids.length-1?'':'disabled'}>Next</button></div>`;
+    h+=`<div class="pcredit">Image: <a href="${commonsPage(x.image)}" target="_blank" rel="noopener">Wikimedia Commons</a></div>`;
+    return h;
+  }
+  const label=P_FILTERS.find(o=>o[0]===PG.src)[1];
+  eb.textContent='Your gallery'+(PS.fame!=='all'?' · '+FAME.find(o=>o[0]===PS.fame)[1]:'');
+  pr.textContent=PG.src==='all'?'Works you’ve seen':PG.src==='right'?'Works you got right last time':'Works to revisit';
+  sc.textContent=`${PG.ids.length} ${PG.ids.length===1?'work':'works'}`;
+  h+=`<div class="chips" role="group" aria-label="Show">${P_FILTERS.map(o=>`<button type="button" class="chip" data-pgal="${o[0]}" aria-pressed="${PG.src===o[0]}">${o[1]} · ${pGalleryIds(o[0]).length}</button>`).join('')}</div>`;
+  if(PG.ids.length) h+=`<div class="pgrid">${PG.ids.map((id,k)=>{ const x=pWork(id); return `<button type="button" class="pthumb ${PS.p[id].b?'ok':'no'}" data-pview="${k}"><img src="${esc(pSmall(x))}" alt="" loading="lazy" decoding="async"><span>${esc(x.title)}</span></button>`; }).join('')}</div>`;
+  else h+=`<div class="hint">${PG.src==='missed'?'Nothing to revisit: every work you’ve seen, you got right last time.':`No works here yet${PS.fame!=='all'?' in this group':''}.`}</div>`;
+  h+=`<div class="actions"><button type="button" class="btn quiet" data-pact="back">Back</button><span class="spacer"></span>${PG.ids.length?`<button type="button" class="btn primary" data-pact="practise">Practise ${Math.min(10,PG.ids.length)} of these</button>`:''}</div>`;
+  h+=`<div class="hint">A green edge: right the last time you saw it. Red: missed.</div>`;
+  return h;
+}
 const commonsPage=img=>'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(String(img||'').replace(/ /g,'_'));
 function pCaption(x){
   return `<div class="pcap"><b>${esc(x.title)}</b><span>${esc(x.artist)}${x.year?`, ${x.year}`:''}${x.museum?` · ${esc(x.museum)}`:''}</span><span>${x.movement?esc(x.movement)+' · ':''}<span class="tier">${esc(x.fame)}</span>${x.wiki?` · <a href="${esc(x.wiki)}" target="_blank" rel="noopener">Read about it</a>`:''}</span></div>`;
@@ -2577,13 +2702,16 @@ function renderPaint(){
     });
     renderPaintSide(); return;
   }
-  if(!PSN||PSN.phase==='done'){
+  if(PG) h=galleryHtml();
+  else if(!PSN||PSN.phase==='done'){
     const d=PSN&&PSN.phase==='done'?PSN:null, pool=pPool();
     eb.textContent='Paintings'; sc.textContent='';
     pr.textContent=d?`${d.right} of ${d.items.filter(o=>o.pick>=0).length} right`:'Name the painter, or the painting';
-    if(d) h+=`<ul class="wlist">${d.items.map(it=>`<li class="${pRight(it)?'ok':'no'}"><b>${esc(it.x.title)}</b><span>${esc(it.x.artist)}${it.x.year?', '+it.x.year:''}</span></li>`).join('')}</ul>`;
-    h+=`<div class="wstats"><div><b>${pool.length}</b><span>works</span></div><div><b>${pool.filter(x=>PS.p[x.id]).length}</b><span>seen</span></div><div><b>${pool.filter(x=>(PS.p[x.id]||{}).b>=2).length}</b><span>known</span></div><div><b>${pool.filter(x=>{ const v=PS.p[x.id]; return v&&!v.b; }).length}</b><span>to revisit</span></div></div>`;
-    h+=`<div class="wactions"><button type="button" class="btn primary big" data-pact="start">${d?'Another 10':'Start 10 paintings'}</button></div>`;
+    if(d) h+=`<ul class="wlist">${d.items.map((it,k)=>`<li class="tap ${it.pick<0?'na':pRight(it)?'ok':'no'}"><button type="button" class="wopen" data-pround="${k}"><b>${esc(it.x.title)}</b><span>${esc(it.x.artist)}${it.x.year?', '+it.x.year:''}</span></button></li>`).join('')}</ul>`;
+    const tile=(f,n,label)=>`<button type="button" data-pgal="${f}" ${n?'':'disabled'}><b>${n}</b><span>${label}</span></button>`;
+    h+=`<div class="wstats"><div><b>${pool.length}</b><span>works</span></div>${tile('all',pGalleryIds('all').length,'seen')}${tile('right',pGalleryIds('right').length,'right')}${tile('missed',pGalleryIds('missed').length,'to revisit')}</div>`;
+    h+=`<div class="wactions"><button type="button" class="btn primary big" data-pact="start">${d?'Another 10':'Start 10 paintings'}</button>${pGalleryIds('all').length?'<button type="button" class="btn big" data-pgal="all">Your gallery</button>':''}</div>`;
+    if(d) h+=`<div class="hint">Tap a work to look at it again.</div>`;
     h+=`<div class="hint">Works you miss come back sooner. Pictures from Wikimedia Commons (public domain); facts from Wikidata.</div>`;
   }else{
     const it=PSN.items[PSN.i], x=it.x, ans=pAnswer(it);
@@ -2620,12 +2748,19 @@ function openPaintings(){
   ['home','main','chessMain','modes','chessModes','wordsMain'].forEach(id=>$(id).hidden=true); $('paintMain').hidden=false; $('instBtn').hidden=false;
   $('instName').textContent='Paintings';
   if(window.innerWidth<920) $('pSettingsPanel').open=false;
-  PSN=null; pFeedback('',''); renderPaint();
+  PSN=null; PG=null; pFeedback('',''); renderPaint();
 }
 $('pbody').addEventListener('click',e=>{
   const o=e.target.closest('[data-popt]'); if(o){ answerPaint(+o.dataset.popt); return; }
+  const g=e.target.closest('[data-pgal]'); if(g){ openGallery(g.dataset.pgal); return; }
+  const pv=e.target.closest('[data-pview]'); if(pv){ PG.i=+pv.dataset.pview; renderPaint(); scrollTo(0,0); return; }
+  const pr=e.target.closest('[data-pround]'); if(pr){ openRoundWork(+pr.dataset.pround); return; }
   const b=e.target.closest('[data-pact]'); if(!b) return; const a=b.dataset.pact;
   if(a==='start') startPaint();
+  else if(a==='back') pgBack();
+  else if(a==='prevw') pgStep(-1);
+  else if(a==='nextw') pgStep(1);
+  else if(a==='practise') startPaint(PG.ids.map(pWork));
   else if(a==='next') nextPaint();
   else if(a==='skip'){ PSN.items[PSN.i].pick=-1; nextPaint(); }
   else if(a==='quit'){ PSN=null; pFeedback('',''); renderPaint(); }
@@ -2633,11 +2768,20 @@ $('pbody').addEventListener('click',e=>{
 });
 $('psettings').addEventListener('click',e=>{
   const b=e.target.closest('[data-pset]'); if(!b) return;
-  PS[b.dataset.pset]=b.dataset.v; pStore(); renderPaintSide(); if(!PSN||PSN.phase==='done'){ PSN=null; pFeedback('',''); renderPaint(); }
+  PS[b.dataset.pset]=b.dataset.v; pStore(); renderPaintSide();
+  if(PG&&PG.src!=='round'){ PG.ids=pGalleryIds(PG.src); PG.i=null; renderPaint(); }
+  else if(!PG&&(!PSN||PSN.phase==='done')){ PSN=null; pFeedback('',''); renderPaint(); }
 });
 document.addEventListener('keydown',e=>{
-  if(view!=='paint'||!PSN||PSN.phase!=='ask') return;
+  if(view!=='paint') return;
   const tg=e.target&&e.target.tagName; if(tg==='INPUT'||tg==='SELECT'||tg==='TEXTAREA') return;
+  if(PG){
+    if(PG.i!=null&&e.key==='ArrowLeft') pgStep(-1);
+    else if(PG.i!=null&&e.key==='ArrowRight') pgStep(1);
+    else if(e.key==='Escape') pgBack();
+    return;
+  }
+  if(!PSN||PSN.phase!=='ask') return;
   const it=PSN.items[PSN.i];
   if(it.pick==null&&/^[1-4]$/.test(e.key)){ e.preventDefault(); answerPaint(+e.key-1); }
   else if(it.pick!=null&&(e.key==='Enter'||e.key===' ')&&tg!=='BUTTON'){ e.preventDefault(); nextPaint(); }
