@@ -734,7 +734,10 @@ function load(){
 function save(){ try{ LOCAL.setItem(STORE, JSON.stringify({settings:S, statsAll})); }catch(e){} pushFretboard(); }
 // the accuracy map and totals are saved to the account too, so they survive this browser's storage
 let fbDoc=null, fbT=null;
-function pushFretboard(){ if(!fbDoc) return; clearTimeout(fbT); fbT=setTimeout(()=>{ fbDoc.set({statsAll,upd:Date.now(),v:1}).catch(()=>{}); },2500); }
+function writeFretboard(){ fbT=null; if(fbDoc) fbDoc.set({statsAll,upd:Date.now(),v:1}).catch(()=>{}); }
+function pushFretboard(){ if(!fbDoc) return; clearTimeout(fbT); fbT=setTimeout(writeFretboard,2500); }
+// closing the app or switching away right after an answer: save it now rather than in 2.5 s
+document.addEventListener('visibilitychange',()=>{ if(document.hidden&&fbT){ clearTimeout(fbT); writeFretboard(); } });
 // per instrument: a later reset wins, otherwise the copy with more answers
 function mergeFretboard(x){
   let mine=false;
@@ -1673,7 +1676,7 @@ function renderHeat(){
   const W=$('heatWrap').clientWidth||300;
   drawBoard($('heat'),{width:W,vertical:false,start:0,end:15,heat:true,sp:NS<=4?22:17,small:true,gid:'wood2'});
   const st=ST(), pct=st.total?Math.round(100*st.correct/st.total):0;
-  $('totals').textContent=st.total?`${st.total} answers · ${pct}% correct · ${st.rounds} ${st.rounds===1?'round':'rounds'}${st.best?` · best ${st.best.c}/${st.best.n}`:''}`:'No answers yet. Your accuracy will build up here.';
+  $('totals').textContent=st.total?`${st.total} ${st.total===1?'answer':'answers'} · ${pct}% correct · ${st.rounds} ${st.rounds===1?'round':'rounds'}${st.best?` · best ${st.best.c}/${st.best.n}`:''}`:'No answers yet. Your accuracy will build up here.';
 }
 function renderPrompt(){
   let eb='', pr='';
