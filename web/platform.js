@@ -244,6 +244,14 @@ function renderDialog(){
     h+=`<div class="row" style="margin-top:8px"><span class="muted">At</span><select data-fw="hour">${Array.from({length:18},(_,i)=>i+6).map(x=>`<option value="${x}" ${x===PUSH.hour?'selected':''}>${hh(x)}</option>`).join('')}</select><span class="muted">${esc(tz())}</span></div>`;
     h+=`<div class="row" style="margin-top:8px">${ITEMS.map(([k,l])=>`<label><input type="checkbox" data-fw="item" value="${k}" ${PUSH.items[k]?'checked':''}> ${l}</label>`).join('')}</div>`;
     h+=`<div class="row" style="margin-top:8px"><button type="button" class="btn quiet" data-fw="test">Send a test notification</button></div></section>`;
+    // Lichess: link the account for puzzles, or sign out of it (the app keeps the link in sync across devices)
+    const li=window.fretwiseApp&&window.fretwiseApp.lichess&&window.fretwiseApp.lichess.state();
+    if(li&&li.web){
+      h+=`<section><h3>Lichess</h3>`;
+      if(li.on) h+=`<div class="muted" style="margin-bottom:8px">Linked as <b>${esc(li.user||'your account')}</b> · puzzle rating ${li.rating}${li.waiting?` · ${li.waiting} ${li.waiting===1?'result':'results'} waiting to be sent`:''}. Chess puzzles come from your Lichess account and every result goes back to it, on every device you sign in on.</div><div class="row"><button type="button" class="btn" data-fw="li-signout">Sign out of Lichess</button></div>`;
+      else h+=`<div class="muted" style="margin-bottom:8px">Link your Lichess account: chess puzzles then come from it, at your Lichess rating, and every result is sent back. You approve it on lichess.org; Fretwise never sees your password. Sign out any time: your rating stays and nothing more is sent.</div>${li.error?`<div class="muted" style="color:var(--bad);margin-bottom:8px">${esc(li.error)}</div>`:''}<div class="row"><button type="button" class="btn" data-fw="li-connect">Connect Lichess</button></div>`;
+      h+=`</section>`;
+    }
     if(installEvt) h+=`<section><h3>Install</h3><div class="row"><span class="muted">Add Fretwise to your home screen, with its own window and icon.</span><button type="button" class="btn" data-fw="install">Install</button></div></section>`;
     h+=`<section><h3>Account ID</h3><div class="muted" style="margin-bottom:6px">Share this ID with the app owner to receive dictionaries.</div><div class="row"><code>${esc(u.uid)}</code><button type="button" class="btn quiet" data-fw="copy">Copy</button></div></section>`;
     h+=`<div class="row"><button type="button" class="btn quiet" data-fw="signout">Sign out</button><span style="flex:1"></span><button type="button" class="btn primary" data-fw="close">Done</button></div>`;
@@ -259,6 +267,8 @@ function onDlgClick(e){
   else if(a==='signin'){ dlg.close(); signIn(); }
   else if(a==='signout') signOut();
   else if(a==='test') testNotification();
+  else if(a==='li-connect'){ say('Opening lichess.org…'); window.fretwiseApp.lichess.connect(); }
+  else if(a==='li-signout'){ say('Signing out of Lichess…'); Promise.resolve(window.fretwiseApp.lichess.signOut()).then(()=>{ msg='Signed out of Lichess. Your rating stays in Fretwise.'; renderDialog(); }); }
   else if(a==='install'&&installEvt){ installEvt.prompt(); installEvt=null; renderDialog(); }
   else if(a==='copy'){ navigator.clipboard&&navigator.clipboard.writeText(me().uid).then(()=>say('Copied.'),()=>say('Select the ID and copy it by hand.')); }
 }

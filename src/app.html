@@ -1490,7 +1490,7 @@ async function connectRuns(){
     if(!db||!user) return;
     const uid=await user.id(); if(!uid||connectedUid===uid) return;
     connectedUid=uid;
-    connectChess(db,uid); connectWords(db,uid); connectActivity(db,uid); connectPaint(db,uid); connectFretboard(db,uid);
+    connectChess(db,uid); connectWords(db,uid); connectActivity(db,uid); connectPaint(db,uid); connectFretboard(db,uid); connectLichess(db,uid);
     const ref=db.doc('data/users/'+uid+'/fretwise');
     const snap=await ref.get();
     const d=snap.exists?snap.data():null;
@@ -2306,13 +2306,14 @@ function puzzleSolution(){
 // Connected, puzzles come from Lichess (ones you've never seen, at your Lichess rating) and each result
 // is sent back, so your Lichess puzzle rating moves; results wait in a queue while offline. Lichess's
 // "login with Lichess" needs no server and no secret: the browser proves itself with a one-time code
-// (OAuth PKCE), and the permission stays on this device. Disconnecting revokes it and stops sending;
-// Fretwise keeps the last rating as its own, so the difficulty carries on where it was.
+// (OAuth PKCE). The link (a token for puzzles only) is kept in your private account data, so every
+// device you sign in on shares it, and signing out of Lichess on one signs out on all. Signing out
+// revokes it and stops sending; Fretwise keeps the last rating as its own, so the difficulty carries on.
 const LI_BASE='https://lichess.org', LI_CLIENT='fretwise', LI_SCOPE='puzzle:read puzzle:write';
 const LI_KEY='fretwise.lichess', LI_PKCE='fretwise.lichess.pkce';
 const LI_ON_WEB=!!window.FW_WEB;   // inside Claude the page can't leave for lichess.org and come back
-// LIS: {token, user, since, queue: [{id, win, rated, angle}], buf: {key, list}}
-let LIS=null, liBusy=false, liError='';
+// LIS: {token (null once signed out), user, since, upd, queue: [{id, win, rated, angle}], buf: {key, list}}
+let LIS=null, liBusy=false, liError='', liDoc=null;
 function liLoad(){ try{ LIS=JSON.parse(LOCAL.getItem(LI_KEY)||'null'); }catch(e){ LIS=null; } if(LIS){ LIS.queue=LIS.queue||[]; } }
 function liStore(){ try{ if(LIS) LOCAL.setItem(LI_KEY,JSON.stringify(LIS)); else LOCAL.removeItem(LI_KEY); }catch(e){} }
 const liOn=()=>!!(LIS&&LIS.token);
@@ -2337,19 +2338,47 @@ async function liFinish(){
     const r=await fetch(LI_BASE+'/api/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
       body:new URLSearchParams({grant_type:'authorization_code',code,code_verifier:pk.verifier,redirect_uri:liRedirect(),client_id:LI_CLIENT})});
     const t=await r.json(); if(!r.ok||!t.access_token) throw new Error(t.error||r.status);
-    LIS={token:t.access_token,user:null,since:Date.now(),queue:[],buf:null};
+    LIS={token:t.access_token,user:null,since:Date.now(),upd:Date.now(),queue:[],buf:null};
     const a=await (await fetch(LI_BASE+'/api/account',{headers:liAuth()})).json();
     LIS.user=a.username||a.id||'';
     const pr=a.perfs&&a.perfs.puzzle&&a.perfs.puzzle.rating; if(pr){ CS.rating=Math.round(pr); saveChess(); }
-    liStore();
+    liStore(); liPush();
   }catch(e){ LIS=null; liStore(); liError='Linking with Lichess failed. Check your connection and try again.'; }
   return true;
+}
+// the link, shared through the account: the newer of this device's and the account's wins
+function liPush(){ if(liDoc&&LIS) liDoc.set({token:LIS.token||null,user:LIS.user||null,since:LIS.since||null,upd:LIS.upd||Date.now(),v:1}).catch(()=>{}); }
+async function connectLichess(db,uid){
+  if(!LI_ON_WEB) return;
+  try{
+    const ref=db.doc('data/users/'+uid+'/lichess'), sn=await ref.get(); liDoc=ref;
+    liMerge(sn.exists?sn.data():null);
+    ref.onSnapshot(x=>liMerge(x.exists?x.data():null),()=>{});
+  }catch(e){}
+}
+function liMerge(d){
+  const ru=(d&&d.upd)||0, lu=(LIS&&LIS.upd)||0;
+  if(lu>ru){ liPush(); return; }
+  if(ru<=lu) return;
+  const was=liOn();
+  if(d.token){ if(!LIS||LIS.token!==d.token) LIS={token:d.token,user:d.user,since:d.since,upd:ru,queue:(LIS&&LIS.queue)||[],buf:null}; else LIS.upd=ru; }
+  else LIS={token:null,user:null,since:null,upd:ru,queue:[],buf:null};     // signed out on another device
+  liStore();
+  if(liOn()&&!was) liRefresh();
+  if(view==='chess'){ renderChessSide(); if(CS.tab==='puzzles'&&was!==liOn()) newPuzzle(); }
+}
+// a device picking up the link: read the Lichess rating so the two agree straight away
+async function liRefresh(){
+  try{ const r=await fetch(LI_BASE+'/api/account',{headers:liAuth()}); if(r.status===401){ liLost(); return; } const a=await r.json();
+    LIS.user=a.username||LIS.user; liStore(); const pr=a.perfs&&a.perfs.puzzle&&a.perfs.puzzle.rating; if(pr){ CS.rating=Math.round(pr); saveChess(); }
+    if(view==='chess') renderChessSide(); }catch(e){}
 }
 async function liDisconnect(){
   if(!LIS) return;
   await liFlush();                                          // results from while you were connected still count
   try{ await fetch(LI_BASE+'/api/token',{method:'DELETE',headers:liAuth()}); }catch(e){}
-  LIS=null; liStore(); PZ=null; renderChessSide(); if(view==='chess'&&CS.tab==='puzzles') newPuzzle();
+  LIS={token:null,user:null,since:null,upd:Date.now(),queue:[],buf:null}; liStore(); liPush();
+  if(view==='chess'){ PZ=null; renderChessSide(); if(CS.tab==='puzzles') newPuzzle(); }
 }
 const liAngle=()=>CS.theme==='all'?'mix':CS.theme;
 const liDiff=()=>({'-1':'easier','0':'normal','1':'harder'})[String(CS.diff)]||'normal';
@@ -2371,7 +2400,7 @@ async function liFetch(){
 }
 function liNext(){ const key=liAngle()+'|'+liDiff(); if(!LIS.buf||LIS.buf.key!==key||!LIS.buf.list.length) return null; const p=LIS.buf.list.shift(); liStore(); return p; }
 // the permission was revoked on lichess.org, or ran out: keep everything, stop sending
-function liLost(){ LIS=null; liStore(); liError='Lichess no longer accepts this link (it was revoked or ran out). Your rating stays here; connect again to resume.'; renderChessSide(); }
+function liLost(){ LIS={token:null,user:null,since:null,upd:Date.now(),queue:[],buf:null}; liStore(); liPush(); liError='Lichess no longer accepts this link (it was revoked or ran out). Your rating stays here; connect again to resume.'; renderChessSide(); }
 function liQueue(id,win){ if(!liOn()) return; LIS.queue.push({id,win,rated:true,angle:liAngle()}); liStore(); liFlush(); }
 async function liFlush(){
   if(!liOn()||liBusy||!LIS.queue.length||navigator.onLine===false) return;
@@ -2399,9 +2428,10 @@ async function liFlush(){
 window.addEventListener('online',()=>liFlush());
 function liPanel(){
   if(!LI_ON_WEB) return '';
-  if(!liOn()) return `<div class="field"><span class="fl">Lichess</span><div class="chips"><button type="button" class="chip" data-li="connect">Connect Lichess</button></div><div class="hint">Puzzles then come from your Lichess account, at your Lichess rating, and every result is sent back to it. You approve this on lichess.org; Fretwise never sees your password. Disconnect any time: your rating stays here and nothing more is sent.</div>${liError?`<div class="hint" style="color:var(--bad)">${esc(liError)}</div>`:''}</div>`;
-  return `<div class="field"><span class="fl">Lichess</span><div class="hint">Connected as <b>${esc(LIS.user||'your account')}</b>${LIS.queue.length?` · ${LIS.queue.length} ${LIS.queue.length===1?'result':'results'} waiting to be sent`:''}.</div><div class="chips" style="margin-top:6px"><button type="button" class="chip" data-li="disconnect">Disconnect</button></div><div class="hint">Linked on this device only.</div></div>`;
+  return `<div class="field"><span class="fl">Lichess</span><div class="hint">${liOn()?`Linked as <b>${esc(LIS.user||'your account')}</b>${LIS.queue.length?` · ${LIS.queue.length} ${LIS.queue.length===1?'result':'results'} waiting to be sent`:''}. `:''}${liError?`<span style="color:var(--bad)">${esc(liError)}</span> `:''}${liOn()?'Sign out of Lichess':'Link your Lichess account'} in your account settings (your picture, top right).</div></div>`;
 }
+// the account settings' Lichess section, drawn by the web layer
+const liState=()=>({web:LI_ON_WEB,on:liOn(),user:LIS&&LIS.user||'',rating:CS.rating,waiting:LIS&&LIS.queue?LIS.queue.length:0,error:liError});
 
 /* ---------- openings ---------- */
 let OP={view:'list', fam:CS.fam||0, line:null, color:'w', ply:0, mistakes:0, wrong:0, done:false};
@@ -2569,7 +2599,6 @@ function openChess(){
 }
 $('chessModes').addEventListener('click',e=>{ const b=e.target.closest('[data-ctab]'); if(b&&b.dataset.ctab!==CS.tab) setChessTab(b.dataset.ctab); });
 $('csettings').addEventListener('click',e=>{
-  const lb=e.target.closest('[data-li]'); if(lb){ liError=''; if(lb.dataset.li==='connect') liConnect(); else if(lb.dataset.li==='disconnect') liDisconnect(); return; }
   const b=e.target.closest('[data-cset]'); if(!b) return;
   const k=b.dataset.cset, v=b.dataset.v;
   if(k==='theme'){ CS.theme=v; storeChess(); renderChessSide(); newPuzzle(); }
@@ -3536,6 +3565,7 @@ function paintHomeMeta(){
 
 // hooks for the web app's sign-in layer (absent inside Claude)
 window.fretwiseApp={
+  lichess:{ state:liState, connect(){ liError=''; return liConnect(); }, signOut(){ liError=''; return liDisconnect(); } },
   reconnect:connectRuns,
   wordsChanged(){ if(view==='words') renderWords(); else if(view==='home') renderHome(); },
   refreshWords(){ return refreshWords(); },
