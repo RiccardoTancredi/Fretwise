@@ -8,7 +8,7 @@ Live app: **https://riccardotancredi.github.io/Fretwise/**: it installs on a pho
 
 | Section | What you practise | Data |
 |---|---|---|
-| Guitar, Ukulele | Name the note, find the note, all positions (timed), chords, intervals, scales (major and minor, pentatonic and blues, the modes, and jazz colours such as altered, whole-tone and diminished; one position or the whole neck), and an interactive circle of fifths | — |
+| Guitar, Ukulele | Name the note, find the note, all positions (timed), chords, intervals, scales (major and minor, pentatonic and blues, the modes, and jazz colours such as altered, whole-tone and diminished; one position or the whole neck), and a Theory area with an interactive circle of fifths and a free chord reference | — |
 | Chess | Lichess puzzles with a rating (optionally linked to your own Lichess account, so results count there), and an opening trainer (77 lines in 20 openings, with the idea of each and why every move is played), and a coordinates trainer (find the named square against the clock, with bests) | [Lichess puzzle and openings databases](https://database.lichess.org/) (CC0), in `data/puzzles.json` |
 | Words | 5 new words at a time, matched with their definitions, then spaced reviews. A daily limit of new words per dictionary (10 by default) | Your Notion dictionaries, **private** (see below) |
 | Paintings | Who painted it? What is it called? When? Each question has its own review schedule, and a work counts as known only after two right answers in a row for each | [Wikidata](https://www.wikidata.org/) (CC0) and public-domain images on [Wikimedia Commons](https://commons.wikimedia.org/), in `data/paintings.json` |
@@ -16,6 +16,10 @@ Live app: **https://riccardotancredi.github.io/Fretwise/**: it installs on a pho
 Today’s words and paintings stay on screen until midnight (Italian time), and you can look back at what you saw on each of the last 60 days. Each start card turns green once you’ve done something there today: one exercise, or your daily goal of words and paintings (1, 5, 10 or 20, in their settings). A daily notification reminds you of the ones you haven't done.
 
 Chord exercises spell notes from the chord itself, show which tones are required or optional, and offer an optional **Altered dominants (7alt)** group on guitar and ukulele. The **Circle of 5ths → How chords work** section compares chord formulas on the selected root and plays a sample voicing. A saved shape is a preview: **Continue building**, **Clear**, or editing the neck returns to your own selection.
+
+**Theory → All Chords** lets you choose a root and any chord type, browse suggested guitar or ukulele voicings, hear them and switch between note names and degrees. Its fret range and bass preference are independent of practice settings. Suggestions use a four-fret box, neighbouring sounding strings and up to four fingers; they do not cover every possible fingering.
+
+**Previous exercises** opens a read-only history in every practice section: music solutions and chord shapes, word answers, paintings, chess puzzle solutions and opening drills, and coordinate runs. Previous/Next scroll through exercises; chess replays have separate move controls. Closing the review returns to the current question without changing scores or spaced reviews. It keeps up to 100 completed exercises per section and account **on this device**, starting with this update; this detailed history is not cloud-synced. Private word contents are not duplicated in history: word IDs resolve against the signed-in account’s loaded dictionaries. Timed runs and animated chess sequences must finish before opening history.
 
 ## How your words stay private
 
