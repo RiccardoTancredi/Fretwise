@@ -3847,8 +3847,8 @@ const TUNINGS={
   ]
 };
 const TUNE_OK=3;                     // cents either side that count as in tune
-let TU={on:false,stream:null,ctx:null,an:null,buf:null,raf:0,last:0,sel:0,done:new Set(),hist:[],peak:0,lastRms:0,onset:0,heard:0,okSince:0,shown:null,needle:0,msg:'',key:''};
-function tunerState(){ const t=Object.assign({guitar:'std',ukulele:'std',a4:440},S.tuner); S.tuner=t; return t; }
+let TU={on:false,stream:null,ctx:null,an:null,buf:null,raf:0,last:0,sel:0,done:new Set(),hist:[],peak:0,lastRms:0,onset:0,heard:0,okSince:0,shown:null,needle:0,msg:'',key:'',mutedUntil:0,guess:[]};
+function tunerState(){ const t=Object.assign({guitar:'std',ukulele:'std',a4:440,auto:true},S.tuner); S.tuner=t; return t; }
 function tuning(){ const t=tunerState(), list=TUNINGS[INST.id]; return list.find(x=>x.id===t[INST.id])||list[0]; }
 const tuneHz=m=>tunerState().a4*Math.pow(2,(m-69)/12);
 const tuneName=(m,flat)=>(flat||S.acc==='flat'?FLAT:SHARP)[((m%12)+12)%12]+(Math.floor(m/12)-1);
@@ -3877,6 +3877,26 @@ function detectPitch(buf,sr,loHz,hiHz){
     const dd=y0-2*y1+y2; tau=(c0+(dd?0.5*(y0-y2)/dd:0))/k; break;
   }
   return {hz:sr/tau,clarity:pb,rms};
+}
+// which string is ringing: the same measure over the instrument's whole range, taking the first peak that
+// comes close to the highest one, so the fundamental wins over a louder overtone
+function detectWide(buf,sr,loHz,hiHz){
+  const n=buf.length; let mean=0; for(let i=0;i<n;i++) mean+=buf[i]; mean/=n;
+  const x=new Float32Array(n); let e=0; for(let i=0;i<n;i++){ const v=buf[i]-mean; x[i]=v; e+=v*v; }
+  if(Math.sqrt(e/n)<0.003) return null;
+  const lo=Math.max(2,Math.floor(sr/hiHz)), hi=Math.min(n>>1,Math.ceil(sr/loHz)), W=n-hi, v=new Float32Array(hi+2);
+  for(let t=0;t<=hi+1;t++){ let acf=0,m=0; for(let i=0;i<W;i++){ const a=x[i], b=x[i+t]; acf+=a*b; m+=a*a+b*b; } v[t]=m>0?2*acf/m:0; }
+  const peaks=[]; let t=1; while(t<=hi&&v[t]>0) t++;
+  while(t<=hi){ while(t<=hi&&v[t]<=0) t++; let best=-1,bi=-1; while(t<=hi&&v[t]>0){ if(v[t]>best){ best=v[t]; bi=t; } t++; } if(bi>=lo&&bi<hi) peaks.push(bi); }
+  if(!peaks.length) return null;
+  const top=Math.max(...peaks.map(p=>v[p])); if(top<0.8) return null;
+  const p=peaks.find(q=>v[q]>=0.9*top), a=v[p-1], b=v[p], c=v[p+1], d=a-2*b+c;
+  return sr/(p+(d?0.5*(a-c)/d:0));
+}
+// the nearest string to a pitch, if it's close enough to be that string being tuned
+function nearestString(tn,hz){
+  let best=-1, bc=1e9; tn.notes.forEach((m,i)=>{ const c=Math.abs(1200*Math.log2(hz/tuneHz(m))); if(c<bc-0.5||(Math.abs(c-bc)<=0.5&&i===TU.sel)){ bc=c; best=i; } });
+  return bc<=250?best:-1;
 }
 async function tunerStart(){
   if(TU.on) return;
@@ -3909,16 +3929,33 @@ function tunerTick(now){
   if(view!=='app'||S.mode!=='tuner'||document.hidden){ tunerStop(); if(view==='app'&&S.mode==='tuner') renderTuner(); return; }
   const tn=tuning(), m=tn.notes[TU.sel], target=tuneHz(m);
   TU.an.getFloatTimeDomainData(TU.buf);
+  // the reference is playing through the speaker: don't listen to it, and wait for your own next pluck
+  if(now<TU.mutedUntil){ let e=0; const N=TU.buf.length; for(let i=N-1024;i<N;i++) e+=TU.buf[i]*TU.buf[i]; TU.lastRms=Math.sqrt(e/1024); TU.shown=null; TU.okSince=0; TU.hist=[]; tunerDraw(); return; }
   const r=detectPitch(TU.buf,TU.ctx.sampleRate,target/Math.SQRT2,target*Math.SQRT2);
-  // a new pluck: start afresh and skip its attack
-  if(r&&r.rms>0.01&&r.rms>2*TU.lastRms){ TU.onset=now; TU.hist=[]; TU.peak=0; }
-  TU.lastRms=r?r.rms:0;
+  // a new pluck, seen in the last ~20 ms of sound (it shows even over a string still ringing): start afresh, skip its attack
+  let e=0; const N=TU.buf.length, k0=N-1024; for(let i=k0;i<N;i++) e+=TU.buf[i]*TU.buf[i];
+  const recent=Math.sqrt(e/1024);
+  if(recent>0.01&&recent>1.8*TU.lastRms){ TU.onset=now; TU.hist=[]; TU.peak=0; TU.guess=[]; TU.fresh=true; TU.miss=0; }
+  TU.lastRms=recent;
+  // detecting the string: sound that doesn't fit the chosen string for a few readings means another string is ringing
+  if(tunerState().auto&&!TU.fresh&&recent>0.01){
+    const fits=r&&r.clarity>=0.9&&Math.abs(1200*Math.log2(r.hz/target))<=250;
+    TU.miss=fits?0:(TU.miss||0)+1;
+    if(TU.miss>=3){ TU.fresh=true; TU.guess=[]; TU.onset=now-121; TU.miss=0; }
+  }
+  // which string: in the first moments after each pluck, find the string ringing and choose it
+  if(tunerState().auto&&TU.fresh&&now-TU.onset>120&&now-TU.onset<900){
+    const lo=Math.min(...tn.notes.map(tuneHz))/Math.SQRT2, hi=Math.max(...tn.notes.map(tuneHz))*Math.SQRT2;
+    const hz=detectWide(TU.buf,TU.ctx.sampleRate,lo,hi), j=hz?nearestString(tn,hz):-1;
+    if(j>=0){ TU.guess.push(j); if(TU.guess.length>=3&&TU.guess.slice(-3).every(g=>g===j)){ TU.fresh=false; if(j!==TU.sel){ tunerSelect(j); TU.onset=now-121; tunerDraw(); } return; } }
+    if(TU.guess.length<3) return;                                     // not sure yet which string
+  }
   if(r&&now-TU.onset>120&&r.clarity>=0.9&&r.rms>=0.15*TU.peak){
     TU.peak=Math.max(TU.peak,r.rms); TU.heard=now;
     TU.hist.push(1200*Math.log2(r.hz/target)); if(TU.hist.length>9) TU.hist.shift();
     if(TU.hist.length>=5){
       const c=tuneMedian(TU.hist); TU.shown=c; TU.needle=TU.needle+0.35*(c-TU.needle);
-      if(Math.abs(c)<=TUNE_OK){ if(!TU.okSince) TU.okSince=now; else if(now-TU.okSince>600&&!TU.done.has(TU.sel)) tunerTuned(); }
+      if(Math.abs(c)<=TUNE_OK){ if(!TU.okSince) TU.okSince=now; else if(now-TU.okSince>600&&!TU.done.has(TU.sel)&&TU.onset>TU.mutedUntil) tunerTuned(); }
       else TU.okSince=0;
     }
   }else if(r) TU.peak=Math.max(TU.peak,r.rms);
@@ -3928,11 +3965,16 @@ function tunerTick(now){
 // in tune: tick it off and, after a moment, move to the next string still to do
 function tunerTuned(){
   const tn=tuning(), i=TU.sel; TU.done.add(i); tunerDraw(true);
+  if(tunerState().auto){ setTimeout(()=>{ if(TU.on) renderTuner(); },900); return; }
   setTimeout(()=>{ if(!TU.on||TU.sel!==i) return; const n=tn.notes.length; for(let k=1;k<=n;k++){ const j=(i+k)%n; if(!TU.done.has(j)){ tunerSelect(j); break; } } renderTuner(); },900);
 }
 function playRef(m){
   if(!ensureAudio()) return;
-  try{ const src=actx.createBufferSource(); src.buffer=pluck(m); src.playbackRate.value=tunerState().a4/440; src.connect(outs[INST.id]); src.start(actx.currentTime+0.02); }catch(e){}
+  try{
+    const src=actx.createBufferSource(), rate=tunerState().a4/440; src.buffer=pluck(m); src.playbackRate.value=rate; src.connect(outs[INST.id]); src.start(actx.currentTime+0.02);
+    // listening pauses while it rings (and then waits for a fresh pluck), so the reference can't tick the string off
+    TU.mutedUntil=performance.now()+Math.min(3500,1000*src.buffer.duration/rate)+150; TU.okSince=0; TU.hist=[]; TU.shown=null; tunerDraw();
+  }catch(e){}
 }
 function tunerDraw(flash){
   const el=$('tunerGauge'); if(!el) return;
@@ -3942,7 +3984,7 @@ function tunerDraw(flash){
   $('tunerNeedle').setAttribute('transform',`rotate(${a.toFixed(1)} 160 150)`);
   $('tunerNote').textContent=tuneName(m,tn.flat);
   $('tunerHz').textContent=`${tuneHz(m).toFixed(2)} Hz`;
-  $('tunerCents').textContent=c==null?(TU.on?'Play this string on its own':'Press Start to listen'):`${c>0?'+':''}${c.toFixed(1)} cents`;
+  $('tunerCents').textContent=TU.on&&performance.now()<TU.mutedUntil?'Playing the reference · not listening':c==null?(TU.on?(tunerState().auto?'Play any string on its own':'Play this string on its own'):'Press Start to listen'):`${c>=0.05?'+':''}${(Math.abs(c)<0.05?0:c).toFixed(1)} cents`;
   $('tunerHint').textContent=c==null?'':ok?(TU.done.has(TU.sel)?'In tune ✓':'In tune, hold it…'):c<0?'Flat: tighten, the pitch goes up ↑':'Sharp: loosen, the pitch goes down ↓';
   document.querySelectorAll('[data-tstr]').forEach(b=>{ const i=+b.dataset.tstr; b.classList.toggle('done',TU.done.has(i)); b.setAttribute('aria-pressed',String(i===TU.sel)); });
 }
@@ -3964,9 +4006,10 @@ function renderTuner(){
       <g id="tunerNeedle"><line class="tneedle" x1="160" y1="150" x2="160" y2="22"/></g><circle class="thub" cx="160" cy="150" r="7"/>
     </svg>
     <div class="tread"><b id="tunerNote"></b><span id="tunerHz"></span><span id="tunerCents"></span><span id="tunerHint" class="thint"></span></div>
+    <div class="chips" role="group" aria-label="Choosing the string">${['auto','manual'].map(k=>`<button type="button" class="chip" data-tact="${k}" aria-pressed="${(k==='auto')===!!t.auto}">${k==='auto'?'Detect the string':'I choose the string'}</button>`).join('')}</div>
     <div class="actions"><button type="button" class="btn ${TU.on?'':'primary '}big" data-tact="${TU.on?'stop':'start'}">${TU.on?'Stop':'Start listening'}</button><button type="button" class="btn" data-tact="ref">Play this string</button><span class="spacer"></span>${TU.done.size?`<button type="button" class="btn quiet sm" data-tact="reset">Start over</button>`:''}</div>
     ${TU.msg?`<div class="feedback bad">${esc(TU.msg)}</div>`:''}
-    <div class="hint">Choose a string, play it on its own and let it ring; mute the others. Once it holds within ${TUNE_OK} cents it’s ticked off and the next one is chosen. ${tn.pairs?'On a 12-string, tune each string of a pair separately: the main one first, then its partner (′), an octave up on the four low pairs and the same note on the top two. A clip-on tuner is easier if both keep ringing. ':''}Works best in a quiet room, with the phone close to the instrument.</div></div>`;
+    <div class="hint">${t.auto?`Play any string on its own and let it ring; the tuner finds which one it is. Once it holds within ${TUNE_OK} cents it’s ticked off. `:`Choose a string, play it on its own and let it ring; mute the others. Once it holds within ${TUNE_OK} cents it’s ticked off and the next one is chosen. `}“Play this string” pauses listening while it sounds. ${tn.pairs?'On a 12-string, tune each string of a pair separately: the main one first, then its partner (′), an octave up on the four low pairs and the same note on the top two. A clip-on tuner is easier if both keep ringing. ':''}Works best in a quiet room, with the phone close to the instrument.</div></div>`;
   $('answer').innerHTML=h; tunerDraw();
 }
 
@@ -3978,6 +4021,7 @@ $('answer').addEventListener('click',e=>{
   else if(a==='stop'){ tunerStop(); renderTuner(); }
   else if(a==='ref') playRef(tuning().notes[TU.sel]);
   else if(a==='reset'){ TU.done=new Set(); tunerSelect(0); renderTuner(); }
+  else if(a==='auto'||a==='manual'){ t.auto=a==='auto'; save(); TU.guess=[]; TU.fresh=false; renderTuner(); }
   else if(a==='a4down'||a==='a4up'){ t.a4=Math.max(430,Math.min(450,t.a4+(a==='a4up'?1:-1))); save(); TU.hist=[]; renderTuner(); }
 });
 $('answer').addEventListener('change',e=>{ if(S.mode!=='tuner'||e.target.id!=='tunerPreset') return; tunerState()[INST.id]=e.target.value; save(); renderTuner(); });
