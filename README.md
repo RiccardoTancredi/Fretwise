@@ -15,6 +15,8 @@ Live app: **https://riccardotancredi.github.io/Fretwise/**: it installs on a pho
 
 Today’s words and paintings stay on screen until midnight (Italian time), and you can look back at what you saw on each of the last 60 days. Each start card turns green once you’ve done something there today: one exercise, or your daily goal of words and paintings (1, 5, 10 or 20, in their settings). A daily notification reminds you of the ones you haven't done.
 
+Chord exercises spell notes from the chord itself, show which tones are required or optional, and offer an optional **Altered dominants (7alt)** group on guitar and ukulele. The **Circle of 5ths → How chords work** section compares chord formulas on the selected root and plays a sample voicing. A saved shape is a preview: **Continue building**, **Clear**, or editing the neck returns to your own selection.
+
 ## How your words stay private
 
 The repository is public, but your dictionaries are never in it:

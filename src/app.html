@@ -169,6 +169,12 @@ kbd{font-family:var(--font-mono);font-size:.78rem;border:1px solid var(--line);b
 .mc-txt{fill:var(--muted);font-family:var(--font-mono);font-size:9px}
 .mc-x{fill:var(--muted);font-family:var(--font-mono);font-size:9px;text-anchor:middle}
 .mc-o{fill:none;stroke:var(--muted);stroke-width:1}
+.chord-help{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface-2)}
+.chord-help summary{font-weight:700;cursor:pointer}
+.chord-help p{margin:10px 0;font-size:.9rem}
+.chord-help table{width:100%;border-collapse:collapse;margin:10px 0;font-size:.85rem;text-align:left}
+.chord-help th,.chord-help td{padding:5px 8px;border-bottom:1px solid var(--line)}
+.chord-help .row{flex-wrap:wrap;gap:8px;margin-top:10px}
 
 .summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .stat{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px}
@@ -620,7 +626,7 @@ const INSTRUMENTS={
     presets:[[0,5,'Open–5'],[5,9,'5–9'],[7,12,'7–12'],[0,12,'Open–12'],[0,15,'Open–15']],
     stringHint:'Learn one or two strings at a time. Most players start with low E and A, since they carry the roots of most chord shapes.',
     octaveHint:'Dashed lines join the octave shapes: two strings up and two frets over, or three frets when the jump crosses the B string. The low and high E strings share every note at the same fret.',
-    scaleRoots:[0,1], rootBass:true, chordGroups:['triad','seventh','ext'],
+    scaleRoots:[0,1], rootBass:true, chordGroups:['triad','seventh','ext','altered'],
     // steel-string guitar: plucked a third of the way along, dark loop filter, long ring
     tone:{pick:0.3, dark:[0.12,0.32], noise:0.9, bq:[0.25,0.15], t60:[1.6,4.2]}},
   ukulele:{id:'ukulele',name:'Ukulele',
@@ -631,7 +637,7 @@ const INSTRUMENTS={
     presets:[[0,5,'Open–5'],[0,7,'Open–7'],[5,10,'5–10'],[0,12,'Open–12'],[0,15,'Open–15']],
     stringHint:'Standard tuning is re-entrant: the G string is tuned above the C string, so the C string carries the lowest note.',
     octaveHint:'Dashed lines join notes that are an octave apart. On a re-entrant ukulele the open C and the A string at fret 3 make the most useful octave shape.',
-    scaleRoots:[1], rootBass:false, chordGroups:['triad','seventh'],
+    scaleRoots:[1], rootBass:false, chordGroups:['triad','seventh','altered'],
     // nylon ukulele: plucked closer to the bridge with a finger, brighter attack, short ring
     tone:{pick:0.18, dark:[0.34,0.42], noise:0.55, bq:[0.13,0.1], t60:[1.5,2.8]}}
 };
@@ -699,9 +705,12 @@ const CHORDS=[
   {id:'m9',  sym:'m9',   name:'minor 9th',        grp:'ext',     t:[[0,'1',1],[3,'♭3',1],[7,'5',0],[10,'♭7',1],[2,'9',1]]},
   {id:'m11', sym:'m11',  name:'minor 11th',       grp:'ext',     t:[[0,'1',1],[3,'♭3',1],[7,'5',0],[10,'♭7',1],[2,'9',0],[5,'11',1]]},
   {id:'13',  sym:'13',   name:'dominant 13th',    grp:'ext',     t:[[0,'1',1],[4,'3',1],[7,'5',0],[10,'♭7',1],[2,'9',0],[9,'13',1]]},
-  {id:'m13', sym:'m13',  name:'minor 13th',       grp:'ext',     t:[[0,'1',1],[3,'♭3',1],[7,'5',0],[10,'♭7',1],[2,'9',0],[5,'11',0],[9,'13',1]]}
+  {id:'maj13',sym:'maj13',name:'major 13th',     grp:'ext',     t:[[0,'1',1],[4,'3',1],[7,'5',0],[11,'7',1],[2,'9',0],[9,'13',1]]},
+  {id:'m13', sym:'m13',  name:'minor 13th',       grp:'ext',     t:[[0,'1',1],[3,'♭3',1],[7,'5',0],[10,'♭7',1],[2,'9',0],[5,'11',0],[9,'13',1]]},
+  // 7alt is a family: keep 1, 3, ♭7 and choose at least one altered colour, not all four.
+  {id:'7alt',sym:'7alt', name:'altered dominant',grp:'altered', oneOf:[1,3,6,8],t:[[0,'1',1],[4,'3',1],[10,'♭7',1],[1,'♭9',0],[3,'♯9',0],[6,'♭5',0],[8,'♯5',0]]}
 ];
-const CHORD_GROUPS=[['triad','Triads'],['seventh','7ths and 6ths'],['ext','9ths, 11ths, 13ths']];
+const CHORD_GROUPS=[['triad','Triads'],['seventh','7ths and 6ths'],['ext','9ths, 11ths, 13ths'],['altered','Altered dominants (7alt)']];
 
 const pcOf=(s,f)=>(STRINGS[s].midi+f)%12;
 const midiOf=(s,f)=>STRINGS[s].midi+f;
@@ -1206,7 +1215,17 @@ function renderCircle(){
       <div class="row cofscale"><label for="cofScale" class="hint">On the neck</label><select id="cofScale"></select><span class="spacer"></span><button type="button" class="btn sm" data-cof="playscale">Play scale</button></div>
       <div id="cofSChordsWrap" hidden><div class="eyebrow" id="cofSTitle"></div><div class="cchords" id="cofSChords"></div><div class="cofinfo" id="cofSInfo"></div></div>
       <div class="cneck" id="cofNeckWrap"><svg id="cofNeck" role="img" aria-label="Scale on the neck"></svg></div>
-      <div class="hint">Tap a key to make it the key; tap one of its chords (the coloured segments, or the buttons) to see it on the neck. Neighbours on the circle are a fifth apart and differ by one sharp or flat. Swipe the neck sideways to see it all.</div></div>`;
+      <div class="hint">Tap a key to make it the key; tap one of its chords (the coloured segments, or the buttons) to see it on the neck. Neighbours on the circle are a fifth apart and differ by one sharp or flat. Swipe the neck sideways to see it all.</div>
+      <details class="chord-help"><summary>How chords work · 7ths, extensions and alt</summary>
+        <p>A triad stacks a root, a 3rd and a 5th. The 3rd makes it major or minor. Adding a 7th gives a seventh chord: <b>7</b> means a major 3rd and a minor 7th; <b>maj7</b> means a major 7th.</p>
+        <p><b>9, 11 and 13</b> are 2, 4 and 6 an octave higher. The symbol describes the harmony; a playable <i>voicing</i> chooses which notes to sound, in which octaves. You do not need to fit every theoretical note onto the strings.</p>
+        <div class="row"><label for="cofTheory">Compare on this root</label><select id="cofTheory"></select><button type="button" class="btn sm" data-cof="playtheory">Hear a voicing</button></div>
+        <div id="cofTheoryBody"></div>
+        <p>A <b>6</b> chord has no 7th. A <b>13</b> chord includes the dominant 7th sound; <b>maj13</b> uses a major 7th. Replacing the 7th with an 11th changes the chord, rather than making another version of the same 13th.</p>
+        <p><b>Alt</b> means an altered dominant: a major 3rd and minor 7th, coloured by ♭9, ♯9, ♭5 or ♯5. Choose one or more colours; you are not being asked to play all of them. These chords often lead down a fifth, for example E7alt → Am.</p>
+        <p class="hint">The table explains this app’s exercise rules, which include the root. In an ensemble, the bass can supply the root and other instruments can share chord tones. Chord types on the same root need not all belong to the selected key.</p>
+        <p class="hint">More: <a href="https://musictheory.pugetsound.edu/mt21c/JazzChordBasics.html" target="_blank" rel="noopener">Jazz chord basics</a> · <a href="https://musictheory.pugetsound.edu/mt21c/AlteredDominantSeventhChords.html" target="_blank" rel="noopener">Altered dominants</a></p>
+      </details></div>`;
   }
   // turn the circle the short way so the key is on top; labels turn back so they stay upright
   const want=-30*md(S.circle.i,12); cofDeg=cofDeg==null?want:cofDeg+md(want-cofDeg+180,360)-180;
@@ -1250,6 +1269,14 @@ function renderCircle(){
   }
   const nW=NS<=4?860:1000;
   drawBoard($('cofNeck'),{width:nW,vertical:false,start:0,end:15,markers:M,gid:'wood3'});
+  const theory=theoryQuestion(st);
+  $('cofTheory').innerHTML=CHORDS.map(ch=>`<option value="${ch.id}"${ch===theory.ch?' selected':''}>${chordName({...theory,ch})}</option>`).join('');
+  $('cofTheoryBody').innerHTML=chordGuide(theory);
+}
+function theoryQuestion(st=cofState()){ return {root:st.tonicPc,rootName:st.tonicName,ch:CHORDS.find(ch=>ch.id===S.circle.theory)||CHORDS.find(ch=>ch.id==='13')}; }
+function playTheoryChord(){
+  const q=theoryQuestion(), tones=q.ch.t.filter(t=>t[2]||(q.ch.oneOf&&t[0]===q.ch.oneOf[0]));
+  playSeq(tones.map(t=>48+q.root+t[0]+(parseInt(t[1].replace(/[^0-9]/g,''),10)>7?12:0)),0.08);
 }
 function cofPlayChord(c){ const base=48+c.tones[0].pc; let last=base; playSeq(c.tones.map((t,j)=>{ if(!j) return base; let m=last; while(md(m,12)!==t.pc||m<=last) m++; last=m; return m; }),0.07); }
 function cofPlayScale(){ const st=cofState(), base=48+st.tonicPc; playSeq(st.sc.steps.map(x=>base+x).concat([base+12]),0.24); }
@@ -1271,7 +1298,22 @@ function chordRootName(root,ch){
   const a=note(root), b=(S.acc==='flat'?SHARP:FLAT)[root];
   return cost(b)<cost(a)?b:a;
 }
-const chordSpelling=q=>q.ch.t.map(x=>spellTone(q.rootName,q.root,x[0],x[1])).join(' ')+'  ('+q.ch.t.map(x=>x[1]).join(' ')+')';
+const chordSpelling=q=>q.ch.oneOf
+  ?q.ch.t.filter(x=>x[2]).map(x=>spellTone(q.rootName,q.root,x[0],x[1])).join(' ')+', plus at least one of '+q.ch.t.filter(x=>!x[2]).map(x=>`${spellTone(q.rootName,q.root,x[0],x[1])} (${x[1]})`).join(', ')
+  :q.ch.t.map(x=>spellTone(q.rootName,q.root,x[0],x[1])).join(' ')+'  ('+q.ch.t.map(x=>x[1]).join(' ')+')';
+function chordNoteName(q,pc){
+  const t=q.ch.t.find(x=>x[0]===(pc-q.root+12)%12);
+  return t?spellTone(q.rootName,q.root,t[0],t[1]):(/♭/.test(q.rootName)?FLAT:/♯/.test(q.rootName)?SHARP:(S.acc==='flat'?FLAT:SHARP))[pc];
+}
+function chordGuide(q){
+  const choice=q.ch.oneOf;
+  let h=`<table><thead><tr><th>Degree</th><th>Note</th><th>In this exercise</th></tr></thead><tbody>${q.ch.t.map(t=>`<tr><td>${t[1]}</td><td>${spellTone(q.rootName,q.root,t[0],t[1])}</td><td>${t[2]?'Required':choice?'Choose ≥1 colour':'Optional'}</td></tr>`).join('')}</tbody></table>`;
+  if(q.ch.id==='13'||q.ch.id==='maj13') h+='<p>The 3rd, 7th and 13th define this sound. The 5th and 9th are optional. The natural 11th is normally omitted because it clashes with the major 3rd.</p>';
+  else if(q.ch.id==='7alt') h+='<p>Keep the root, major 3rd and minor 7th; add at least one altered colour. The natural 5th and 9th are not used in this 7alt exercise. ♯5 and ♭13 sound alike in equal temperament, but describe the note differently.</p>';
+  else if(q.ch.id==='m13') h+='<p>The minor 3rd, minor 7th and natural 13th identify m13. The 5th, 9th and 11th may be omitted in this exercise.</p>';
+  h+='<p class="hint">The accidentals in degree names are relative to the root’s major scale. For example, ♭7 means “minor seventh”, not “every note must be written as a flat”. Note names follow the chord.</p>';
+  return h;
+}
 function degOf(q,pc){ const iv=(pc-q.root+12)%12; const t=q.ch.t.find(x=>x[0]===iv); return t?t[1]:null; }
 // every playable voicing: one note per string, fretted notes inside a 4-fret box, all required tones,
 // sounding strings next to each other (guitar) or all four strings (ukulele), at most four fingers
@@ -1279,7 +1321,7 @@ function genVoicings(root,ch){
   const c=C(), start=c.fretStart, end=c.fretEnd;
   const tones=new Set(ch.t.map(x=>(root+x[0])%12)), req=ch.t.filter(x=>x[2]).map(x=>(root+x[0])%12);
   const found=new Map();
-  const minStr=NS<=4?4:Math.max(4,req.length);
+  const minStr=NS<=4?4:Math.max(4,req.length+(ch.oneOf?1:0));
   for(let p=Math.max(1,start);p<=end;p++){
     const opts=[];
     for(let s=0;s<NS;s++){
@@ -1299,6 +1341,7 @@ function genVoicings(root,ch){
         if(!fretted.length&&p!==Math.max(1,start)) return;
         const have=new Set(snd.map(i=>pcOf(i,fr[i])));
         for(const r of req) if(!have.has(r)) return;
+        if(ch.oneOf&&!ch.oneOf.some(x=>have.has((root+x)%12))) return;
         if(rootBassOn()){ let lo=snd[0]; snd.forEach(i=>{ if(midiOf(i,fr[i])<midiOf(lo,fr[lo])) lo=i; }); if(pcOf(lo,fr[lo])!==root) return; }
         const minF=fretted.length?Math.min(...fretted):0, atMin=fretted.filter(f=>f===minF).length;
         // a barre counts as one finger only if no open or muted string sits under it
@@ -1338,12 +1381,13 @@ function evalShape(q,fr){
   const wrong=notes.filter(n=>degOf(q,n.pc)==null);
   const present=new Set(notes.map(n=>(n.pc-q.root+12)%12));
   const missing=q.ch.t.filter(x=>x[2]&&!present.has(x[0]));
+  const missingColour=!!(q.ch.oneOf&&!q.ch.oneOf.some(x=>present.has(x)));
   const fretted=notes.filter(n=>n.f>0).map(n=>n.f);
   const span=fretted.length?Math.max(...fretted)-Math.min(...fretted):0;
   const low=notes.slice().sort((a,b)=>a.midi-b.midi)[0];
   const bassBad=!!(rootBassOn()&&low&&low.pc!==q.root);
-  const need=Math.max(3,q.ch.t.filter(x=>x[2]).length), few=notes.length<need;
-  return {notes,wrong,missing,span,bassBad,few,need,low,ok:!wrong.length&&!missing.length&&span<=4&&!bassBad&&!few};
+  const need=Math.max(3,q.ch.t.filter(x=>x[2]).length+(q.ch.oneOf?1:0)), few=notes.length<need;
+  return {notes,wrong,missing,missingColour,span,bassBad,few,need,low,ok:!wrong.length&&!missing.length&&!missingColour&&span<=4&&!bassBad&&!few};
 }
 function checkChord(){
   if(phase!=='ask'||!Q||Q.type!=='chord') return;
@@ -1353,11 +1397,12 @@ function checkChord(){
   if(!r.ok){
     Q.mist++; Q.checked=r;
     const msg=[];
-    if(r.wrong.length) msg.push(`${[...new Set(r.wrong.map(n=>note(n.pc)))].join(', ')} ${r.wrong.length===1?"isn't":"aren't"} in ${chordName(Q)}.`);
+    if(r.wrong.length) msg.push(`${[...new Set(r.wrong.map(n=>chordNoteName(Q,n.pc)))].join(', ')} ${r.wrong.length===1?"isn't":"aren't"} in ${chordName(Q)}.`);
     if(r.missing.length) msg.push(`Missing: ${r.missing.map(x=>`${spellTone(Q.rootName,Q.root,x[0],x[1])} (the ${x[1]})`).join(', ')}.`);
+    if(r.missingColour) msg.push('Add at least one altered colour: ♭9, ♯9, ♭5 or ♯5.');
     if(r.few&&!r.missing.length) msg.push(`Use at least ${r.need} strings.`);
     if(r.span>4) msg.push('That stretch is too wide. Keep the fretted notes within five frets.');
-    if(r.bassBad) msg.push(`The lowest note is ${note(r.low.pc)}; it should be the root, ${note(Q.root)}.`);
+    if(r.bassBad) msg.push(`The lowest note is ${chordNoteName(Q,r.low.pc)}; it should be the root, ${Q.rootName}.`);
     setFeedback('bad',msg.join(' ')); render(); return;
   }
   if(Q.found.some(f=>sameShape(f,fr))){ setFeedback('info','You already found that shape. Try a different one, for example higher up the neck.'); return; }
@@ -1368,7 +1413,7 @@ function checkChord(){
     finish(Q.mist===0,chordName(Q));
   }else{
     setFeedback('good',`That works. Shape ${Q.found.length} of ${S.chordShapes} found. Now find a different one.`);
-    Q.sel=new Map(); render();
+    Q.sel=new Map(); Q.show=null; render();
   }
 }
 function shownFrets(){
@@ -1572,6 +1617,7 @@ function onCell(s,f){
     renderBoard(); renderPrompt(); renderAnswer(); return;
   }
   if(Q.type==='chord'){
+    Q.show=null;
     if(Q.checked){ Q.checked=null; }
     if(Q.sel.get(s)===f) Q.sel.delete(s); else { Q.sel.set(s,f); play(m); }
     if(document.getElementById('feedback').classList.contains('bad')) setFeedback('','');
@@ -1683,7 +1729,7 @@ function markers(){
       const mine=Q.show.src==='u';
       fr.forEach((f,s)=>{ if(f>=0) M.push({s,f,kind:mine?'good':'reveal',label:degOf(Q,pcOf(s,f))}); });
     }else if(Q.checked){
-      Q.sel.forEach((f,s)=>{ const d=degOf(Q,pcOf(s,f)); M.push({s,f,kind:d?'reveal':'bad',label:d||note(pcOf(s,f))}); });
+      Q.sel.forEach((f,s)=>{ const d=degOf(Q,pcOf(s,f)); M.push({s,f,kind:d?'reveal':'bad',label:d||chordNoteName(Q,pcOf(s,f))}); });
     }else{
       Q.sel.forEach((f,s)=>M.push({s,f,kind:'sel'}));
     }
@@ -1771,7 +1817,7 @@ function summaryHeadline(){
 }
 function minis(list,src){
   return `<div class="minis">${list.map((fr,i)=>{
-    const on=Q.show&&Q.show.src===src&&Q.show.i===i;
+    const on=!!(Q.show&&Q.show.src===src&&Q.show.i===i);
     return `<button type="button" class="mini" data-shape="${src}${i}" aria-pressed="${on}" aria-label="Shape ${fretsText(fr)}">${miniChord(fr,Q.root)}<small>${fretsText(fr)}</small></button>`;
   }).join('')}</div>`;
 }
@@ -1804,13 +1850,15 @@ function renderAnswer(){
   if(Q.type==='chord'){
     if(Q.found.length) h+=`<div class="shapes"><div class="eyebrow">Your shapes · tap to see one again</div>${minis(Q.found,'u')}</div>`;
     if(phase==='ask'){
-      h+=`<div class="actions"><span class="counter">${Q.sel.size} ${Q.sel.size===1?'string':'strings'} placed</span><span class="spacer"></span><button class="btn quiet" data-act="giveup">Show shapes</button><button class="btn quiet" data-act="clear">Clear</button><button class="btn primary" data-act="check">Check</button></div>`;
+      if(Q.show) h+=`<div class="actions"><span class="counter">Saved shape preview</span><span class="spacer"></span><button class="btn quiet" data-act="clear">Clear</button><button class="btn primary" data-act="resumechord">Continue building</button></div><div class="hint">This is a preview. Continue building, or tap the neck to edit your own next shape.</div>`;
+      else h+=`<div class="actions"><span class="counter">${Q.sel.size} ${Q.sel.size===1?'string':'strings'} placed</span><span class="spacer"></span><button class="btn quiet" data-act="giveup">Show shapes</button><button class="btn quiet" data-act="clear">Clear</button><button class="btn primary" data-act="check">Check</button></div>`;
       h+=`<div class="hint">Tap one note per string; tap it again to remove it. Strings left empty are muted. ${rootBassOn()?'The lowest note must be the root.':'Inversions are allowed.'}</div>`;
     }else{
       const o=otherShapes();
       if(o.length) h+=`<div class="shapes"><div class="eyebrow">Other ways to play ${chordName(Q)}</div>${minis(o,'g')}<div class="hint">Blue dots are the root. Tap a shape to see it on the neck and hear it.</div></div>`;
       h+=`<div class="actions"><button class="btn" data-act="replay">Strum it</button><span class="spacer"></span><button class="btn primary" data-act="next">Next chord</button></div>`;
     }
+    h+=`<details class="chord-help"><summary>Notes and omissions in ${chordName(Q)}</summary>${chordGuide(Q)}</details>`;
     el.innerHTML=h; return;
   }
   const done=phase==='answered';
@@ -1934,7 +1982,7 @@ function renderSettings(){
       (S.scaleArea==='neck'?`<div class="chips" style="margin-top:6px">${[5,7,12,15].map(n=>chip('sfrets',n,c.fretStart===0&&c.fretEnd===n,'Open–'+n,true)).join('')}</div><div class="hint">How many frets to show. Any other range: Frets, below.</div>`:'')+`</div>`;
   }
   if(S.mode==='chord'){
-    h+=`<div class="field"><span class="fl">Chord types</span><div class="chips">${CHORD_GROUPS.filter(g=>INST.chordGroups.indexOf(g[0])>=0).map(g=>chip('cgrp',g[0],S.chordGroupsBy[S.inst].indexOf(g[0])>=0,g[1])).join('')}</div>${INST.id==='ukulele'?'<div class="hint">With four strings, ukulele chord books stop at 7ths and 6ths: C7, Cmaj7, Cm7, Cm7♭5, Cdim7, C6 and Cm6 are all everyday chords. C6 is simply all four strings open.</div>':''}</div>`;
+    h+=`<div class="field"><span class="fl">Chord types</span><div class="chips">${CHORD_GROUPS.filter(g=>INST.chordGroups.indexOf(g[0])>=0).map(g=>chip('cgrp',g[0],S.chordGroupsBy[S.inst].indexOf(g[0])>=0,g[1])).join('')}</div>${INST.id==='ukulele'?'<div class="hint">With four strings, use compact voicings: triads, 6ths, 7ths and, optionally, altered dominants. C6 is simply all four strings open.</div>':''}</div>`;
     h+=`<div class="field"><span class="fl">Shapes to find per chord</span><div class="chips">${[1,2,3].map(n=>chip('cshapes',n,S.chordShapes===n,String(n),true)).join('')}</div></div>`;
     h+=`<div class="field"><span class="fl">Lowest note</span><div class="chips">${chip('cbass','1',rootBassOn(),'Must be the root')}${chip('cbass','0',!rootBassOn(),'Any (inversions)')}</div>${INST.id==='ukulele'?'<div class="hint">Most ukulele chords are not in root position, because the G string is tuned high.</div>':''}</div>`;
   }
@@ -1954,7 +2002,8 @@ function renderSettings(){
     h+=`<div class="field"><span class="fl">Strings</span><div class="chips">${order.map(s=>chip('string',s,c.strings[s],lab(s),true)).join('')}</div><div class="hint">${INST.stringHint}</div></div>`;
   }
   if(S.mode==='name'||S.mode==='find'||S.mode==='chord') h+=`<div class="field"><span class="fl">${S.mode==='chord'?'Roots':'Notes'}</span><div class="chips">${chip('nat','0',!S.naturalsOnly,'All 12')}${chip('nat','1',S.naturalsOnly,'Naturals only')}</div></div>`;
-  h+=`<div class="field"><span class="fl">Accidentals</span><div class="chips">${chip('acc','sharp',S.acc==='sharp','Sharps (C♯)')}${chip('acc','flat',S.acc==='flat','Flats (D♭)')}</div></div>`;
+  if(S.mode==='chord') h+='<div class="hint">Note names follow the chord’s spelling automatically: an E♭ chord uses E♭, not D♯. Degrees such as ♭7 describe intervals from the root.</div>';
+  else h+=`<div class="field"><span class="fl">Accidentals</span><div class="chips">${chip('acc','sharp',S.acc==='sharp','Sharps (C♯)')}${chip('acc','flat',S.acc==='flat','Flats (D♭)')}</div></div>`;
   if(S.mode!=='all') h+=`<div class="field"><span class="fl">Questions per round</span><div class="chips">${[5,10,20].map(n=>chip('round',n,S.roundLen===n,String(n),true)).join('')}</div></div>`;
   h+=`<div class="field"><span class="fl">Sound</span><div class="chips">${chip('sound','1',S.sound,'Plucked string')}${chip('sound','0',!S.sound,'Off')}</div></div>`;
   $('settings').innerHTML=h;
@@ -2013,9 +2062,13 @@ $('answer').addEventListener('click',e=>{
   else if(a==='mode'){ c.minor=b.dataset.v==='1'; c.chord=null; c.schord=null; }
   else if(a==='makekey'&&st.chord){ const ch=st.chord, m=ch.qual==='m'; c.i=FIFTHS.indexOf(m?md(ch.tones[0].pc+3,12):ch.tones[0].pc); c.minor=m; c.chord=null; }
   else if(a==='playscale'){ ensureAudio(); cofPlayScale(); return; }
+  else if(a==='playtheory'){ ensureAudio(); playTheoryChord(); return; }
   save(); renderCircle();
 });
-$('answer').addEventListener('change',e=>{ if(e.target.id!=='cofScale') return; S.circle.scale=e.target.value; S.circle.schord=null; save(); renderCircle(); });
+$('answer').addEventListener('change',e=>{
+  if(e.target.id==='cofTheory'){ S.circle.theory=e.target.value; save(); renderCircle(); return; }
+  if(e.target.id!=='cofScale') return; S.circle.scale=e.target.value; S.circle.schord=null; save(); renderCircle();
+});
 $('modes').addEventListener('click',e=>{
   const b=e.target.closest('[data-mode]'); if(!b||b.dataset.mode===S.mode) return;
   S.mode=b.dataset.mode; save(); renderSettings(); newRound();
@@ -2043,10 +2096,11 @@ $('answer').addEventListener('click',e=>{
   else if(a==='toneck'){ S.scaleArea='neck'; save(); renderSettings(); newRound(true); }
   else if(a==='check'){ if(Q.type==='chord') checkChord(); else checkScale(); }
   else if(a==='clear'){
-    if(Q.type==='chord'){ Q.sel=new Map(); Q.checked=null; setFeedback('',''); }
+    if(Q.type==='chord'){ Q.sel=new Map(); Q.checked=null; Q.show=null; setFeedback('',''); }
     else Q.selected=new Set([key(Q.root.s,Q.root.f)]);
     render();
   }
+  else if(a==='resumechord'){ Q.show=null; Q.checked=null; render(); }
   else if(a==='replay') replay();
 });
 document.addEventListener('keydown',e=>{
