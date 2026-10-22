@@ -56,7 +56,7 @@ button{cursor:pointer}
 @media (max-width:560px){.modes .long{display:none}.modes{width:100%;gap:2px}.modes button{flex:1 1 auto;padding:8px 5px;font-size:.84rem}}
 @media (max-width:400px){.modes button{padding:8px 3px;font-size:.8rem}}
 /* phones: the practice tabs on one row, Theory and its tabs on a second one, so none hides off-screen */
-@media (max-width:560px){#modes{flex-wrap:wrap;border-radius:18px;row-gap:4px}#modes .theory-label{flex:1 0 100%;border-left:0;border-top:1px solid var(--line);margin:2px 0 0;padding:6px 8px 2px}#modes .theory-label~button{flex:1 1 40%}}
+@media (max-width:560px){#modes{flex-wrap:wrap;border-radius:18px;row-gap:4px}#modes .theory-label{flex:1 0 100%;border-left:0;border-top:1px solid var(--line);margin:2px 0 0;padding:6px 8px 2px}#modes .theory-label~button{flex:1 1 28%}}
 .modes button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
 
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;margin-top:16px;align-items:start}
@@ -408,6 +408,26 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .cofinfo{font-size:.92rem}
 .cofsep{border:0;border-top:1px solid var(--line);margin:4px 0;width:100%}
 .cofinfo .linkbtn{margin:0 0 0 4px}
+/* tuner */
+.tuner{display:flex;flex-direction:column;gap:14px}
+.tref{display:inline-flex;align-items:center;gap:8px}.tref b{font-family:var(--font-mono);min-width:64px;text-align:center;color:var(--ink)}
+.tstrings{display:grid;grid-template-columns:repeat(auto-fit,minmax(54px,1fr));gap:6px}
+.tstrings.pairs{grid-template-columns:repeat(6,minmax(0,1fr))}
+.tstr{display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 2px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);min-width:0}
+.tstr small{font-family:var(--font-mono);font-size:.68rem;color:var(--muted)} .tstr b{font-family:var(--font-display);font-size:1.05rem}
+.tstr[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.tstr.done{border-color:var(--good)} .tstr.done small::after{content:' ✓';color:var(--good)}
+.tgauge{display:block;width:100%;max-width:420px;margin:0 auto}
+.tgauge .tarc{fill:none;stroke:var(--line);stroke-width:10;stroke-linecap:round}
+.tgauge .tzone{fill:none;stroke:var(--good);stroke-width:10;opacity:.55}
+.tgauge .ttick{stroke:var(--muted);stroke-width:2}.tgauge .tlab{fill:var(--muted);font-family:var(--font-mono);font-size:11px;text-anchor:middle}
+.tgauge .tneedle{stroke:var(--ink);stroke-width:4;stroke-linecap:round;transition:stroke .2s}
+.tgauge .thub{fill:var(--ink)}
+.tgauge.idle .tneedle{stroke:var(--line)} .tgauge.ok .tneedle{stroke:var(--good)} .tgauge.near .tneedle{stroke:var(--warn)} .tgauge.off .tneedle{stroke:var(--bad)}
+#tunerNeedle{transition:transform .12s linear}
+.tread{display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
+.tread b{font-family:var(--font-display);font-size:2.6rem;font-weight:800;line-height:1}
+.tread span{font-family:var(--font-mono);font-size:.85rem;color:var(--muted)} .tread .thint{font-family:var(--font-body);font-size:1rem;color:var(--ink);min-height:1.3em}
 .cneck{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
 .cneck svg{display:block;max-width:none}
 .pick .wordmark{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;padding:14px 4px 4px;min-height:96px;font-family:var(--font-display);font-weight:800;font-size:1.35rem;letter-spacing:-.01em}
@@ -480,6 +500,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
       <span class="theory-label">Theory</span>
       <button role="tab" data-mode="circle" aria-selected="false">Circle<span class="long"> of 5ths</span></button>
       <button role="tab" data-mode="library" aria-selected="false">All Chords</button>
+      <button role="tab" data-mode="tuner" aria-selected="false">Tuner</button>
     </nav>
     <nav class="modes" id="chessModes" role="tablist" aria-label="Chess" hidden>
       <button role="tab" data-ctab="puzzles" aria-selected="true">Puzzles</button>
@@ -782,7 +803,7 @@ function load(){
     const st=d.settings||{};
     // older versions kept a single (guitar) range and string list at the top level
     if(st.fretStart!=null&&!st.by){ S.by.guitar.fretStart=st.fretStart; S.by.guitar.fretEnd=st.fretEnd; if(Array.isArray(st.strings)&&st.strings.length===6) S.by.guitar.strings=st.strings; }
-    ['mode','lastView','acc','naturalsOnly','allPc','ivMode','ivAll','intervals','scales','scaleRootPcs','scaleArea','scalePos','circle','library','roundLen','sound','chordShapes','inst'].forEach(k=>{ if(st[k]!=null) S[k]=st[k]; });
+    ['mode','lastView','acc','naturalsOnly','allPc','ivMode','ivAll','intervals','scales','scaleRootPcs','scaleArea','scalePos','circle','library','tuner','roundLen','sound','chordShapes','inst'].forEach(k=>{ if(st[k]!=null) S[k]=st[k]; });
     // scales used to live under Intervals
     if(S.mode==='iv'&&S.ivMode==='scale'){ S.mode='scale'; S.ivMode='interval'; }
     S.roundLen=validRoundLength(S.roundLen)||10;
@@ -1491,7 +1512,7 @@ function questionReplacer(k,v){
 }
 function questionReviver(k,v){ return v&&v.fwCollection==='Map'?new Map(v.values):v&&v.fwCollection==='Set'?new Set(v.values):v; }
 function storeRound(){
-  if(!round||(!Q&&phase!=='summary')||['circle','library'].includes(S.mode)||Q&&Q.practice&&Q.practice.mode!==S.mode) return;
+  if(!round||(!Q&&phase!=='summary')||['circle','library','tuner'].includes(S.mode)||Q&&Q.practice&&Q.practice.mode!==S.mode) return;
   const a=roundsAll(); a[roundKey()]={results:round.results,n:S.roundLen,counted:!!round.counted,t:Date.now(),phase,
     feedback:$('feedback').textContent,feedbackClass:($('feedback').className.split(' ').find(c=>['good','bad','info'].includes(c))||''),
     question:Q?JSON.stringify(Q,questionReplacer):null,elapsed:phase==='ask'?Math.max(0,performance.now()-qStart):Q&&Q.elapsed||0};
@@ -1504,7 +1525,7 @@ function newRound(fresh){
   if(saved&&inClear(saved.t)) saved=null;
   if(fresh) dropRound();
   round={results:saved&&Array.isArray(saved.results)?saved.results:[],counted:!!(saved&&saved.counted)}; Q=null;
-  if(S.mode==='library'){ Q=null; phase='library'; setFeedback('',''); return render(); }
+  if(S.mode==='library'||S.mode==='tuner'){ Q=null; phase=S.mode; setFeedback('',''); return render(); }
   if(S.mode==='circle'){ Q=null; phase='circle'; setFeedback('',''); return render(); }
   if(saved&&saved.question){
     try{
@@ -1525,7 +1546,7 @@ function newRound(fresh){
 }
 function practiceSettingsChanged(){
   clearTimeout(advTimer); save(); renderSettings();
-  if(!round||!Q||['library','circle'].includes(S.mode)){ render(); return; }
+  if(!round||!Q||['library','circle','tuner'].includes(S.mode)){ render(); return; }
   if(S.mode!=='all'&&round.results.length>=S.roundLen) return showSummary();
   if(phase==='summary') return nextQuestion();
   storeRound(); render();
@@ -1965,7 +1986,7 @@ function renderAnswer(){
   if(done&&Q.type==='ivA'&&octaveLinks(Q.targets).length) h+=`<div class="hint">${INST.octaveHint}</div>`;
   el.innerHTML=h;
 }
-function render(){ if(view!=='app') return; updateReviewButtons(); $('boardWrap').hidden=S.mode==='circle'||S.mode==='library'; if(S.mode==='library'){ renderLibrary(); renderHeat(); syncTabs(); return; } if(S.mode==='circle'){ renderCircle(); renderHeat(); syncTabs(); return; } renderPrompt(); renderBoard(); renderAnswer(); renderHeat(); syncTabs(); }
+function render(){ if(view!=='app') return; updateReviewButtons(); $('boardWrap').hidden=S.mode==='circle'||S.mode==='library'||S.mode==='tuner'; if(S.mode!=='tuner') tunerStop(); if(S.mode==='tuner'){ renderTuner(); renderHeat(); syncTabs(); return; } if(S.mode==='library'){ renderLibrary(); renderHeat(); syncTabs(); return; } if(S.mode==='circle'){ renderCircle(); renderHeat(); syncTabs(); return; } renderPrompt(); renderBoard(); renderAnswer(); renderHeat(); syncTabs(); }
 function syncTabs(){ document.querySelectorAll('.modes button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mode===S.mode))); }
 
 /* ---------- start screen ---------- */
@@ -2044,6 +2065,7 @@ $('instBtn').addEventListener('click',goHome);
 function chip(act,val,on,label,mono){ return `<button type="button" class="chip${mono?' mono':''}" data-act="${act}" data-v="${val}" aria-pressed="${on}">${label}</button>`; }
 function renderSettings(){
   let h=''; const c=C();
+  if(S.mode==='tuner'){ $('settings').innerHTML='<p class="hint">Tunings for this instrument and the reference pitch are in the Tuner itself. The reference A is the A above middle C (440 Hz); every string is worked out from it.</p>'+`<div class="field"><span class="fl">Note names</span><div class="chips">${chip('acc','sharp',S.acc==='sharp','Sharps (C♯)')}${chip('acc','flat',S.acc==='flat','Flats (D♭)')}</div></div><div class="field"><span class="fl">Reference sound</span><div class="chips">${chip('sound','1',S.sound,'Plucked string')}${chip('sound','0',!S.sound,'Off')}</div></div>`; return; }
   if(!['circle','library'].includes(S.mode)) h+='<p class="hint">Settings apply to your next question. Completed answers and this question’s draft are kept. Round length updates this round without removing answers.</p>';
   if(S.mode==='library'){ $('settings').innerHTML='<p class="hint">Choose a root and chord in All Chords. Its fret range and bass setting are independent of your exercises.</p>'+`<div class="field"><span class="fl">Sound</span><div class="chips">${chip('sound','1',S.sound,'Plucked string')}${chip('sound','0',!S.sound,'Off')}</div></div>`; return; }
   if(S.mode==='iv'){
@@ -2192,7 +2214,7 @@ $('answer').addEventListener('click',e=>{
   else if(a==='replay') replay();
 });
 document.addEventListener('keydown',e=>{
-  if(view!=='app'||S.mode==='library'||S.mode==='circle') return;
+  if(view!=='app'||S.mode==='library'||S.mode==='circle'||S.mode==='tuner') return;
   const tg=e.target&&e.target.tagName; if(tg==='SELECT'||tg==='INPUT'||tg==='TEXTAREA') return;
   if(tg==='TR'&&(e.key==='Enter'||e.key===' ')&&e.target.dataset.note!=null){ e.preventDefault(); pickNote(+e.target.dataset.note); return; }
   if(S.mode==='all'&&e.key==='Enter'&&tg!=='BUTTON'){
@@ -3802,6 +3824,163 @@ function paintHomeMeta(){
   const known=Object.values(PS.p).filter(pKnown).length, today=new Set((PS.days[romeDay()]||[]).map(e=>e.id)).size;
   return `${n} ${n===1?'work':'works'} seen · ${known} known${today?` · ${today} today`:''}`;
 }
+
+/* ---------- tuner: tune one string at a time with the microphone ---------- */
+// Choose a string (or let it move on by itself), play it on its own, and turn the peg until the needle
+// is centred. Each string's pitch is worked out from the tuning and the reference A (440 Hz by default):
+// 440 Hz is the A above middle C, not the pitch of every string.
+const TUNINGS={
+  guitar:[
+    {id:'std',name:'Standard',notes:[40,45,50,55,59,64]},
+    {id:'dropd',name:'Drop D',notes:[38,45,50,55,59,64]},
+    {id:'half',name:'Half a step down (E♭)',notes:[39,44,49,54,58,63],flat:true},
+    {id:'whole',name:'A whole step down (D)',notes:[38,43,48,53,57,62]},
+    {id:'openg',name:'Open G',notes:[38,43,50,55,59,62]},
+    {id:'dadgad',name:'DADGAD',notes:[38,45,50,55,57,62]},
+    // twelve strings in six pairs: the four low pairs add a thin string an octave up, the top two a unison
+    {id:'twelve',name:'12-string (standard)',notes:[40,52,45,57,50,62,55,67,59,59,64,64],pairs:true}
+  ],
+  ukulele:[
+    {id:'std',name:'Standard (high G)',notes:[67,60,64,69]},
+    {id:'lowg',name:'Low G',notes:[55,60,64,69]},
+    {id:'bari',name:'Baritone (DGBE)',notes:[50,55,59,64]}
+  ]
+};
+const TUNE_OK=3;                     // cents either side that count as in tune
+let TU={on:false,stream:null,ctx:null,an:null,buf:null,raf:0,last:0,sel:0,done:new Set(),hist:[],peak:0,lastRms:0,onset:0,heard:0,okSince:0,shown:null,needle:0,msg:'',key:''};
+function tunerState(){ const t=Object.assign({guitar:'std',ukulele:'std',a4:440},S.tuner); S.tuner=t; return t; }
+function tuning(){ const t=tunerState(), list=TUNINGS[INST.id]; return list.find(x=>x.id===t[INST.id])||list[0]; }
+const tuneHz=m=>tunerState().a4*Math.pow(2,(m-69)/12);
+const tuneName=(m,flat)=>(flat||S.acc==='flat'?FLAT:SHARP)[((m%12)+12)%12]+(Math.floor(m/12)-1);
+function tuneLabel(tn,i){
+  if(!tn.pairs) return `${tn.notes.length-i}`;
+  const course=6-Math.floor(i/2); return `${course}${i%2?'′':''}`;
+}
+// pitch of the string being tuned, McLeod-style: the normalised square difference of the signal with
+// itself, searched only within half an octave either side of the chosen string. Knowing the string is
+// what makes it robust: an octave above or below (an overtone louder than the fundamental, as a phone
+// hears a low E) is outside the search, so it can't be mistaken for it.
+function detectPitch(buf,sr,loHz,hiHz){
+  const n=buf.length; let mean=0; for(let i=0;i<n;i++) mean+=buf[i]; mean/=n;
+  const x=new Float32Array(n); let e=0; for(let i=0;i<n;i++){ const v=buf[i]-mean; x[i]=v; e+=v*v; }
+  const rms=Math.sqrt(e/n); if(rms<0.003) return null;              // nothing ringing
+  const lo=Math.max(2,Math.floor(sr/hiHz)), hi=Math.min(n>>1,Math.ceil(sr/loHz));
+  const nsdf=t=>{ let acf=0,m=0; for(let i=0,L=n-t;i<L;i++){ const a=x[i], b=x[i+t]; acf+=a*b; m+=a*a+b*b; } return m>0?2*acf/m:0; };
+  let best=-2, bt=-1; const v=new Float32Array(hi+2);
+  for(let t=lo-1;t<=hi+1;t++){ v[t]=nsdf(t); if(t>=lo&&t<=hi&&v[t]>best){ best=v[t]; bt=t; } }
+  if(bt<0||best<0.5||bt===lo||bt===hi) return null;                // no clear period in range
+  const pa=v[bt-1], pb=v[bt], pc=v[bt+1], d=pa-2*pb+pc; let tau=bt+(d?0.5*(pa-pc)/d:0);
+  // finer: the same peak k periods along is k times more precise (a slip between samples is spread over k periods)
+  for(let k=Math.min(8,Math.floor((n*0.5)/tau));k>=2;k--){
+    const c0=Math.round(k*tau), y0=nsdf(c0-1), y1=nsdf(c0), y2=nsdf(c0+1);
+    if(y1<0.8*pb||y1<y0||y1<y2) continue;
+    const dd=y0-2*y1+y2; tau=(c0+(dd?0.5*(y0-y2)/dd:0))/k; break;
+  }
+  return {hz:sr/tau,clarity:pb,rms};
+}
+async function tunerStart(){
+  if(TU.on) return;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ TU.msg='This browser can’t use the microphone here.'; renderTuner(); return; }
+  try{
+    // echo cancellation, noise suppression and automatic gain are made for voices and bend a string's sound
+    const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    const ctx=new (window.AudioContext||window.webkitAudioContext)(), src=ctx.createMediaStreamSource(stream), an=ctx.createAnalyser();
+    an.fftSize=8192; src.connect(an);
+    Object.assign(TU,{on:true,stream,ctx,an,buf:new Float32Array(an.fftSize),hist:[],peak:0,lastRms:0,onset:0,heard:0,okSince:0,shown:null,msg:''});
+    if(ctx.state==='suspended') await ctx.resume();
+    TU.raf=setInterval(()=>tunerTick(performance.now()),45); renderTuner();
+  }catch(e){
+    TU.msg=e&&e.name==='NotAllowedError'?'Microphone access was refused. Allow it for this site in the browser’s settings, then press Start again.':'The microphone couldn’t be opened. Check that no other app is using it.';
+    renderTuner();
+  }
+}
+function tunerStop(){
+  if(!TU.on) return;
+  clearInterval(TU.raf); TU.on=false;
+  try{ TU.stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  try{ TU.ctx.close(); }catch(e){}
+  TU.stream=TU.ctx=TU.an=null; TU.shown=null;
+}
+function tunerSelect(i){ TU.sel=i; TU.hist=[]; TU.shown=null; TU.okSince=0; TU.peak=0; }
+const tuneMedian=a=>{ const s=a.slice().sort((x,y)=>x-y); return s[s.length>>1]; };
+function tunerTick(now){
+  if(!TU.on) return;
+  // the microphone is on only while the tuner is on screen
+  if(view!=='app'||S.mode!=='tuner'||document.hidden){ tunerStop(); if(view==='app'&&S.mode==='tuner') renderTuner(); return; }
+  const tn=tuning(), m=tn.notes[TU.sel], target=tuneHz(m);
+  TU.an.getFloatTimeDomainData(TU.buf);
+  const r=detectPitch(TU.buf,TU.ctx.sampleRate,target/Math.SQRT2,target*Math.SQRT2);
+  // a new pluck: start afresh and skip its attack
+  if(r&&r.rms>0.01&&r.rms>2*TU.lastRms){ TU.onset=now; TU.hist=[]; TU.peak=0; }
+  TU.lastRms=r?r.rms:0;
+  if(r&&now-TU.onset>120&&r.clarity>=0.9&&r.rms>=0.15*TU.peak){
+    TU.peak=Math.max(TU.peak,r.rms); TU.heard=now;
+    TU.hist.push(1200*Math.log2(r.hz/target)); if(TU.hist.length>9) TU.hist.shift();
+    if(TU.hist.length>=5){
+      const c=tuneMedian(TU.hist); TU.shown=c; TU.needle=TU.needle+0.35*(c-TU.needle);
+      if(Math.abs(c)<=TUNE_OK){ if(!TU.okSince) TU.okSince=now; else if(now-TU.okSince>600&&!TU.done.has(TU.sel)) tunerTuned(); }
+      else TU.okSince=0;
+    }
+  }else if(r) TU.peak=Math.max(TU.peak,r.rms);
+  if(now-TU.heard>1500){ TU.shown=null; TU.okSince=0; }
+  tunerDraw();
+}
+// in tune: tick it off and, after a moment, move to the next string still to do
+function tunerTuned(){
+  const tn=tuning(), i=TU.sel; TU.done.add(i); tunerDraw(true);
+  setTimeout(()=>{ if(!TU.on||TU.sel!==i) return; const n=tn.notes.length; for(let k=1;k<=n;k++){ const j=(i+k)%n; if(!TU.done.has(j)){ tunerSelect(j); break; } } renderTuner(); },900);
+}
+function playRef(m){
+  if(!ensureAudio()) return;
+  try{ const src=actx.createBufferSource(); src.buffer=pluck(m); src.playbackRate.value=tunerState().a4/440; src.connect(outs[INST.id]); src.start(actx.currentTime+0.02); }catch(e){}
+}
+function tunerDraw(flash){
+  const el=$('tunerGauge'); if(!el) return;
+  const tn=tuning(), m=tn.notes[TU.sel], c=TU.shown, ok=c!=null&&Math.abs(c)<=TUNE_OK, near=c!=null&&Math.abs(c)<=15;
+  const a=Math.max(-50,Math.min(50,c==null?0:TU.needle))*1.6, cls=c==null?'idle':ok?'ok':near?'near':'off';
+  el.setAttribute('class','tgauge '+cls);
+  $('tunerNeedle').setAttribute('transform',`rotate(${a.toFixed(1)} 160 150)`);
+  $('tunerNote').textContent=tuneName(m,tn.flat);
+  $('tunerHz').textContent=`${tuneHz(m).toFixed(2)} Hz`;
+  $('tunerCents').textContent=c==null?(TU.on?'Play this string on its own':'Press Start to listen'):`${c>0?'+':''}${c.toFixed(1)} cents`;
+  $('tunerHint').textContent=c==null?'':ok?(TU.done.has(TU.sel)?'In tune ✓':'In tune, hold it…'):c<0?'Flat: tighten, the pitch goes up ↑':'Sharp: loosen, the pitch goes down ↓';
+  document.querySelectorAll('[data-tstr]').forEach(b=>{ const i=+b.dataset.tstr; b.classList.toggle('done',TU.done.has(i)); b.setAttribute('aria-pressed',String(i===TU.sel)); });
+}
+function renderTuner(){
+  const tn=tuning(), t=tunerState(), key=INST.id+tn.id;
+  if(TU.key!==key){ TU.key=key; TU.done=new Set(); tunerSelect(0); }
+  $('eyebrow').textContent=`Theory · Tuner · ${INST.name}`;
+  $('prompt').textContent=`${tn.name}: ${tn.pairs?'six pairs, one string at a time':tn.notes.map(x=>tuneName(x,tn.flat).replace(/\d+$/,'')).join(' ')}`;
+  $('dots').innerHTML=''; const sc=$('score'); sc.textContent=TU.on?'Listening':''; sc.classList.remove('timer'); sc.closest('.prompt-row').classList.remove('timed');
+  const order=tn.notes.map((x,i)=>i);
+  let h=`<div class="tuner">
+    <div class="library-controls"><label>Tuning<select id="tunerPreset">${TUNINGS[INST.id].map(x=>`<option value="${x.id}"${x.id===tn.id?' selected':''}>${x.name}</option>`).join('')}</select></label>
+      <label>Reference A<span class="tref"><button type="button" class="btn sm" data-tact="a4down" aria-label="Lower the reference">−</button><b>${t.a4} Hz</b><button type="button" class="btn sm" data-tact="a4up" aria-label="Raise the reference">+</button></span></label></div>
+    <div class="tstrings${tn.pairs?' pairs':''}" role="group" aria-label="String to tune">${order.map(i=>`<button type="button" class="tstr" data-tstr="${i}" aria-pressed="${i===TU.sel}"><small>${tuneLabel(tn,i)}</small><b>${tuneName(tn.notes[i],tn.flat)}</b></button>`).join('')}</div>
+    <svg id="tunerGauge" class="tgauge idle" viewBox="0 0 320 175" role="img" aria-label="Tuning needle">
+      <path class="tarc" d="M 24 150 A 136 136 0 0 1 296 150"/>
+      <path class="tzone" d="M ${(160-136*Math.sin(TUNE_OK*1.6*Math.PI/180)).toFixed(1)} ${(150-136*Math.cos(TUNE_OK*1.6*Math.PI/180)).toFixed(1)} A 136 136 0 0 1 ${(160+136*Math.sin(TUNE_OK*1.6*Math.PI/180)).toFixed(1)} ${(150-136*Math.cos(TUNE_OK*1.6*Math.PI/180)).toFixed(1)}"/>
+      ${[-50,-25,0,25,50].map(c=>{ const r=c*1.6*Math.PI/180, x=160+136*Math.sin(r), y=150-136*Math.cos(r), x2=160+124*Math.sin(r), y2=150-124*Math.cos(r); return `<line class="ttick" x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/><text class="tlab" x="${(160+112*Math.sin(r)).toFixed(1)}" y="${(150-112*Math.cos(r)+4).toFixed(1)}">${c>0?'+':''}${c}</text>`; }).join('')}
+      <g id="tunerNeedle"><line class="tneedle" x1="160" y1="150" x2="160" y2="22"/></g><circle class="thub" cx="160" cy="150" r="7"/>
+    </svg>
+    <div class="tread"><b id="tunerNote"></b><span id="tunerHz"></span><span id="tunerCents"></span><span id="tunerHint" class="thint"></span></div>
+    <div class="actions"><button type="button" class="btn ${TU.on?'':'primary '}big" data-tact="${TU.on?'stop':'start'}">${TU.on?'Stop':'Start listening'}</button><button type="button" class="btn" data-tact="ref">Play this string</button><span class="spacer"></span>${TU.done.size?`<button type="button" class="btn quiet sm" data-tact="reset">Start over</button>`:''}</div>
+    ${TU.msg?`<div class="feedback bad">${esc(TU.msg)}</div>`:''}
+    <div class="hint">Choose a string, play it on its own and let it ring; mute the others. Once it holds within ${TUNE_OK} cents it’s ticked off and the next one is chosen. ${tn.pairs?'On a 12-string, tune each string of a pair separately: the main one first, then its partner (′), an octave up on the four low pairs and the same note on the top two. A clip-on tuner is easier if both keep ringing. ':''}Works best in a quiet room, with the phone close to the instrument.</div></div>`;
+  $('answer').innerHTML=h; tunerDraw();
+}
+
+$('answer').addEventListener('click',e=>{
+  if(S.mode!=='tuner') return;
+  const sb=e.target.closest('[data-tstr]'); if(sb){ tunerSelect(+sb.dataset.tstr); tunerDraw(); return; }
+  const b=e.target.closest('[data-tact]'); if(!b) return; const a=b.dataset.tact, t=tunerState();
+  if(a==='start') tunerStart();
+  else if(a==='stop'){ tunerStop(); renderTuner(); }
+  else if(a==='ref') playRef(tuning().notes[TU.sel]);
+  else if(a==='reset'){ TU.done=new Set(); tunerSelect(0); renderTuner(); }
+  else if(a==='a4down'||a==='a4up'){ t.a4=Math.max(430,Math.min(450,t.a4+(a==='a4up'?1:-1))); save(); TU.hist=[]; renderTuner(); }
+});
+$('answer').addEventListener('change',e=>{ if(S.mode!=='tuner'||e.target.id!=='tunerPreset') return; tunerState()[INST.id]=e.target.value; save(); renderTuner(); });
 
 /* ---------- independent chord reference ---------- */
 let libraryCache=null, libraryIndex=0;
