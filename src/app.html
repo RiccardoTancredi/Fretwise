@@ -412,7 +412,8 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .tuner{display:flex;flex-direction:column;gap:14px}
 .tref{display:inline-flex;align-items:center;gap:8px}.tref b{font-family:var(--font-mono);min-width:64px;text-align:center;color:var(--ink)}
 .tstrings{display:grid;grid-template-columns:repeat(auto-fit,minmax(54px,1fr));gap:6px}
-.tstrings.pairs{grid-template-columns:repeat(6,minmax(0,1fr))}
+.tstrings.n6{grid-template-columns:repeat(6,minmax(0,1fr))} .tstrings.n4{grid-template-columns:repeat(4,minmax(0,1fr))} .tstrings.n10{grid-template-columns:repeat(10,minmax(0,1fr))}
+@media (max-width:560px){.tstrings.n6{grid-template-columns:repeat(3,minmax(0,1fr))} .tstrings.n10{grid-template-columns:repeat(5,minmax(0,1fr))}}
 .tstr{display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 2px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);min-width:0}
 .tstr small{font-family:var(--font-mono);font-size:.68rem;color:var(--muted)} .tstr b{font-family:var(--font-display);font-size:1.05rem}
 .tstr[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
@@ -3837,8 +3838,9 @@ const TUNINGS={
     {id:'whole',name:'A whole step down (D)',notes:[38,43,48,53,57,62]},
     {id:'openg',name:'Open G',notes:[38,43,50,55,59,62]},
     {id:'dadgad',name:'DADGAD',notes:[38,45,50,55,57,62]},
-    // twelve strings in six pairs: the four low pairs add a thin string an octave up, the top two a unison
-    {id:'twelve',name:'12-string (standard)',notes:[40,52,45,57,50,62,55,67,59,59,64,64],pairs:true}
+    // twelve strings in six pairs: the four low pairs add a thin string an octave up (numbered first, as on
+    // a 12-string), the top two pairs are unisons and so tuned to one note each
+    {id:'twelve',name:'12-string (standard)',notes:[40,52,45,57,50,62,55,67,59,64],labels:['12','11','10','9','8','7','6','5','3–4','1–2'],pairs:true}
   ],
   ukulele:[
     {id:'std',name:'Standard (high G)',notes:[67,60,64,69]},
@@ -3852,10 +3854,7 @@ function tunerState(){ const t=Object.assign({guitar:'std',ukulele:'std',a4:440,
 function tuning(){ const t=tunerState(), list=TUNINGS[INST.id]; return list.find(x=>x.id===t[INST.id])||list[0]; }
 const tuneHz=m=>tunerState().a4*Math.pow(2,(m-69)/12);
 const tuneName=(m,flat)=>(flat||S.acc==='flat'?FLAT:SHARP)[((m%12)+12)%12]+(Math.floor(m/12)-1);
-function tuneLabel(tn,i){
-  if(!tn.pairs) return `${tn.notes.length-i}`;
-  const course=6-Math.floor(i/2); return `${course}${i%2?'′':''}`;
-}
+const tuneLabel=(tn,i)=>tn.labels?tn.labels[i]:String(tn.notes.length-i);
 // pitch of the string being tuned, McLeod-style: the normalised square difference of the signal with
 // itself, searched only within half an octave either side of the chosen string. Knowing the string is
 // what makes it robust: an octave above or below (an overtone louder than the fundamental, as a phone
@@ -3908,7 +3907,7 @@ async function tunerStart(){
     an.fftSize=8192; src.connect(an);
     Object.assign(TU,{on:true,stream,ctx,an,buf:new Float32Array(an.fftSize),hist:[],peak:0,lastRms:0,onset:0,heard:0,okSince:0,shown:null,msg:''});
     if(ctx.state==='suspended') await ctx.resume();
-    TU.raf=setInterval(()=>tunerTick(performance.now()),45); renderTuner();
+    TU.raf=setInterval(()=>tunerTick(performance.now()),45); tunerWake(); renderTuner();
   }catch(e){
     TU.msg=e&&e.name==='NotAllowedError'?'Microphone access was refused. Allow it for this site in the browser’s settings, then press Start again.':'The microphone couldn’t be opened. Check that no other app is using it.';
     renderTuner();
@@ -3917,10 +3916,17 @@ async function tunerStart(){
 function tunerStop(){
   if(!TU.on) return;
   clearInterval(TU.raf); TU.on=false;
+  try{ if(TU.wake) TU.wake.release(); }catch(e){} TU.wake=null;
   try{ TU.stream.getTracks().forEach(t=>t.stop()); }catch(e){}
   try{ TU.ctx.close(); }catch(e){}
   TU.stream=TU.ctx=TU.an=null; TU.shown=null;
 }
+// the screen stays on while the tuner listens (where the browser allows it), so it doesn't go to sleep mid-tuning
+async function tunerWake(){
+  try{ if(TU.on&&!TU.wake&&navigator.wakeLock){ TU.wake=await navigator.wakeLock.request('screen'); TU.wake.addEventListener('release',()=>{ TU.wake=null; }); } }catch(e){ TU.wake=null; }
+}
+// the browser drops the lock when the app goes to the background; take it again on return
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) tunerWake(); });
 function tunerSelect(i){ TU.sel=i; TU.hist=[]; TU.shown=null; TU.okSince=0; TU.peak=0; }
 const tuneMedian=a=>{ const s=a.slice().sort((x,y)=>x-y); return s[s.length>>1]; };
 function tunerTick(now){
@@ -3992,13 +3998,13 @@ function renderTuner(){
   const tn=tuning(), t=tunerState(), key=INST.id+tn.id;
   if(TU.key!==key){ TU.key=key; TU.done=new Set(); tunerSelect(0); }
   $('eyebrow').textContent=`Theory · Tuner · ${INST.name}`;
-  $('prompt').textContent=`${tn.name}: ${tn.pairs?'six pairs, one string at a time':tn.notes.map(x=>tuneName(x,tn.flat).replace(/\d+$/,'')).join(' ')}`;
+  $('prompt').textContent=`${tn.name}: ${tn.pairs?'four octave pairs, then 1–2 and 3–4 in unison':tn.notes.map(x=>tuneName(x,tn.flat).replace(/\d+$/,'')).join(' ')}`;
   $('dots').innerHTML=''; const sc=$('score'); sc.textContent=TU.on?'Listening':''; sc.classList.remove('timer'); sc.closest('.prompt-row').classList.remove('timed');
   const order=tn.notes.map((x,i)=>i);
   let h=`<div class="tuner">
     <div class="library-controls"><label>Tuning<select id="tunerPreset">${TUNINGS[INST.id].map(x=>`<option value="${x.id}"${x.id===tn.id?' selected':''}>${x.name}</option>`).join('')}</select></label>
       <label>Reference A<span class="tref"><button type="button" class="btn sm" data-tact="a4down" aria-label="Lower the reference">−</button><b>${t.a4} Hz</b><button type="button" class="btn sm" data-tact="a4up" aria-label="Raise the reference">+</button></span></label></div>
-    <div class="tstrings${tn.pairs?' pairs':''}" role="group" aria-label="String to tune">${order.map(i=>`<button type="button" class="tstr" data-tstr="${i}" aria-pressed="${i===TU.sel}"><small>${tuneLabel(tn,i)}</small><b>${tuneName(tn.notes[i],tn.flat)}</b></button>`).join('')}</div>
+    <div class="tstrings n${tn.notes.length}" role="group" aria-label="String to tune">${order.map(i=>`<button type="button" class="tstr" data-tstr="${i}" aria-pressed="${i===TU.sel}"><small>${tuneLabel(tn,i)}</small><b>${tuneName(tn.notes[i],tn.flat)}</b></button>`).join('')}</div>
     <svg id="tunerGauge" class="tgauge idle" viewBox="0 0 320 175" role="img" aria-label="Tuning needle">
       <path class="tarc" d="M 24 150 A 136 136 0 0 1 296 150"/>
       <path class="tzone" d="M ${(160-136*Math.sin(TUNE_OK*1.6*Math.PI/180)).toFixed(1)} ${(150-136*Math.cos(TUNE_OK*1.6*Math.PI/180)).toFixed(1)} A 136 136 0 0 1 ${(160+136*Math.sin(TUNE_OK*1.6*Math.PI/180)).toFixed(1)} ${(150-136*Math.cos(TUNE_OK*1.6*Math.PI/180)).toFixed(1)}"/>
@@ -4009,7 +4015,7 @@ function renderTuner(){
     <div class="chips" role="group" aria-label="Choosing the string">${['auto','manual'].map(k=>`<button type="button" class="chip" data-tact="${k}" aria-pressed="${(k==='auto')===!!t.auto}">${k==='auto'?'Detect the string':'I choose the string'}</button>`).join('')}</div>
     <div class="actions"><button type="button" class="btn ${TU.on?'':'primary '}big" data-tact="${TU.on?'stop':'start'}">${TU.on?'Stop':'Start listening'}</button><button type="button" class="btn" data-tact="ref">Play this string</button><span class="spacer"></span>${TU.done.size?`<button type="button" class="btn quiet sm" data-tact="reset">Start over</button>`:''}</div>
     ${TU.msg?`<div class="feedback bad">${esc(TU.msg)}</div>`:''}
-    <div class="hint">${t.auto?`Play any string on its own and let it ring; the tuner finds which one it is. Once it holds within ${TUNE_OK} cents it’s ticked off. `:`Choose a string, play it on its own and let it ring; mute the others. Once it holds within ${TUNE_OK} cents it’s ticked off and the next one is chosen. `}“Play this string” pauses listening while it sounds. ${tn.pairs?'On a 12-string, tune each string of a pair separately: the main one first, then its partner (′), an octave up on the four low pairs and the same note on the top two. A clip-on tuner is easier if both keep ringing. ':''}Works best in a quiet room, with the phone close to the instrument.</div></div>`;
+    <div class="hint">${t.auto?`Play any string on its own and let it ring; the tuner finds which one it is. Once it holds within ${TUNE_OK} cents it’s ticked off. `:`Choose a string, play it on its own and let it ring; mute the others. Once it holds within ${TUNE_OK} cents it’s ticked off and the next one is chosen. `}“Play this string” pauses listening while it sounds. ${tn.pairs?'On a 12-string, tune each string on its own, muting its partner: on the four low pairs the thinner string (5, 7, 9, 11) is an octave above the other; strings 1–2 and 3–4 are the same note. A clip-on tuner is easier if both keep ringing. ':''}Works best in a quiet room, with the phone close to the instrument.</div></div>`;
   $('answer').innerHTML=h; tunerDraw();
 }
 
