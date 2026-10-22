@@ -627,6 +627,10 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
   <p class="hint">Read-only review · up to 100 recent exercises per section, on this device and for this account. Reviewing does not change scores or review schedules.</p>
 </dialog>
 
+<dialog id="chordExplorer" class="exercise-review" aria-labelledby="exploreTitle">
+  <div class="review-top"><div><div class="eyebrow">Chord explorer · edits do not change your exercise</div><h2 id="exploreTitle">Explore a shape</h2></div><button class="btn quiet sm" data-eact="close" type="button" aria-label="Close chord explorer">✕</button></div>
+  <div id="exploreBody" class="answer"></div>
+</dialog>
 <script src="https://cdn.jsdelivr.net/npm/chess.js@0.10.3/chess.js"></script>
 <script>
 (async function(){
@@ -779,6 +783,7 @@ function load(){
     ['mode','lastView','acc','naturalsOnly','allPc','ivMode','ivAll','intervals','scales','scaleRootPcs','scaleArea','scalePos','circle','library','roundLen','sound','chordShapes','inst'].forEach(k=>{ if(st[k]!=null) S[k]=st[k]; });
     // scales used to live under Intervals
     if(S.mode==='iv'&&S.ivMode==='scale'){ S.mode='scale'; S.ivMode='interval'; }
+    S.roundLen=validRoundLength(S.roundLen)||10;
     S.scales=S.scales.filter(id=>SCALES.some(x=>x.id===id)); if(!S.scales.length) S.scales=['maj'];
     if(st.rootBass) Object.assign(S.rootBass,st.rootBass);
     if(st.chordGroupsBy) Object.assign(S.chordGroupsBy,st.chordGroupsBy); else if(Array.isArray(st.chordGroups)) S.chordGroupsBy.guitar=st.chordGroups;
@@ -1310,6 +1315,10 @@ function cofPlayScale(){ const st=cofState(), base=48+st.tonicPc; playSeq(st.sc.
 
 /* ---------- chords ---------- */
 const rootBassOn=()=>!!S.rootBass[S.inst];
+const questionBass=q=>q&&q.practice?q.practice.bass:rootBassOn();
+const questionShapes=()=>Q&&Q.practice?Q.practice.shapes:S.chordShapes;
+const questionRange=()=>Q&&Q.practice?Q.practice.range:C();
+function capturePractice(q){ q.practice={mode:S.mode,range:JSON.parse(JSON.stringify(C())),bass:rootBassOn(),shapes:S.chordShapes}; return q; }
 const chordName=q=>q.ch.id==='maj'?q.rootName+' major':q.rootName+q.ch.sym;
 // spell chord tones by letter, so G♯ major is G♯ B♯ D♯ rather than G♯ C D♯
 const LETTERS=['C','D','E','F','G','A','B'], LETTER_PCS=[0,2,4,5,7,9,11];
@@ -1413,7 +1422,7 @@ function evalShape(q,fr){
   const fretted=notes.filter(n=>n.f>0).map(n=>n.f);
   const span=fretted.length?Math.max(...fretted)-Math.min(...fretted):0;
   const low=notes.slice().sort((a,b)=>a.midi-b.midi)[0];
-  const bassBad=!!(rootBassOn()&&low&&low.pc!==q.root);
+  const bassBad=!!(questionBass(q)&&low&&low.pc!==q.root);
   const need=Math.max(3,q.ch.t.filter(x=>x[2]).length+(q.ch.oneOf?1:0)), few=notes.length<need;
   return {notes,wrong,missing,missingColour,span,bassBad,few,need,low,ok:!wrong.length&&!missing.length&&!missingColour&&span<=4&&!bassBad&&!few};
 }
@@ -1435,12 +1444,12 @@ function checkChord(){
   }
   if(Q.found.some(f=>sameShape(f,fr))){ setFeedback('info','You already found that shape. Try a different one, for example higher up the neck.'); return; }
   Q.found.push(fr); Q.checked=null;
-  if(Q.found.length>=S.chordShapes){
+  if(Q.found.length>=questionShapes()){
     setFeedback(Q.mist?'bad':'good',`${Q.mist?'Done':'Correct'}: ${chordName(Q)} is ${chordSpelling(Q)}.${Q.mist?` ${Q.mist} ${Q.mist===1?'check was':'checks were'} off along the way.`:''}`);
     Q.show={src:'u',i:Q.found.length-1};
     finish(Q.mist===0,chordName(Q));
   }else{
-    setFeedback('good',`That works. Shape ${Q.found.length} of ${S.chordShapes} found. Now find a different one.`);
+    setFeedback('good',`That works. Shape ${Q.found.length} of ${questionShapes()} found. Now find a different one.`);
     Q.sel=new Map(); Q.show=null; render();
   }
 }
@@ -1469,28 +1478,59 @@ function miniChord(fr,root){
 const fretsText=fr=>fr.some(f=>f>9)?fr.map(f=>f<0?'x':f).join('-'):fr.map(f=>f<0?'x':f).join('');
 
 /* ---------- round flow ---------- */
-// The round in progress is kept per instrument and exercise, so leaving it (for another exercise, the
-// start page, or the app) and coming back carries on where you were. Changing a setting starts afresh.
+// Settings affect future questions; completed answers and the current draft stay with this mode.
 const ROUNDS_KEY='fretwise.rounds';
 const roundKey=()=>S.inst+':'+S.mode;
 function roundsAll(){ try{ return JSON.parse(LOCAL.getItem(ROUNDS_KEY)||'{}')||{}; }catch(e){ return {}; } }
-function storeRound(){ const a=roundsAll(); a[roundKey()]={results:round.results,n:S.roundLen,t:Date.now()}; try{ LOCAL.setItem(ROUNDS_KEY,JSON.stringify(a)); }catch(e){} }
+function questionReplacer(k,v){
+  const tag=Object.prototype.toString.call(v);
+  return tag==='[object Map]'?{fwCollection:'Map',values:[...v]}:tag==='[object Set]'?{fwCollection:'Set',values:[...v]}:v;
+}
+function questionReviver(k,v){ return v&&v.fwCollection==='Map'?new Map(v.values):v&&v.fwCollection==='Set'?new Set(v.values):v; }
+function storeRound(){
+  if(!round||(!Q&&phase!=='summary')||['circle','library'].includes(S.mode)||Q&&Q.practice&&Q.practice.mode!==S.mode) return;
+  const a=roundsAll(); a[roundKey()]={results:round.results,n:S.roundLen,counted:!!round.counted,t:Date.now(),phase,
+    feedback:$('feedback').textContent,feedbackClass:($('feedback').className.split(' ').find(c=>['good','bad','info'].includes(c))||''),
+    question:Q?JSON.stringify(Q,questionReplacer):null,elapsed:phase==='ask'?Math.max(0,performance.now()-qStart):Q&&Q.elapsed||0};
+  try{ LOCAL.setItem(ROUNDS_KEY,JSON.stringify(a)); }catch(e){}
+}
 function dropRound(){ const a=roundsAll(); if(!a[roundKey()]) return; delete a[roundKey()]; try{ LOCAL.setItem(ROUNDS_KEY,JSON.stringify(a)); }catch(e){} }
 function newRound(fresh){
   clearTimeout(advTimer); stopClock();
-  const saved=fresh?null:roundsAll()[roundKey()];
-  if(saved&&inClear(saved.t)) saved.results=[];
+  let saved=fresh?null:roundsAll()[roundKey()];
+  if(saved&&inClear(saved.t)) saved=null;
   if(fresh) dropRound();
-  round={results:saved&&saved.n===S.roundLen&&saved.results.length<S.roundLen?saved.results:[]};
+  round={results:saved&&Array.isArray(saved.results)?saved.results:[],counted:!!(saved&&saved.counted)}; Q=null;
   if(S.mode==='library'){ Q=null; phase='library'; setFeedback('',''); return render(); }
   if(S.mode==='circle'){ Q=null; phase='circle'; setFeedback('',''); return render(); }
+  if(saved&&saved.question){
+    try{
+      const q=JSON.parse(saved.question,questionReviver);
+      if(q&&q.practice&&q.practice.mode===S.mode){
+        Q=q;
+        if(S.mode!=='all'&&round.results.length>=S.roundLen) return showSummary();
+        if(saved.phase==='summary') return nextQuestion();
+        phase=saved.phase;
+        if(S.mode==='all'&&phase==='ask'){ Q.elapsed=saved.elapsed||0; phase='ready'; }
+        qStart=performance.now()-(saved.elapsed||0); setFeedback(saved.feedbackClass||'',saved.feedback||''); return render();
+      }
+    }catch(e){}
+  }
+  if(S.mode!=='all'&&round.results.length>=S.roundLen) return showSummary();
   if(S.mode==='all') return readyRun();
   nextQuestion();
+}
+function practiceSettingsChanged(){
+  clearTimeout(advTimer); save(); renderSettings();
+  if(!round||!Q||['library','circle'].includes(S.mode)){ render(); return; }
+  if(S.mode!=='all'&&round.results.length>=S.roundLen) return showSummary();
+  if(phase==='summary') return nextQuestion();
+  storeRound(); render();
 }
 function nextQuestion(){
   clearTimeout(advTimer);
   if(round.results.length>=S.roundLen){ return showSummary(); }
-  Q=makeQuestion(); phase='ask'; qStart=performance.now();
+  Q=capturePractice(makeQuestion()); phase='ask'; qStart=performance.now();
   setFeedback('','');
   render();
 }
@@ -1499,6 +1539,7 @@ function recordPos(s,f,ok,ms){
   st.n++; if(ok) st.c++; st.ms+=Math.min(ms,15000);
 }
 function finish(ok,label){
+  if(phase!=='ask') return;
   const ms=performance.now()-qStart, st=ST();
   phase='answered';
   round.results.push({ok,ms,label}); storeRound();
@@ -1510,21 +1551,22 @@ function finish(ok,label){
   if(ok&&(Q.type==='name'||Q.type==='findS')) advTimer=setTimeout(nextQuestion,1100);
 }
 function showSummary(){
-  phase='summary'; dropRound();
+  phase='summary';
   const n=round.results.length, c=round.results.filter(r=>r.ok).length, st=ST();
-  st.rounds++; if(!st.best||c/n>st.best.c/st.best.n) st.best={c,n};
-  save(); render();
+  if(!round.counted){ st.rounds++; round.counted=true; }
+  if(!st.best||c/n>st.best.c/st.best.n) st.best={c,n};
+  storeRound(); save(); render();
 }
 
 /* ---------- All positions: one timed run per note, kept in a history ---------- */
 let clock=null;
 function stopClock(){ if(clock){ clearInterval(clock); clock=null; } }
-function readyRun(){ stopClock(); Q=makeQuestion(); phase='ready'; setFeedback('',''); render(); }
+function readyRun(){ stopClock(); Q=capturePractice(makeQuestion()); phase='ready'; setFeedback('',''); render(); }
 function startRun(){
   if(S.mode!=='all'||phase!=='ready') return;
   if(!Q.targets.length){ setFeedback('info','This note is not on the selected strings and frets. Widen the range in the settings.'); return; }
   ensureAudio();
-  phase='ask'; qStart=performance.now(); render();
+  phase='ask'; qStart=performance.now()-(Q.elapsed||0); Q.elapsed=0; render();
   clock=setInterval(()=>{ const el=$('score'); if(el) el.textContent=((performance.now()-qStart)/1000).toFixed(1)+' s'; },100);
 }
 function finishRun(ok,gaveUp){
@@ -1552,7 +1594,7 @@ let runs=[], runsDoc=null, runsSynced=false, resetAt={guitar:0,ukulele:0}, writi
 // resetAt may be a number in older saves: it then applied to every instrument
 const normReset=x=>typeof x==='number'?{guitar:x,ukulele:x}:Object.assign({guitar:0,ukulele:0},x||{});
 const RUNS_KEY=STORE+'.runs';
-const cfgKey=()=>`${C().fretStart}-${C().fretEnd}|${C().strings.map(b=>b?1:0).join('')}`;
+const cfgKey=()=>{ const c=questionRange(); return `${c.fretStart}-${c.fretEnd}|${c.strings.map(b=>b?1:0).join('')}`; };
 const runsFor=(pc,cfg)=>runs.filter(r=>(r.inst||'guitar')===S.inst&&r.pc===pc&&r.cfg===cfg);
 function loadLocalRuns(){
   try{ const d=JSON.parse(LOCAL.getItem(RUNS_KEY)||'null'); if(d&&Array.isArray(d.runs)){ runs=d.runs.filter(r=>!inClear(r.t)); resetAt=normReset(d.resetAt); if(runs.length!==d.runs.length) saveLocalRuns(); } }catch(e){}
@@ -1616,7 +1658,7 @@ function timesTable(){
     return `<tr data-note="${pc}" class="${pc===S.allPc?'sel':''}" tabindex="0" aria-selected="${pc===S.allPc}">
       <th scope="row"><span class="nt">${note(pc)}</span></th><td>${fmtS(best)}</td><td>${lastTxt}</td><td>${rs.length||'–'}</td><td>${spark(sv)}</td></tr>`;
   }).join('');
-  const c=C();
+  const c=questionRange();
   const rangeTxt=`${INST.name} · frets ${c.fretStart===0?'open':c.fretStart}–${c.fretEnd}, ${c.strings.every(Boolean)?'all strings':c.strings.map((b,i)=>b?STRINGS[i].short:'').join('')}`;
   return `<div class="times"><div class="times-head"><span class="eyebrow">Your times · ${rangeTxt}</span><span class="hint">${runsSynced?'Saved to your account':'Saved in this browser'}</span></div>
     <div class="tscroll"><table><thead><tr><th scope="col">Note</th><th scope="col">Best</th><th scope="col">Last</th><th scope="col">Runs</th><th scope="col">Trend</th></tr></thead><tbody>${rows}</tbody></table></div>
@@ -1625,6 +1667,7 @@ function timesTable(){
 
 /* ---------- interactions ---------- */
 function onCell(s,f){
+  if(phase==='answered'&&Q&&Q.type==='chord'){ openChordExplorer(S.inst,Q,shownFrets()||selToFrets(Q.sel),[questionRange().fretStart,questionRange().fretEnd]); exploreCell(s,f); return; }
   if(phase!=='ask'||!Q) return;
   const pc=pcOf(s,f), m=midiOf(s,f);
   if(Q.type==='findS'){
@@ -1795,7 +1838,7 @@ function renderBoard(){
   const maxLen=Math.max(360,Math.min(660,window.innerHeight*0.58));
   let muted=null;
   if(Q&&Q.type==='chord'&&phase!=='summary'){ const fr=shownFrets()||selToFrets(Q.sel); muted=fr.map(f=>f<0); }
-  drawBoard($('board'),{width:W,vertical,start:C().fretStart,end:C().fretEnd,markers:markers(),
+  drawBoard($('board'),{width:W,vertical,start:questionRange().fretStart,end:questionRange().fretEnd,markers:markers(),
     hl:Q&&phase==='ask'&&Q.type==='findS'?Q.s:null, win:Q&&Q.type==='scale'&&phase!=='summary'?Q.win:null,
     links:Q&&(Q.type==='findA'||Q.type==='ivA')&&phase==='answered'?octaveLinks(Q.targets):null, muted,
     interactive:true,maxLen,gid:'wood'});
@@ -1815,7 +1858,7 @@ function renderPrompt(){
     eb=phase==='ready'?`All positions · ${Q.targets.length} to find`:`All positions · ${Q.found.size} of ${Q.targets.length} found`;
     pr=`Find every ${note(Q.pc)}`;
   }
-  else if(Q.type==='chord'){ eb=`Chords · ${Q.ch.name} · shape ${Math.min(Q.found.length+1,S.chordShapes)} of ${S.chordShapes}`; pr=`Build ${chordName(Q)}`; }
+  else if(Q.type==='chord'){ eb=`Chords · ${Q.ch.name} · shape ${Math.min(Q.found.length+1,questionShapes())} of ${questionShapes()}`; pr=`Build ${chordName(Q)}`; }
   else if(Q.type==='ivA'){ eb=`Intervals · every position · ${Q.found.size} of ${Q.targets.length} found`; pr=`Find every ${Q.iv.name} of ${rootNm(Q)}`; }
   else if(Q.type==='iv'){ eb='Intervals · root '+where(Q.root.s,Q.root.f); pr=`Find the ${Q.iv.name} of ${rootNm(Q)}`; }
   else if(Q.type==='scale'){ eb=Q.neck?`Scales · whole neck, frets ${Q.win[0]}–${Q.win[1]}`:Q.pattern?`Scales · 3 notes per string from the ${ord(Q.pos)} note, frets ${Q.win[0]}–${Q.win[1]}`:Q.pos?`Scales · position ${Q.pos}, frets ${Q.win[0]}–${Q.win[1]}`:`Scales · random position, frets ${Q.win[0]}–${Q.win[1]}, root on the ${strName(Q.root.s)}`; pr=`Mark every note of ${rootNm(Q)} ${Q.scale.name}`; }
@@ -1830,13 +1873,14 @@ function renderPrompt(){
   }
   sc.classList.remove('timer'); row.classList.remove('timed');
   let d='';
-  for(let i=0;i<S.roundLen;i++){
+  const total=Math.max(S.roundLen,round.results.length);
+  for(let i=0;i<total;i++){
     const r=round.results[i];
     d+=`<span class="dot ${r?(r.ok?'ok':'no'):(i===round.results.length&&phase==='ask'?'cur':'')}"></span>`;
   }
   $('dots').innerHTML=d;
   const c=round.results.filter(r=>r.ok).length;
-  sc.textContent=`${c} correct · ${Math.min(round.results.length+(phase==='ask'?1:0),S.roundLen)} of ${S.roundLen}`;
+  sc.textContent=`${c} correct · ${Math.min(round.results.length+(phase==='ask'?1:0),total)} of ${total}`;
 }
 function summaryHeadline(){
   const n=round.results.length, c=round.results.filter(r=>r.ok).length;
@@ -1851,6 +1895,7 @@ function minis(list,src){
   }).join('')}</div>`;
 }
 function renderAnswer(){
+  storeRound();
   const el=$('answer'); let h='';
   if(phase==='summary'){
     const rs=round.results, c=rs.filter(r=>r.ok).length;
@@ -1866,7 +1911,7 @@ function renderAnswer(){
   if(S.mode==='all'){
     const nx=LEARN_ORDER[(LEARN_ORDER.indexOf(Q.pc)+1)%12];
     if(phase==='ready'){
-      h+=`<div class="actions"><button class="btn primary big" data-act="start">Start ${note(Q.pc)}</button><span class="hint">The clock starts when you press Start${matchMedia('(hover:hover)').matches?' or <kbd>Enter</kbd>':''}.</span></div>`;
+      h+=`<div class="actions"><button class="btn primary big" data-act="start">${Q.elapsed?'Resume':'Start'} ${note(Q.pc)}</button><span class="hint">The clock starts when you press Start${matchMedia('(hover:hover)').matches?' or <kbd>Enter</kbd>':''}.</span></div>`;
     }else if(phase==='ask'){
       h+=`<div class="actions"><span class="counter">${Q.found.size} / ${Q.targets.length} found</span><span class="spacer"></span><button class="btn quiet" data-act="giveup">Show the rest</button></div>`;
     }else{
@@ -1881,11 +1926,11 @@ function renderAnswer(){
     if(phase==='ask'){
       if(Q.show) h+=`<div class="actions"><span class="counter">Saved shape preview</span><span class="spacer"></span><button class="btn quiet" data-act="clear">Clear</button><button class="btn primary" data-act="resumechord">Continue building</button></div><div class="hint">This is a preview. Continue building, or tap the neck to edit your own next shape.</div>`;
       else h+=`<div class="actions"><span class="counter">${Q.sel.size} ${Q.sel.size===1?'string':'strings'} placed</span><span class="spacer"></span><button class="btn quiet" data-act="giveup">Show shapes</button><button class="btn quiet" data-act="clear">Clear</button><button class="btn primary" data-act="check">Check</button></div>`;
-      h+=`<div class="hint">Tap one note per string; tap it again to remove it. Strings left empty are muted. ${rootBassOn()?'The lowest note must be the root.':'Inversions are allowed.'}</div>`;
+      h+=`<div class="hint">Tap one note per string; tap it again to remove it. Strings left empty are muted. ${questionBass(Q)?'The lowest note must be the root.':'Inversions are allowed.'}</div>`;
     }else{
       const o=otherShapes();
       if(o.length) h+=`<div class="shapes"><div class="eyebrow">Other ways to play ${chordName(Q)}</div>${minis(o,'g')}<div class="hint">Blue dots are the root. Tap a shape to see it on the neck and hear it.</div></div>`;
-      h+=`<div class="actions"><button class="btn" data-act="replay">Strum it</button><span class="spacer"></span><button class="btn primary" data-act="next">Next chord</button></div>`;
+      h+=`<div class="actions"><button class="btn" data-act="replay">Strum it</button><button class="btn" data-act="explorechord">Explore this shape</button><span class="spacer"></span><button class="btn primary" data-act="next">Next chord</button></div>`;
     }
     h+=`<details class="chord-help"><summary>Notes and omissions in ${chordName(Q)}</summary>${chordGuide(Q)}</details>`;
     el.innerHTML=h; return;
@@ -1939,6 +1984,7 @@ function renderHome(){
   renderToday();
 }
 function showHome(){
+  if(view==='app') storeRound();
   view='home'; stopClock(); clearTimeout(advTimer); clearTimeout(cTimer);
   $('home').hidden=false; $('main').hidden=true; $('modes').hidden=true; $('instBtn').hidden=true; $('chessMain').hidden=true; $('chessModes').hidden=true; $('wordsMain').hidden=true; $('paintMain').hidden=true;
   renderHome();
@@ -1954,6 +2000,7 @@ function subPush(){ try{ history.pushState({fwSection:1,sub:((history.state&&his
 function navBack(close){ if(history.state&&history.state.sub) history.back(); else close(); }
 window.addEventListener('popstate',()=>{
   if(goingHome){ goingHome=false; if(view!=='home') showHome(); return; }
+  if(explorer){ closeChordExplorer(); return; }
   if(review){ closeReview(); return; }
   if(view==='home') return;
   if(closeLightbox()) return;
@@ -1994,6 +2041,7 @@ $('instBtn').addEventListener('click',goHome);
 function chip(act,val,on,label,mono){ return `<button type="button" class="chip${mono?' mono':''}" data-act="${act}" data-v="${val}" aria-pressed="${on}">${label}</button>`; }
 function renderSettings(){
   let h=''; const c=C();
+  if(!['circle','library'].includes(S.mode)) h+='<p class="hint">Settings apply to your next question. Completed answers and this question’s draft are kept. Round length updates this round without removing answers.</p>';
   if(S.mode==='library'){ $('settings').innerHTML='<p class="hint">Choose a root and chord in All Chords. Its fret range and bass setting are independent of your exercises.</p>'+`<div class="field"><span class="fl">Sound</span><div class="chips">${chip('sound','1',S.sound,'Plucked string')}${chip('sound','0',!S.sound,'Off')}</div></div>`; return; }
   if(S.mode==='iv'){
     h+=`<div class="field"><span class="fl">Intervals to practise</span><div class="chips">${INTERVALS.map(i=>chip('iv',i.id,S.intervals.indexOf(i.id)>=0,i.id==='P8'?'Octave':i.id,true)).join('')}</div><div class="hint">m = minor, M = major, P = perfect, TT = tritone.</div></div>`+
@@ -2035,18 +2083,21 @@ function renderSettings(){
   if(S.mode==='name'||S.mode==='find'||S.mode==='chord') h+=`<div class="field"><span class="fl">${S.mode==='chord'?'Roots':'Notes'}</span><div class="chips">${chip('nat','0',!S.naturalsOnly,'All 12')}${chip('nat','1',S.naturalsOnly,'Naturals only')}</div></div>`;
   if(S.mode==='chord') h+='<div class="hint">Note names follow the chord’s spelling automatically: an E♭ chord uses E♭, not D♯. Degrees such as ♭7 describe intervals from the root.</div>';
   else h+=`<div class="field"><span class="fl">Accidentals</span><div class="chips">${chip('acc','sharp',S.acc==='sharp','Sharps (C♯)')}${chip('acc','flat',S.acc==='flat','Flats (D♭)')}</div></div>`;
-  if(S.mode!=='all') h+=`<div class="field"><span class="fl">Questions per round</span><div class="chips">${[5,10,20].map(n=>chip('round',n,S.roundLen===n,String(n),true)).join('')}</div></div>`;
+  if(S.mode!=='all') h+=`<div class="field"><span class="fl">Questions per round</span><div class="chips">${[1,5,10,20].map(n=>chip('round',n,S.roundLen===n,String(n),true)).join('')}<label class="goalin" for="roundLength">or<input id="roundLength" type="number" min="1" max="100" step="1" inputmode="numeric" value="${S.roundLen}" aria-label="Questions per round"></label><button type="button" class="btn quiet sm" data-act="roundcustom">Set</button></div><div class="hint">Choose any whole number from 1 to 100. Press Set or Enter to apply.</div></div>`;
   h+=`<div class="field"><span class="fl">Sound</span><div class="chips">${chip('sound','1',S.sound,'Plucked string')}${chip('sound','0',!S.sound,'Off')}</div></div>`;
   $('settings').innerHTML=h;
 }
+function validRoundLength(value){ const n=Number(value); return Number.isInteger(n)&&n>=1&&n<=100?n:null; }
+function applyRoundLengthInput(){ const input=$('roundLength'),n=validRoundLength(input.value); if(n==null){ input.value=String(S.roundLen); return; } S.roundLen=n; practiceSettingsChanged(); }
 function toggleIn(arr,v){ const i=arr.indexOf(v); if(i>=0){ if(arr.length>1) arr.splice(i,1); } else arr.push(v); }
 $('settings').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]'); if(!b) return;
-  const a=b.dataset.act, v=b.dataset.v, c=C(); let restart=true;
+  const a=b.dataset.act, v=b.dataset.v, c=C();
   if(a==='string'){ const s=+v; if(c.strings[s]&&c.strings.filter(Boolean).length===1) return; c.strings[s]=!c.strings[s]; }
-  else if(a==='acc'){ S.acc=v; restart=false; }
+  else if(a==='acc'){ S.acc=v; }
   else if(a==='round'){ S.roundLen=+v; }
-  else if(a==='sound'){ S.sound=v==='1'; restart=false; if(S.sound){ ensureAudio(); play(STRINGS[1].midi); } }
+  else if(a==='roundcustom'){ applyRoundLengthInput(); return; }
+  else if(a==='sound'){ S.sound=v==='1'; if(S.sound){ ensureAudio(); play(STRINGS[1].midi); } }
   else if(a==='nat'){ S.naturalsOnly=v==='1'; }
   else if(a==='ivall'){ S.ivAll=v==='1'; }
   else if(a==='iv'){ toggleIn(S.intervals,v); }
@@ -2061,16 +2112,18 @@ $('settings').addEventListener('click',e=>{
   else if(a==='cshapes'){ S.chordShapes=+v; }
   else if(a==='cbass'){ S.rootBass[S.inst]=v==='1'; }
   else if(a==='preset'){ const p=v.split('-').map(Number); c.fretStart=p[0]; c.fretEnd=p[1]; }
-  save(); renderSettings();
-  if(restart) newRound(true); else render();
+  practiceSettingsChanged();
 });
 $('settings').addEventListener('change',e=>{
   const c=C();
-  if(e.target.id==='fromFret'){ c.fretStart=+e.target.value; if(c.fretEnd<c.fretStart+3) c.fretEnd=Math.min(15,c.fretStart+3); }
+  if(e.target.id==='roundLength'){ const n=validRoundLength(e.target.value); if(n==null){ e.target.value=String(S.roundLen); return; } S.roundLen=n; }
+  else if(e.target.id==='fromFret'){ c.fretStart=+e.target.value; if(c.fretEnd<c.fretStart+3) c.fretEnd=Math.min(15,c.fretStart+3); }
   else if(e.target.id==='toFret'){ c.fretEnd=+e.target.value; }
   else return;
-  save(); renderSettings(); newRound(true);
+  practiceSettingsChanged();
 });
+
+$('settings').addEventListener('keydown',e=>{ if(e.target.id==='roundLength'&&e.key==='Enter'){ e.preventDefault(); applyRoundLengthInput(); } });
 
 /* ---------- wiring ---------- */
 // circle of fifths: tap a key, a chord, or the controls under the circle
@@ -2102,7 +2155,7 @@ $('answer').addEventListener('change',e=>{
 });
 $('modes').addEventListener('click',e=>{
   const b=e.target.closest('[data-mode]'); if(!b||b.dataset.mode===S.mode) return;
-  S.mode=b.dataset.mode; save(); renderSettings(); newRound();
+  storeRound(); S.mode=b.dataset.mode; save(); renderSettings(); newRound();
 });
 $('board').addEventListener('click',e=>{
   const t=e.target.closest('.hit'); if(!t) return;
@@ -2124,13 +2177,14 @@ $('answer').addEventListener('click',e=>{
   else if(a==='again') readyRun();
   else if(a==='nextnote'){ S.allPc=+b.dataset.v; save(); readyRun(); }
   else if(a==='giveup') giveUp();
-  else if(a==='toneck'){ S.scaleArea='neck'; save(); renderSettings(); newRound(true); }
+  else if(a==='toneck'){ S.scaleArea='neck'; practiceSettingsChanged(); }
   else if(a==='check'){ if(Q.type==='chord') checkChord(); else checkScale(); }
   else if(a==='clear'){
     if(Q.type==='chord'){ Q.sel=new Map(); Q.checked=null; Q.show=null; setFeedback('',''); }
     else Q.selected=new Set([key(Q.root.s,Q.root.f)]);
     render();
   }
+  else if(a==='explorechord') openChordExplorer(S.inst,Q,shownFrets()||selToFrets(Q.sel),[questionRange().fretStart,questionRange().fretEnd]);
   else if(a==='resumechord'){ Q.show=null; Q.checked=null; render(); }
   else if(a==='replay') replay();
 });
@@ -2619,6 +2673,7 @@ function coordBoard(){ B.game=EMPTY_BOARD; B.orient=CR.side; B.canMove=false; B.
 function openCoords(){ clearInterval(CR.timer); CR.phase='ready'; CR.side=CS.coord.side==='random'?(Math.random()<.5?'w':'b'):CS.coord.side; CR.dur=CS.coord.dur; B.flash=null; B.overlay=null; coordBoard(); cFeedback('',''); renderChess(); }
 function coordNext(){ let t; do{ t=FILES[Math.floor(Math.random()*8)]+(1+Math.floor(Math.random()*8)); }while(t===CR.target); CR.target=t; B.overlay=t; }
 function coordStart(){
+  CR.dur=CS.coord.dur; CR.side=CS.coord.side==='random'?(Math.random()<.5?'w':'b'):CS.coord.side; coordBoard();
   ensureAudio(); CR.phase='run'; CR.score=0; CR.wrong=0; CR.log=[]; CR.end=performance.now()+CR.dur*1000; B.flash=null; coordNext(); cFeedback('',''); renderChess();
   clearInterval(CR.timer); CR.timer=setInterval(()=>{ if(view!=='chess'||CS.tab!=='coords'){ clearInterval(CR.timer); return; }
     if(performance.now()>=CR.end) return coordDone(); const el=$('cscore'); if(el) el.innerHTML=coordScore(); },100);
@@ -2759,12 +2814,12 @@ $('chessModes').addEventListener('click',e=>{ const b=e.target.closest('[data-ct
 $('csettings').addEventListener('click',e=>{
   const b=e.target.closest('[data-cset]'); if(!b) return;
   const k=b.dataset.cset, v=b.dataset.v;
-  if(k==='theme'){ CS.theme=v; storeChess(); renderChessSide(); newPuzzle(); }
-  else if(k==='diff'){ CS.diff=+v; storeChess(); renderChessSide(); newPuzzle(); }
-  else if(k==='side'){ CS.side=v; storeChess(); renderChessSide(); openingsList(); }
+  if(k==='theme'){ CS.theme=v; storeChess(); renderChessSide(); if(!PZ) newPuzzle(); }
+  else if(k==='diff'){ CS.diff=+v; storeChess(); renderChessSide(); if(!PZ) newPuzzle(); }
+  else if(k==='side'){ CS.side=v; storeChess(); renderChessSide(); if(OP.view==='list') openingsList(); }
   else if(k==='sound'){ S.sound=v==='1'; save(); renderChessSide(); }
-  else if(k==='cdur'){ CS.coord.dur=+v; storeChess(); renderChessSide(); openCoords(); }
-  else if(k==='cside'){ CS.coord.side=v; storeChess(); renderChessSide(); openCoords(); }
+  else if(k==='cdur'){ CS.coord.dur=+v; storeChess(); renderChessSide(); if(CR.phase!=='run') openCoords(); }
+  else if(k==='cside'){ CS.coord.side=v; storeChess(); renderChessSide(); if(CR.phase!=='run') openCoords(); }
 });
 $('canswer').addEventListener('click',e=>{
   const fb=e.target.closest('[data-fam]'); if(fb){ OP.fam=+fb.dataset.fam; CS.fam=OP.fam; storeChess(); openingsList(); return; }
@@ -3043,6 +3098,7 @@ function answerQuiz(optId){
   q.pick=optId; const ok=optId===q.id;
   if(!ok){ WSN.mistakes++; if(WSN.mode!=='learn'&&!WSN.requeued.has(q.id)){ WSN.requeued.add(q.id); WSN.queue.push(q.id); } }
   if(WSN.results[q.id]==null) WSN.results[q.id]=ok;
+  commitWordAnswer(q.id);
   rememberExercise('words',{kind:'word',title:'Word quiz',ok,lang:sesLang(WSN,q.id),wordId:q.id,pickId:optId,pickLang:sesLang(WSN,q.id),dir:q.dir});
   renderWords();
 }
@@ -3051,21 +3107,22 @@ function nextQuiz(){
   if(WSN.qi>=WSN.queue.length) return finishSession();
   nextQuizQ(); renderWords();
 }
-function finishSession(){
-  const p=WP.p[WSN.lang], now=Date.now(), today=startOfDay(now);
-  if(WSN.mode==='learn'){
-    WSN.ids.forEach(id=>{ const ok=WSN.results[id]; p[id]={b:ok?1:0,due:ok?today+SRS_DAYS[1]*DAY:now,n:1,ok:ok?1:0,r:ok?1:0,last:now,learned:now}; });
-  }else if(WSN.mode==='review'){
-    WSN.ids.forEach(id=>{ const v=Object.assign({b:1,n:0,ok:0},p[id]), ok=WSN.results[id];
-      v.n++; v.last=now; v.r=ok?1:0;
-      if(ok){ v.ok++; v.b=Math.min(SRS_DAYS.length-1,(v.b||0)+1); v.due=today+SRS_DAYS[v.b]*DAY; }
-      else { v.b=1; v.due=today+DAY; }
-      p[id]=v; });
+function commitWordAnswer(id){
+  if(!WSN||WSN.results[id]==null) return;
+  const graded=WSN.graded||(WSN.graded=[]); if(graded.includes(id)) return;
+  const lang=sesLang(WSN,id), p=WP.p[lang], now=Date.now(), today=startOfDay(now), ok=WSN.results[id];
+  if(WSN.mode==='learn') p[id]={b:ok?1:0,due:ok?today+SRS_DAYS[1]*DAY:now,n:1,ok:ok?1:0,r:ok?1:0,last:now,learned:now};
+  else if(WSN.mode==='review'){
+    const v=Object.assign({b:1,n:0,ok:0},p[id]); v.n++; v.last=now; v.r=ok?1:0;
+    if(ok){ v.ok++; v.b=Math.min(SRS_DAYS.length-1,(v.b||0)+1); v.due=today+SRS_DAYS[v.b]*DAY; }
+    else{ v.b=1; v.due=today+DAY; } p[id]=v;
   }
-  // the day's log, practice included: it doesn't move the review schedule, but you did see the words
-  const dl=WP.days[romeDay(now)]||(WP.days[romeDay(now)]={});
-  WSN.ids.forEach(id=>{ const lg=sesLang(WSN,id), ll=dl[lg]||(dl[lg]={}); ll[id]={ok:WSN.results[id]?1:0,m:WSN.mode,t:now}; });
-  wSaveProgress(); bump('words',WSN.ids.length);
+  const dl=WP.days[romeDay(now)]||(WP.days[romeDay(now)]={}), ll=dl[lang]||(dl[lang]={});
+  ll[id]={ok:ok?1:0,m:WSN.mode,t:now}; graded.push(id); wSaveProgress(); bump('words');
+}
+function finishSession(){
+  if(!WSN||WSN.phase==='done') return;
+  Object.keys(WSN.results).forEach(commitWordAnswer);
   WSN.phase='done'; renderWords();
 }
 function tapMatch(side,id){
@@ -3205,7 +3262,7 @@ function renderWordsSide(){
   h+=`<div class="field"><span class="fl">Which new words first</span><div class="chips">${[['new','Newest'],['old','Oldest'],['rnd','Random']].map(o=>`<button type="button" class="chip" data-wset="order" data-v="${o[0]}" aria-pressed="${WS.order===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
   h+=`<div class="field"><span class="fl">Review questions</span><div class="chips">${[['mix','Mixed'],['w2d','Word → meaning'],['d2w','Meaning → word']].map(o=>`<button type="button" class="chip" data-wset="dir" data-v="${o[0]}" aria-pressed="${WS.dir===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
   h+=`<div class="field"><span class="fl">Reviews per session</span><div class="chips">${[10,20,40].map(n=>`<button type="button" class="chip mono" data-wset="reviewMax" data-v="${n}" aria-pressed="${WS.reviewMax===n}">${n}</button>`).join('')}</div></div>`;
-  h+=`<div class="field"><span class="fl">Daily goal</span><div class="chips">${[1,5,10,20].map(n=>`<button type="button" class="chip mono" data-wgoal="${n}" aria-pressed="${goalFor('words')===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="50" inputmode="numeric" data-wgoalin value="${[1,5,10,20].indexOf(goalFor('words'))<0?goalFor('words'):''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">Words to go through each day before Words turns green on the start page, and how many each Learn, Practise or Mix session takes.</div></div>`;
+  h+=`<div class="field"><span class="fl">Daily goal</span><div class="chips">${[1,5,10,20].map(n=>`<button type="button" class="chip mono" data-wgoal="${n}" aria-pressed="${goalFor('words')===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="50" inputmode="numeric" data-wgoalin value="${[1,5,10,20].indexOf(goalFor('words'))<0?goalFor('words'):''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">Daily target and size of new Learn, Practise or Mix sessions. Changing it keeps the active session and every completed answer.</div></div>`;
   $('wsettings').innerHTML=h;
   const st=langStats(WS.lang), L=LANGS.find(l=>l.id===WS.lang);
   $('wstatsSide').innerHTML=`<h2>${L.name}</h2><div class="hint">A learned word comes back the next day. Each right answer waits a little longer (1, 1, 2, 3, 5, 8 days…); a wrong one starts again from tomorrow. A word counts as mastered after four right reviews in a row.</div><div class="totals">${WD[WS.lang]?`${st.total} words with a definition · ${st.learning} learning · ${st.mastered} mastered · ${learnedToday(WS.lang)}${WS.daily?' of '+WS.daily:''} new today`:'Not loaded yet.'}</div><div class="hint" style="margin-top:6px">${wordsSynced?'Progress saved to your account':'Progress saved in this browser'}. ${WSRC?'The words come from your private account, synced from Notion.':'The words themselves stay in your Notion.'}</div>`;
@@ -3548,7 +3605,7 @@ function answerPaint(k){
 function nextPaint(){
   PSN.i++;
   if(PSN.i>=PSN.items.length){ PSN.phase='done'; const n=PSN.items.filter(o=>o.pick>=0).length; if(n){ PS.hist.push({t:Date.now(),n,ok:PSN.right}); pSave(); } }
-  else preloadP(PSN.i+1);
+  else{ const it=PSN.items[PSN.i]; if(PS.kinds.some(k=>pCanAsk(it.x,k))){ it.kind=pKindFor(it.x); it.opts=paintOptions(it.x,it.kind); } preloadP(PSN.i+1); }
   pStoreSession(); renderPaint();
 }
 function restorePaint(){
@@ -3680,7 +3737,7 @@ function renderPaintSide(){
   let h='';
   h+=`<div class="field"><span class="fl">Questions</span><div class="chips">${[['artist','Who painted it?'],['title','What is it called?'],['movement','Which movement?'],['museum','Where does it hang?']].map(o=>`<button type="button" class="chip" data-pkind="${o[0]}" aria-pressed="${PS.kinds.indexOf(o[0])>=0}">${o[1]}</button>`).join('')}</div><div class="hint">Tick one or more. They take turns: each time a work comes back it asks the next one. Movement and museum only come up for works where the facts are known (about six in ten have a movement).</div></div>`;
   h+=`<div class="field"><span class="fl">Works</span><div class="chips">${FAME.map(o=>`<button type="button" class="chip" data-pset="fame" data-v="${o[0]}" aria-pressed="${PS.fame===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
-  h+=`<div class="field"><span class="fl">Daily goal</span><div class="chips">${[1,5,10,20].map(n=>`<button type="button" class="chip mono" data-pgoal="${n}" aria-pressed="${goalFor('paintings')===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="50" inputmode="numeric" data-pgoalin value="${[1,5,10,20].indexOf(goalFor('paintings'))<0?goalFor('paintings'):''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">Paintings to answer each day before Paintings turns green on the start page, and how many each round asks.</div></div>`;
+  h+=`<div class="field"><span class="fl">Daily goal</span><div class="chips">${[1,5,10,20].map(n=>`<button type="button" class="chip mono" data-pgoal="${n}" aria-pressed="${goalFor('paintings')===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="50" inputmode="numeric" data-pgoalin value="${[1,5,10,20].indexOf(goalFor('paintings'))<0?goalFor('paintings'):''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">Daily target and size of new rounds. Changing it keeps the active round and every completed answer.</div></div>`;
   $('psettings').innerHTML=h;
   const last=PS.hist.slice(-20), tot=last.reduce((a,x)=>a+x.n,0), ok=last.reduce((a,x)=>a+x.ok,0);
   $('pstats').innerHTML=`<h2>Your gallery</h2><div class="hint">“Famous” works are covered by many Wikipedias, “deep cuts” by only a few: often lesser-known pieces by great painters.</div><div class="totals">${PDATA?`${Object.keys(PS.p).length} of ${PDATA.length} works seen`:''}${tot?` · ${Math.round(100*ok/tot)}% right in your last ${last.length} ${last.length===1?'round':'rounds'}`:''}</div>`;
@@ -3759,12 +3816,12 @@ function libraryData(){
   libraryIndex=Math.max(0,Math.min(libraryIndex,libraryCache.shapes.length-1));
   return {c,q,shapes:libraryCache.shapes};
 }
-function referenceBoard(id,inst,range,marks,frets){
+function referenceBoard(id,inst,range,marks,frets,interactive=false){
   const before=S.inst;
   try{
     setInst(inst); const el=$(id), w=Math.max(200,el.parentNode.clientWidth||600);
     drawBoard(el,{width:w,vertical:w<640,start:range[0],end:range[1],markers:marks,
-      maxLen:Math.min(600,innerHeight*.6),muted:frets?frets.map(f=>f<0):null,gid:id+'-wood'});
+      maxLen:Math.min(600,innerHeight*.6),interactive:interactive,muted:frets?frets.map(f=>f<0):null,gid:id+'-wood'});
   }finally{ setInst(before); }
 }
 function referenceMarkers(inst,q,fr,labels){
@@ -3783,7 +3840,7 @@ function renderLibrary(){
     <h2>${chordName(q)}${q.ch.sym?` <small class="hint">${q.ch.name}</small>`:''}</h2>`;
   if(fr){
     h+=`<div class="reference-neck"><svg id="libraryBoard" role="img" aria-label="${chordName(q)} shape ${fretsText(fr)}"></svg></div>
-      <div class="actions"><button class="btn" data-lact="prev"${libraryIndex===0?' disabled':''}>← Previous shape</button><span class="counter">${libraryIndex+1} / ${shapes.length} · ${fretsText(fr)}</span><button class="btn" data-lact="next"${libraryIndex===shapes.length-1?' disabled':''}>Next shape →</button><button class="btn primary" data-lact="play">Strum</button></div>
+      <div class="actions"><button class="btn" data-lact="prev"${libraryIndex===0?' disabled':''}>← Previous shape</button><span class="counter">${libraryIndex+1} / ${shapes.length} · ${fretsText(fr)}</span><button class="btn" data-lact="next"${libraryIndex===shapes.length-1?' disabled':''}>Next shape →</button><button class="btn primary" data-lact="play">Strum</button><button class="btn" data-lact="edit">Edit / identify</button></div>
       <div class="minis">${shapes.slice(page*12,page*12+12).map((f,i)=>`<button class="mini" data-library-shape="${page*12+i}" aria-label="Shape ${fretsText(f)}" aria-pressed="${page*12+i===libraryIndex}">${miniChord(f,q.root)}<small>${fretsText(f)}</small></button>`).join('')}</div>
       ${pages>1?`<div class="actions"><button class="btn quiet sm" data-lact="prevpage"${page===0?' disabled':''}>Previous shapes</button><span class="hint">Page ${page+1} / ${pages}</span><button class="btn quiet sm" data-lact="nextpage"${page===pages-1?' disabled':''}>More shapes</button></div>`:''}`;
   }else h+='<p class="hint">No suggested shapes fit these settings. Widen the fret range or allow inversions. Some extended chords need more notes than this instrument has strings.</p>';
@@ -3801,14 +3858,110 @@ $('answer').addEventListener('change',e=>{
 $('answer').addEventListener('click',e=>{
   if(S.mode!=='library') return;
   const sh=e.target.closest('[data-library-shape]'), b=e.target.closest('[data-lact]'); if(!sh&&!b) return;
-  const {shapes}=libraryData();
+  const {shapes,q,c}=libraryData();
   if(sh) libraryIndex=+sh.dataset.libraryShape;
   else { const a=b.dataset.lact;
+    if(a==='edit'){ openChordExplorer(S.inst,q,shapes[libraryIndex],[c.start,c.end]); return; }
     if(a==='play'){ if(shapes[libraryIndex]){ ensureAudio(); strum(shapes[libraryIndex]); } return; }
     libraryIndex+=a==='prev'?-1:a==='next'?1:a==='prevpage'?-12:12;
   }
   libraryIndex=Math.max(0,Math.min(shapes.length-1,libraryIndex)); renderLibrary();
 });
+
+/* ---------- edit a copy of a voicing and identify its notes ---------- */
+let explorer=null;
+function identifyChord(inst,frets,context){
+  const notes=frets.flatMap((f,s)=>f<0?[]:[{s,f,midi:INSTRUMENTS[inst].strings[s].midi+f,pc:(INSTRUMENTS[inst].strings[s].midi+f)%12}]).sort((a,b)=>a.midi-b.midi);
+  const pcs=[...new Set(notes.map(n=>n.pc))], bass=notes.length?notes[0].pc:null, matches=[];
+  for(const root of pcs) for(const ch of CHORDS){
+    const have=new Set(pcs.map(pc=>(pc-root+12)%12)), req=ch.t.filter(t=>t[2]&&!(t[0]===7&&['maj','m'].includes(ch.id)));
+    if(!req.every(t=>have.has(t[0]))||!pcs.every(pc=>ch.t.some(t=>t[0]===(pc-root+12)%12))) continue;
+    if(ch.oneOf&&!ch.oneOf.some(x=>have.has(x))) continue;
+    const q={ch,root,rootName:context&&context.root===root?context.rootName:chordRootName(root,ch)};
+    const omitted=ch.t.filter(t=>!have.has(t[0])).map(t=>t[1]);
+    const score=(root===bass?0:2)+omitted.length*.4-(context&&context.root===root&&context.ch.id===ch.id?3:0);
+    const name=chordName(q)+(root===bass?'':'/'+chordNoteName(q,bass));
+    matches.push({q,name,omitted,score});
+  }
+  matches.sort((a,b)=>a.score-b.score);
+  // A rootless interpretation is contextual, and never silently replaces a literal match.
+  let rootless=null;
+  if(context&&pcs.length>=3&&!pcs.includes(context.root)){
+    const have=new Set(pcs.map(pc=>(pc-context.root+12)%12));
+    if(context.ch.t.filter(t=>t[2]&&t[0]!==0).every(t=>have.has(t[0]))&&pcs.every(pc=>degOf(context,pc)!=null)
+      &&(!context.ch.oneOf||context.ch.oneOf.some(x=>have.has(x)))) rootless=chordName(context)+' (no root)/'+chordNoteName(context,bass);
+  }
+  return {notes,pcs,bass,matches,rootless};
+}
+function openChordExplorer(inst,q,frets,range){
+  if(explorer||!frets) return;
+  const base={ch:q.ch,root:q.root,rootName:q.rootName};
+  explorer={inst,base,original:frets.slice(),frets:frets.slice(),range:range.slice(),undo:[],redo:[],opened:performance.now()};
+  subPush(); $('chordExplorer').showModal(); renderChordExplorer();
+}
+function closeChordExplorer(){ if(explorer) $('chordExplorer').close(); }
+function requestCloseExplorer(){ navBack(closeChordExplorer); }
+function editExploredFrets(frets){
+  if(!explorer||frets.join(',')===explorer.frets.join(',')) return;
+  explorer.undo.push(explorer.frets.slice()); explorer.undo=explorer.undo.slice(-50); explorer.redo=[];
+  explorer.frets=frets.slice(); renderChordExplorer();
+}
+function exploreCell(s,f){
+  if(!explorer) return;
+  const fr=explorer.frets.slice(); fr[s]=fr[s]===f?-1:f;
+  if(fr[s]>=0) withInstrument(explorer.inst,()=>{ ensureAudio(); play(midiOf(s,fr[s])); });
+  editExploredFrets(fr);
+}
+function renderChordExplorer(){
+  if(!explorer) return;
+  const e=explorer,a=identifyChord(e.inst,e.frets,e.base), best=a.matches[0], q=best?best.q:e.base;
+  const label=pc=>chordNoteName(q,pc);
+  const current=best?best.name:a.notes.length===0?'No notes selected':a.pcs.length===1?label(a.pcs[0])+' · single note':'No common chord match';
+  $('exploreTitle').textContent=chordName(e.base)+' → '+current;
+  let h=`<div class="hint">Tap a note to remove it, or another fret on the same string to move it. You can also use the string selectors. This edits a copy; your answer, saved shapes and score stay as they were.</div>
+    <div class="reference-neck"><svg id="exploreBoard" role="img" aria-label="Editable chord fretboard"></svg></div>
+    <div class="library-controls">${INSTRUMENTS[e.inst].strings.map((s,i)=>`<label>${s.name}<select data-explore-string="${i}" aria-label="${s.name} fret"><option value="-1"${e.frets[i]<0?' selected':''}>Muted</option>${Array.from({length:16},(_,f)=>`<option value="${f}"${e.frets[i]===f?' selected':''}>${f===0?'Open':f}</option>`).join('')}</select></label>`).join('')}</div>
+    <div class="actions"><button class="btn" data-eact="undo"${e.undo.length?'':' disabled'}>Undo</button><button class="btn" data-eact="redo"${e.redo.length?'':' disabled'}>Redo</button><button class="btn quiet" data-eact="reset">Restore original</button><button class="btn quiet" data-eact="clear">Mute all</button><button class="btn primary" data-eact="play"${a.notes.length?'':' disabled'}>Strum</button></div>
+    <div aria-live="polite"><b>Notes, low to high:</b> ${a.notes.length?a.notes.map(n=>label(n.pc)).join(' · '):'—'}<br><b>Bass:</b> ${a.notes.length?label(a.bass):'—'} · <span class="hint">${fretsText(e.frets)}</span></div>`;
+  if(best){
+    h+=`<p><b>Possible name: ${best.name}</b>${best.omitted.length?` · omitted degrees: ${best.omitted.join(', ')}`:''}</p>`;
+    if(a.bass!==best.q.root) h+='<p class="hint">The note after “/” is the bass: changing the lowest note can change the inversion without changing the chord’s other notes.</p>';
+    if(a.matches.length>1) h+='<p class="hint">Other interpretations: '+a.matches.slice(1,4).map(x=>x.name).join(' · ')+'.</p>';
+  }else if(a.pcs.length>1) h+='<p class="hint">These notes do not match the common chord formulas in this app. The notes above remain accurate; context may suggest another name.</p>';
+  if(a.rootless) h+='<p class="hint">In the original harmonic context: '+a.rootless+'. The root is implied rather than played.</p>';
+  h+='<p class="hint">Chord names describe possible interpretations, not a unique answer. Duplicated notes do not change the pitch classes; the actual lowest pitch sets the bass, including on re-entrant ukulele.</p><div class="actions"><span class="spacer"></span><button class="btn primary" data-eact="close">Back without changing exercise</button></div>';
+  $('exploreBody').innerHTML=h;
+  const marks=a.notes.map(n=>({s:n.s,f:n.f,kind:n.pc===q.root?'root':'good',label:label(n.pc)}));
+  const active=e.frets.filter(f=>f>=0), range=[Math.min(e.range[0],...active),Math.max(e.range[1],...active)];
+  referenceBoard('exploreBoard',e.inst,range,marks,e.frets,true);
+}
+$('chordExplorer').addEventListener('click',ev=>{
+  if(!explorer) return;
+  const hit=ev.target.closest('.hit'); if(hit){ exploreCell(+hit.dataset.s,+hit.dataset.f); return; }
+  const b=ev.target.closest('[data-eact]'); if(!b) return;
+  const a=b.dataset.eact,e=explorer;
+  if(a==='close'){ requestCloseExplorer(); return; }
+  if(a==='play'){ withInstrument(e.inst,()=>{ensureAudio();strum(e.frets);}); return; }
+  if(a==='reset') editExploredFrets(e.original);
+  else if(a==='clear') editExploredFrets(e.frets.map(()=>-1));
+  else if(a==='undo'&&e.undo.length){ e.redo.push(e.frets);e.frets=e.undo.pop();renderChordExplorer(); }
+  else if(a==='redo'&&e.redo.length){ e.undo.push(e.frets);e.frets=e.redo.pop();renderChordExplorer(); }
+});
+$('chordExplorer').addEventListener('change',ev=>{
+  if(!explorer||ev.target.dataset.exploreString==null) return;
+  const fr=explorer.frets.slice(); fr[+ev.target.dataset.exploreString]=+ev.target.value; editExploredFrets(fr);
+});
+$('chordExplorer').addEventListener('cancel',ev=>{ev.preventDefault();requestCloseExplorer();});
+$('chordExplorer').addEventListener('close',()=>{
+  if(explorer){ const ms=performance.now()-explorer.opened; if(!review&&view==='app'&&phase==='ask'&&S.mode!=='all') qStart+=ms; }
+  explorer=null;
+});
+document.addEventListener('keydown',ev=>{
+  if(!explorer) return;
+  if(ev.key==='Escape'){ev.preventDefault();requestCloseExplorer();}
+  ev.stopImmediatePropagation();
+},true);
+document.addEventListener('visibilitychange',()=>{ if(document.hidden&&view==='app') storeRound(); });
 
 /* ---------- read-only, account-scoped exercise history on this device ---------- */
 const EXERCISE_HISTORY='fretwise.exercise-history.v1';
@@ -3824,7 +3977,7 @@ function rememberExercise(section,data){
   updateReviewButtons();
 }
 function rememberMusic(ok,label){
-  const d={kind:'music',inst:S.inst,title:label,ok,mode:S.mode,text:$('feedback').textContent,range:[C().fretStart,C().fretEnd],marks:markers()};
+  const d={kind:'music',inst:S.inst,title:label,ok,mode:S.mode,text:$('feedback').textContent,range:[questionRange().fretStart,questionRange().fretEnd],marks:markers()};
   if(Q.type==='scale') d.range=Q.win;
   if(Q.type==='chord') d.chord={id:Q.ch.id,root:Q.root,rootName:Q.rootName,found:Q.found,shapes:Q.voicings};
   rememberExercise(S.inst,d);
@@ -3872,7 +4025,7 @@ function renderReview(){
         const q=reviewedChord(d), shapes=reviewedShapes(d), fr=shapes[review.shape];
         h+='<div class="reference-neck"><svg id="reviewBoard" role="img" aria-label="Saved chord shape"></svg></div>';
         h+=`<div class="minis">${shapes.map((f,i)=>`<button class="mini" data-review-shape="${i}" aria-pressed="${review.shape===i}" aria-label="${f.mine?'Your':'Suggested'} shape ${fretsText(f.frets)}">${withInstrument(d.inst,()=>miniChord(f.frets,q.root))}<small>${f.mine?'Yours · ':''}${fretsText(f.frets)}</small></button>`).join('')}</div>`;
-        if(fr) h+=`<div class="actions"><button class="btn" data-ract="strum">Strum this shape</button><span class="hint">${fr.mine?'Your saved shape':'Another suggested voicing'}</span></div>`;
+        if(fr) h+=`<div class="actions"><button class="btn" data-ract="strum">Strum this shape</button><button class="btn" data-ract="explore">Explore a copy</button><span class="hint">${fr.mine?'Your saved shape':'Another suggested voicing'}</span></div>`;
         h+='<details class="chord-help"><summary>Chord tones</summary>'+chordGuide(q)+'</details>';
       }else h+='<div class="reference-neck"><svg id="reviewBoard" role="img" aria-label="Exercise solution"></svg></div>';
       h+='<p>'+esc(d.text)+'</p>';
@@ -3911,6 +4064,7 @@ $('exerciseReview').addEventListener('click',e=>{
   const b=e.target.closest('[data-ract]'); if(!b) return;
   const a=b.dataset.ract, d=review.list[review.i];
   if(a==='close') requestCloseReview(); else if(a==='prev') stepReview(-1); else if(a==='next') stepReview(1);
+  else if(a==='explore'&&d&&d.chord) openChordExplorer(d.inst,reviewedChord(d),reviewedShapes(d)[review.shape].frets,d.range);
   else if(a==='strum'&&d&&d.chord) withInstrument(d.inst,()=>{ensureAudio();strum(reviewedShapes(d)[review.shape].frets);});
   else if(d&&d.kind==='chess'&&(a==='moveback'||a==='moveforward')){ review.ply=Math.max(0,Math.min(d.moves.length,review.ply+(a==='moveback'?-1:1))); renderReview(); }
 });
@@ -3921,7 +4075,7 @@ $('exerciseReview').addEventListener('close',()=>{
 });
 // Capture first so exercise shortcuts underneath the modal cannot submit or advance an answer.
 document.addEventListener('keydown',e=>{
-  if(!review) return;
+  if(!review||explorer) return;
   if(e.key==='Escape'){ e.preventDefault(); requestCloseReview(); }
   else if(e.key==='ArrowLeft'&&!['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)){ e.preventDefault(); stepReview(-1); }
   else if(e.key==='ArrowRight'&&!['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)){ e.preventDefault(); stepReview(1); }
