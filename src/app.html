@@ -513,7 +513,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
     <div class="acct" id="acct"></div>
   </header>
 
-  <section class="home" id="home" aria-labelledby="homeTitle">
+  <section class="home" id="home" aria-labelledby="homeTitle" hidden>
     <div>
       <div class="eyebrow">Practice</div>
       <h1 id="homeTitle">What do you want to practise?</h1>
@@ -3523,7 +3523,8 @@ const MV_SAME={'Baroque painting':'Baroque','Italian Baroque painting':'Baroque'
 const mvOf=x=>{ const m=x&&x.movement; if(!m) return ''; const c=MV_SAME[m]||m; return c[0].toUpperCase()+c.slice(1); };
 // questions a work can be asked: the movement and the museum only where the data has them
 const pCanAsk=(x,k)=>k==='movement'?!!mvOf(x):k==='museum'?!!x.museum:true;
-const P_DAYS=[0,1,3,7,16,35];
+// days to the next review by box: the next day, 3 days, a week, 16 days, 35 days, then three months
+const P_DAYS=[0,1,3,7,16,35,90];
 // progress saved by the earlier version, with a box per question, becomes one box per work
 function pNorm(v){
   if(!v) return v;
