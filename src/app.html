@@ -467,6 +467,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .library-controls select{max-width:100%}
 .reference-neck{overflow-x:auto;max-width:100%}.reference-neck svg{display:block;max-width:100%}
 .review-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:14px;margin-top:8px}
+.review-bar[hidden]{display:none}
 .exercise-review{width:min(940px,calc(100% - 24px));max-height:calc(100dvh - 24px);overflow:auto;overscroll-behavior:contain;padding:24px;border:1px solid var(--line);border-radius:20px;background:var(--surface);color:var(--ink);box-sizing:border-box}
 .exercise-review::backdrop{background:rgba(10,16,24,.65)}
 .review-top{display:flex;justify-content:space-between;align-items:start;gap:12px;margin-bottom:18px}.review-top h2{margin:5px 0}
@@ -474,6 +475,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .review-result{font-weight:700;color:var(--muted)}.review-result.good{color:var(--good)}.review-result.bad{color:var(--bad)}
 .review-choices{padding-left:22px}.review-choices li{padding:4px}.review-choices .good{color:var(--good);font-weight:700}
 .exercise-review .cboard{touch-action:auto}
+.review-opts{margin-top:12px}
 @media(max-width:560px){.exercise-review{padding:16px}.review-nav .btn{padding:10px}.theory-label{padding:0 6px;font-size:.6rem}.library-controls{gap:8px}.library-controls label{flex:1 1 120px}}
 /* account area, filled only by the web app */
 .acct:empty{display:none}
@@ -2901,8 +2903,9 @@ const LANGS=[
   {id:'ca',name:'Català',  view:'view://3c0085a6-3e81-81aa-9947-000ca31556ba',f:{w:'Paraula',d:'Definició',e:'Exemple',s:'Font',date:'date:Data:start'}}
 ];
 const NOTION='Notion', NOTION_TOOL='notion-query-data-sources';
-// review intervals in days by box: short gaps, so words come back almost daily at first
-const SRS_DAYS=[0,1,1,2,3,5,8,13,21];
+// review intervals in days by box: a learned word comes back the next day, then after 3 days, a week,
+// a month and three months while you keep getting it right (box 5, mastered, stays at three months)
+const SRS_DAYS=[0,1,3,7,30,90];
 const DAY=86400000;
 // the day as it is in Italy: today's work stays on screen until midnight there, and the history is kept per day
 const ROME_DAY=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'});
@@ -2915,7 +2918,7 @@ const inClear=t=>t>=CLEAR_FROM&&t<=CLEAR_TO;
 const CLEAR_TAG='~';   // that day's exercise counters count only device keys written after the wipe
 function pruneDays(days){ const keep=new Set(); for(let i=0;i<61;i++) keep.add(romeDay(Date.now()-i*DAY)); Object.keys(days).forEach(d=>{ if(!keep.has(d)) delete days[d]; }); }
 const W_SET_KEY='fretwise.words.settings', W_DATA_KEY='fretwise.words.data', W_PROG_KEY='fretwise.words.progress', W_SESSION_KEY='fretwise.words.session';
-const WS={lang:'es', batch:5, order:'new', dir:'mix', reviewMax:20, daily:10};
+const WS={lang:'es', order:'new', dir:'mix'};
 // the web app reads the words from the owner's private store; inside Claude they come from Notion directly
 const WSRC=window.fretwiseWordsSource||null;
 // WP.days: Rome day -> language -> word id -> {ok, m (learn, review or practice), t}
@@ -3055,7 +3058,7 @@ const sesMap=w=>w&&w.mix?new Map(LANGS.flatMap(l=>[...byId(l.id)])):byId(w?w.lan
 const sesLang=(w,id)=>w&&w.mix?w.langOf[id]:w.lang;
 const startOfDay=t=>{ const d=new Date(t); d.setHours(0,0,0,0); return d.getTime(); };
 const learnedToday=lang=>{ const t0=startOfDay(Date.now()); return Object.values(WP.p[lang]||{}).filter(v=>(v.learned||0)>=t0).length; };
-const newLeft=lang=>WS.daily?Math.max(0,WS.daily-learnedToday(lang)):Infinity;
+const newLeft=lang=>Math.max(0,goalFor('words')-learnedToday(lang));
 function langStats(lang){
   const rows=usable(lang), p=WP.p[lang]||{}, now=Date.now(), ids=new Set(rows.map(r=>r.id));
   let learning=0, due=0, mastered=0;
@@ -3078,15 +3081,15 @@ function startLearn(){
   else if(WS.order==='old') fresh.sort((a,b)=>a.date.localeCompare(b.date));
   else shuffle(fresh);
   const left=newLeft(lang);
-  if(!left){ wFeedback('info',`That’s ${WS.daily} new words today, your daily limit. Review or practise, or come back tomorrow.`); return; }
-  const ids=fresh.slice(0,Math.min(goalFor('words'),left)).map(r=>r.id);
+  if(!left){ wFeedback('info',`That’s your ${goalFor('words')} new words for today. Review or practise, or come back tomorrow.`); return; }
+  const ids=fresh.slice(0,left).map(r=>r.id);
   if(!ids.length){ wFeedback('info','You have started every word in this dictionary. Review them, or add new words in Notion.'); return; }
   WSN={mode:'learn',day:romeDay(),lang,ids,phase:'study',i:0,mistakes:0,matched:new Set(),selL:null,selR:null,results:{}};
   wFeedback('',''); renderWords();
 }
 function startReview(){
   const lang=WS.lang, p=WP.p[lang], now=Date.now(), have=byId(lang);
-  const ids=Object.entries(p).filter(([id,v])=>v.due<=now&&have.has(id)&&have.get(id).d).sort((a,b)=>a[1].due-b[1].due).slice(0,WS.reviewMax).map(([id])=>id);
+  const ids=Object.entries(p).filter(([id,v])=>v.due<=now&&have.has(id)&&have.get(id).d).sort((a,b)=>a[1].due-b[1].due).map(([id])=>id);
   if(!ids.length){ wFeedback('info','Nothing is due right now. Learn some new words, or practise.'); return; }
   WSN={mode:'review',day:romeDay(),lang,ids,phase:'quiz',queue:shuffle(ids.slice()),qi:0,mistakes:0,results:{},requeued:new Set()};
   nextQuizQ(); wFeedback('',''); renderWords();
@@ -3240,15 +3243,15 @@ function renderWords(){
       if(WSRC) h+=`<div class="wempty"><p>Your Notion dictionaries are copied to your private Fretwise account by a scheduled sync. Only you can read them, after signing in with Google; nothing about them is in the public code.</p>${WSRC.signedIn()?'<button type="button" class="btn primary big" data-wact="load">Load my words</button>':'<button type="button" class="btn primary big" data-wact="signin">Sign in with Google</button>'}</div>`;
       else h+=`<div class="wempty"><p>Fretwise reads the words straight from your Notion Dictionary, using your own Notion connection. The words stay private: they are not stored in this page.</p><button type="button" class="btn primary big" data-wact="load">Load from Notion</button></div>`;
     }else if(WD[WS.lang]){
-      const left=newLeft(WS.lang), nLearn=Math.min(goalFor('words'),st.fresh,left), nRev=Math.min(st.due,WS.reviewMax);
+      const left=newLeft(WS.lang), nLearn=Math.min(st.fresh,left), nRev=st.due;
       // what to do today, in order: review what's due (yellow), then learn new words (neutral); what you know is green
       h+=`<div class="plan">
         <div class="pcard review${st.due?'':' idle'}"><div class="pct"><b>Review</b><span>${st.due?`${st.due} due today, missed ones first`:'Nothing due today'}</span></div><button type="button" class="btn big" data-wact="review" ${st.due?'':'disabled'}>${st.due?`Review ${nRev}`:'All caught up'}</button></div>
-        <div class="pcard new"><div class="pct"><b>Learn new</b><span>${st.fresh?`${st.fresh} new ${st.fresh===1?'word':'words'}${WS.daily?` · ${Math.min(left,st.fresh)} left today`:''}`:'You’ve started every word'}</span></div><button type="button" class="btn big${st.due?'':' primary'}" data-wact="learn" ${nLearn?'':'disabled'}>${st.fresh&&!left?'Daily limit reached':nLearn?`Learn ${nLearn}`:'Nothing new'}</button></div>
+        <div class="pcard new"><div class="pct"><b>Learn new</b><span>${st.fresh?`${st.fresh} new ${st.fresh===1?'word':'words'} · ${Math.min(left,st.fresh)} left today`:'You’ve started every word'}</span></div><button type="button" class="btn big${st.due?'':' primary'}" data-wact="learn" ${nLearn?'':'disabled'}>${st.fresh&&!left?'Daily limit reached':nLearn?`Learn ${nLearn}`:'Nothing new'}</button></div>
         <div class="pcard done"><div class="pct"><b>Known</b><span>${st.mastered} mastered of ${st.learning} started</span></div><button type="button" class="btn quiet" data-wlist="mastered" ${st.mastered?'':'disabled'}>See them</button></div>
       </div>`;
       h+=`<div class="wactions"><button type="button" class="btn quiet" data-wact="practice" ${st.total>=5?'':'disabled'}>Practise ${goalFor('words')} random</button>${LANGS.filter(l=>usable(l.id).length>=5).length>=2?'<button type="button" class="btn quiet" data-wact="mix">Mix dictionaries</button>':''}${st.learning?'<button type="button" class="btn quiet" data-wlist="all">Your words</button>':''}${wDayLog(WS.lang,romeDay()).length?`<button type="button" class="btn quiet" data-wlist="day:${romeDay()}">Today · ${wDayLog(WS.lang,romeDay()).length}</button>`:''}</div>`;
-      if(st.fresh&&!left) h+=`<div class="hint">You’ve learned ${WS.daily} new ${L.name} words today. They come back for review tomorrow; new words open up again then. You can change the limit in Settings.</div>`;
+      if(st.fresh&&!left) h+=`<div class="hint">You’ve learned your ${goalFor('words')} new ${L.name} words for today. They come back for review tomorrow; new words open up again then. You can change the daily goal in Settings.</div>`;
       if(!st.total) h+=`<div class="hint">No words with a definition in ${L.name} yet.</div>`;
       else if(st.noDef) h+=`<div class="hint">${st.noDef} ${st.noDef===1?'word has':'words have'} no definition yet, so ${st.noDef===1?'it is':'they are'} left out until your bot or you fill ${st.noDef===1?'it':'them'} in.</div>`;
     }
@@ -3284,14 +3287,12 @@ function renderWords(){
 }
 function renderWordsSide(){
   let h='';
-  h+=`<div class="field"><span class="fl">New words per day, per dictionary</span><div class="chips">${[[5,'5'],[10,'10'],[15,'15'],[20,'20'],[0,'No limit']].map(o=>`<button type="button" class="chip${o[0]?' mono':''}" data-wset="daily" data-v="${o[0]}" aria-pressed="${WS.daily===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
   h+=`<div class="field"><span class="fl">Which new words first</span><div class="chips">${[['new','Newest'],['old','Oldest'],['rnd','Random']].map(o=>`<button type="button" class="chip" data-wset="order" data-v="${o[0]}" aria-pressed="${WS.order===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
   h+=`<div class="field"><span class="fl">Review questions</span><div class="chips">${[['mix','Mixed'],['w2d','Word → meaning'],['d2w','Meaning → word']].map(o=>`<button type="button" class="chip" data-wset="dir" data-v="${o[0]}" aria-pressed="${WS.dir===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
-  h+=`<div class="field"><span class="fl">Reviews per session</span><div class="chips">${[10,20,40].map(n=>`<button type="button" class="chip mono" data-wset="reviewMax" data-v="${n}" aria-pressed="${WS.reviewMax===n}">${n}</button>`).join('')}</div></div>`;
-  h+=`<div class="field"><span class="fl">Daily goal</span><div class="chips">${[1,5,10,20].map(n=>`<button type="button" class="chip mono" data-wgoal="${n}" aria-pressed="${goalFor('words')===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="50" inputmode="numeric" data-wgoalin value="${[1,5,10,20].indexOf(goalFor('words'))<0?goalFor('words'):''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">Daily target and size of new Learn, Practise or Mix sessions. Changing it keeps the active session and every completed answer.</div></div>`;
+  h+=`<div class="field"><span class="fl">Daily goal: new words a day</span><div class="chips">${[1,5,10,20].map(n=>`<button type="button" class="chip mono" data-wgoal="${n}" aria-pressed="${goalFor('words')===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="50" inputmode="numeric" data-wgoalin value="${[1,5,10,20].indexOf(goalFor('words'))<0?goalFor('words'):''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">How many new words Learn gives you each day, in each dictionary; also the size of Practise and Mix. Review always brings back every word due that day, however many. Today’s flag turns green once you’ve answered this many words, new or reviewed. Changing it keeps the active session and every completed answer.</div></div>`;
   $('wsettings').innerHTML=h;
   const st=langStats(WS.lang), L=LANGS.find(l=>l.id===WS.lang);
-  $('wstatsSide').innerHTML=`<h2>${L.name}</h2><div class="hint">A learned word comes back the next day. Each right answer waits a little longer (1, 1, 2, 3, 5, 8 days…); a wrong one starts again from tomorrow. A word counts as mastered after four right reviews in a row.</div><div class="totals">${WD[WS.lang]?`${st.total} words with a definition · ${st.learning} learning · ${st.mastered} mastered · ${learnedToday(WS.lang)}${WS.daily?' of '+WS.daily:''} new today`:'Not loaded yet.'}</div><div class="hint" style="margin-top:6px">${wordsSynced?'Progress saved to your account':'Progress saved in this browser'}. ${WSRC?'The words come from your private account, synced from Notion.':'The words themselves stay in your Notion.'}</div>`;
+  $('wstatsSide').innerHTML=`<h2>${L.name}</h2><div class="hint">A learned word comes back the next day, then after 3 days, a week, a month and three months, as long as you get it right. A wrong answer brings it back tomorrow and the steps start again. A word counts as mastered once you get it right at the one-month review.</div><div class="totals">${WD[WS.lang]?`${st.total} words with a definition · ${st.learning} learning · ${st.mastered} mastered · ${learnedToday(WS.lang)} of ${goalFor('words')} new today`:'Not loaded yet.'}</div><div class="hint" style="margin-top:6px">${wordsSynced?'Progress saved to your account':'Progress saved in this browser'}. ${WSRC?'The words come from your private account, synced from Notion.':'The words themselves stay in your Notion.'}</div>`;
 }
 function openWords(){
   view='words'; stopClock(); clearTimeout(advTimer); clearTimeout(cTimer);
@@ -3339,7 +3340,7 @@ $('wsettings').addEventListener('change',e=>{ if(!e.target.matches('[data-wgoali
 $('wsettings').addEventListener('click',e=>{
   const gb=e.target.closest('[data-wgoal]'); if(gb){ setGoal('words',+gb.dataset.wgoal); renderWordsSide(); if(!WSN||WSN.phase==='done') renderWords(); return; }
   const b=e.target.closest('[data-wset]'); if(!b) return;
-  const k=b.dataset.wset, v=b.dataset.v; WS[k]=(k==='batch'||k==='reviewMax'||k==='daily')?+v:v; wSaveSettings(); renderWordsSide(); if(!WSN) renderWords();
+  const k=b.dataset.wset, v=b.dataset.v; WS[k]=v; wSaveSettings(); renderWordsSide(); if(!WSN) renderWords();
 });
 document.addEventListener('keydown',e=>{
   if(view!=='words') return;
@@ -4226,6 +4227,7 @@ function reviewBusy(section){
 function updateReviewButtons(){
   const all=exerciseHistory();
   document.querySelectorAll('[data-review]').forEach(b=>{
+    b.closest('.review-bar').hidden=b.dataset.review==='music'&&['circle','library','tuner'].includes(S.mode);
     const n=(all[reviewSection(b.dataset.review)]||[]).length;
     b.textContent='Previous exercises'+(n?' · '+n:''); b.disabled=!!reviewBusy(b.dataset.review);
     b.title=b.disabled?'Available after this timed run or move sequence.':'';
@@ -4263,7 +4265,10 @@ function renderReview(){
       h+='<p>'+esc(d.text)+'</p>';
     }else if(d.kind==='word'){
       const r=byId(d.lang).get(d.wordId), picked=byId(d.pickLang||d.lang).get(d.pickId);
-      if(r) h+=`<div class="eyebrow">${esc(d.lang)} · ${d.dir==='w2d'?'Choose the definition':'Choose the word'}</div><h3>${esc(r.w)}</h3><p>${rich(r.d)}</p>${r.e?`<p class="hint">${rich(r.e)}</p>`:''}<p>Your answer: ${picked?rich(d.dir==='w2d'?picked.d:picked.w):'No longer in this dictionary'}</p>`;
+      const ans=x=>d.dir==='w2d'?esc(plain(x.d)):esc(x.w), lang=(LANGS.find(l=>l.id===d.lang)||{}).name||d.lang;
+      if(r) h+=`<article class="wcard q"><div class="wsrc">${esc(lang)} · ${d.dir==='w2d'?'What does this word mean?':'Which word has this meaning?'}</div>${d.dir==='w2d'?`<div class="ww">${esc(r.w)}</div>`:`<div class="wd big">${rich(r.d)}</div>`}${r.e?`<div class="we">${rich(r.e)}</div>`:''}</article>`
+        +`<ol class="opts review-opts"><li><span class="opt ok"><span>${ans(r)}</span></span></li>${d.ok?'':`<li><span class="opt bad"><span>${picked?ans(picked):'No longer in this dictionary'}</span></span></li>`}</ol>`
+        +`<p class="hint">${d.ok?'You chose the right answer.':'Green is the right answer, red the one you chose.'}</p>`;
       else h+='<p>This word is no longer available in the loaded dictionary. Load your dictionaries to review private words.</p>';
     }else if(d.kind==='painting'){
       const x=d.work; h+=`<div class="pframe"><img src="${esc(x.thumb)}" alt="${esc(x.title)}" loading="lazy"></div><div class="pcap"><b>${esc(x.title)}</b><span>${esc(x.artist)}${x.year?' · '+esc(x.year):''}</span></div><p>Correct answer: <b>${esc(d.answer)}</b></p><p>Your answer: ${esc(d.picked)}</p>`;
