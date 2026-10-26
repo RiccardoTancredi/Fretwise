@@ -3475,22 +3475,22 @@ V_CA_END.re=V_CA_END.er;
 V_CA_END.ir2={pres:['o','s','','im','iu','en'],impf:['ia','ies','ia','íem','íeu','ien'],ps:['í','ires','í','írem','íreu','iren'],
   spres:['i','is','i','im','iu','in'],simp:['ís','issis','ís','íssim','íssiu','issin'],imp:[null,'','i','im','iu','in'],ger:'int',part:'it'};
 const V_CA_VERBS=[
-  {inf:'ser',it:'essere',ger:'sent',part:'estat',t:{pres:'sóc ets és som sou són',impf:'era eres era érem éreu eren',ps:'fui fores fou fórem fóreu foren',
+  {inf:'ser',it:'essere',ger:'sent',part:'estat',t:{pres:'soc ets és som sou són',impf:'era eres era érem éreu eren',ps:'fui fores fou fórem fóreu foren',
     spres:'sigui siguis sigui siguem sigueu siguin',simp:'fos fossis fos fóssim fóssiu fossin',imp:'- sigues sigui siguem sigueu siguin'}},
   {inf:'estar',it:'stare',t:{pres:'estic estàs està estem esteu estan',ps:'estiguí estigueres estigué estiguérem estiguéreu estigueren',
     spres:'estigui estiguis estigui estiguem estigueu estiguin',simp:'estigués estiguessis estigués estiguéssim estiguéssiu estiguessin',imp:'- estigues estigui estiguem estigueu estiguin'}},
   {inf:'haver',it:'avere (ausiliare)',fs:'haur',part:'hagut',t:{pres:'he has ha hem heu han',ps:'haguí hagueres hagué haguérem haguéreu hagueren',
-    spres:'hagi hagis hagi hàgim hàgiu hagin',simp:'hagués haguessis hagués haguéssim haguéssiu haguessin',imp:'- hagues hagi hàgim hàgiu hagin'}},
+    spres:'hagi hagis hagi hàgim hàgiu hagin',simp:'hagués haguessis hagués haguéssim haguéssiu haguessin',imp:'- - - - - -'}},
   {inf:'tenir',it:'avere, possedere',cls:'ir2',fs:'tindr',ger:'tenint',part:'tingut',t:{pres:'tinc tens té tenim teniu tenen',impf:'tenia tenies tenia teníem teníeu tenien',
     ps:'tinguí tingueres tingué tinguérem tinguéreu tingueren',spres:'tingui tinguis tingui tinguem tingueu tinguin',
     simp:'tingués tinguessis tingués tinguéssim tinguéssiu tinguessin',imp:'- té tingui tinguem teniu tinguin'}},
-  {inf:'fer',it:'fare',fs:'far',ger:'fent',part:'fet',t:{pres:'faig fas fa fem feu fan',impf:'feia feies feia fèiem fèieu feien',ps:'fiu feres féu férem féreu feren',
+  {inf:'fer',it:'fare',fs:'far',ger:'fent',part:'fet',t:{pres:'faig fas fa fem feu fan',impf:'feia feies feia fèiem fèieu feien',ps:'fiu feres feu férem féreu feren',
     spres:'faci facis faci fem feu facin',simp:'fes fessis fes féssim féssiu fessin',imp:'- fes faci fem feu facin'}},
   {inf:'poder',it:'potere',fs:'podr',part:'pogut',t:{pres:'puc pots pot podem podeu poden',ps:'poguí pogueres pogué poguérem poguéreu pogueren',
     spres:'pugui puguis pugui puguem pugueu puguin',simp:'pogués poguessis pogués poguéssim poguéssiu poguessin',imp:'- pugues pugui puguem pugueu puguin'}},
   {inf:'dir',it:'dire',cls:'ir2',ger:'dient',part:'dit',t:{pres:'dic dius diu diem dieu diuen',impf:'deia deies deia dèiem dèieu deien',ps:'diguí digueres digué diguérem diguéreu digueren',
     spres:'digui diguis digui diguem digueu diguin',simp:'digués diguessis digués diguéssim diguéssiu diguessin',imp:'- digues digui diguem digueu diguin'}},
-  {inf:'anar',it:'andare',fs:'anir',t:{pres:'vaig vas va anem aneu van',spres:'vagi vagis vagi anem aneu vagin',imp:'- vés vagi anem aneu vagin'}},
+  {inf:'anar',it:'andare',fs:'anir',t:{pres:'vaig vas va anem aneu van',spres:'vagi vagis vagi anem aneu vagin',imp:'- ves vagi anem aneu vagin'}},
   {inf:'veure',it:'vedere',ger:'veient',part:'vist',t:{pres:'veig veus veu veiem veieu veuen',impf:'veia veies veia vèiem vèieu veien',ps:'viu veieres veié veiérem veiéreu veieren',
     spres:'vegi vegis vegi vegem vegeu vegin',simp:'veiés veiessis veiés veiéssim veiéssiu veiessin',imp:'- veges vegi vegem veieu vegin'}},
   {inf:'voler',it:'volere',fs:'voldr',part:'volgut',t:{pres:'vull vols vol volem voleu volen',ps:'volguí volgueres volgué volguérem volguéreu volgueren',
@@ -3854,7 +3854,7 @@ function vRulesFr(v,tid,p){
 }
 // Catalan: where each form fits
 const V_SAME_CA={
-  velar:'tinc, puc, dic, faig, vaig, veig, vull, sóc, estic', gu:'tingui, pugui, digui, vulgui, estigui, sigui, begui, visqui',
+  velar:'tinc, puc, dic, faig, vaig, veig, vull, estic', gu:'tingui, pugui, digui, vulgui, estigui, sigui, begui, visqui',
   perif:'vaig cantar, vas dir, va fer, vam anar, vau veure, van tenir', futst:'tindré, podré, voldré, faré, hauré, aniré, vindré, sabré',
   gut:'tingut, pogut, volgut, hagut, begut, vingut, sabut', subjps:'tingués, pogués, volgués, digués, estigués, hagués',
   ia:'feia, deia, veia, reia, creia', ent:'fent, dient, veient, sent, rient'
@@ -3871,7 +3871,7 @@ function vRulesCa(v,tid,p){
   const T=tid, f=c[T][p], g=r[T][p], d=vInfo(f,g);
   if(T==='pres'){
     if(p===0&&/(c|g)$/.test(f)&&!/(c|g)$/.test(g)) add('A «velar» jo form ending in «-c» or «-g»: the present subjunctive and the passat simple take «-gu-» from it (tinc → tingui).','velar');
-    if(inf==='ser'&&p!==0) add('ser is irregular all through the present: sóc, ets, és, som, sou, són.');
+    if(inf==='ser'&&p!==0) add('ser is irregular all through the present: soc, ets, és, som, sou, són.');
     if(inf==='estar'&&p>0&&d.k) add('The stress falls on the ending, so it takes a written accent: estàs, està.');
     if(inf==='anar'&&(p===3||p===4)) add('nosaltres and vosaltres are regular (anem, aneu); the other persons are built on «v-».');
   }
@@ -3910,7 +3910,7 @@ const V_ABOUT_FR={
   venir:['viens, venons, viennent; future viendr-, passé simple vins; compound tenses with être.','devenir, revenir, se souvenir, tenir, obtenir, appartenir, retenir']
 };
 const V_ABOUT_CA={
-  ser:['The most irregular verb: sóc, ets, és; passat simple fui, fou; subjunctive sigui. Participle estat (also sigut).',''],
+  ser:['The most irregular verb: soc, ets, és; passat simple fui, fou; subjunctive sigui. Participle estat (also sigut).',''],
   estar:['Velar: estic, estigui, estiguí; the present has accents on the ending (estàs, està).','anar has the same set of special forms in the present (vaig)'],
   haver:['Auxiliary of every compound tense (he fet) and of hi ha (there is / there are).',''],
   tenir:['Velar: tinc, tingui, tinguí, tingut; future tindr-.','mantenir, obtenir, contenir, detenir, retenir; venir works the same way (vinc, vingui, vindré)'],
@@ -3947,7 +3947,7 @@ let VB={p:{},off:{},foff:{},hist:[],days:{},set:Object.assign({},V_SET_DEF),upd:
 let VBV=null, VT=null;
 function vLoad(){
   try{ const x=JSON.parse(LOCAL.getItem(V_KEY)||'null'); if(x&&x.p) VB=Object.assign(VB,x); }catch(e){}
-  VB.off=VB.off||{}; VB.foff=VB.foff||{}; VB.hist=VB.hist||[]; VB.days=VB.days||{}; VB.set=Object.assign({},V_SET_DEF,VB.set||{});
+  VB.off=VB.off||{}; VB.foff=VB.foff||{}; VB.hist=VB.hist||[]; VB.days=VB.days||{}; VB.set=Object.assign({},V_SET_DEF,VB.set||{}); vFixDays();
 }
 function vStore(){ try{ LOCAL.setItem(V_KEY,JSON.stringify(VB)); }catch(e){} }
 function vSave(){ VB.upd=Date.now(); pruneDays(VB.days); vStore(); pushVerbs(); }
@@ -3964,7 +3964,11 @@ function mergeVerbs(x){
   VB.hist.sort((a,b)=>a.t-b.t); VB.hist=VB.hist.slice(-200);
   Object.entries(x.days||{}).forEach(([d,m])=>{ Object.assign(VB.days[d]||(VB.days[d]={}),m); });
   if(x.set&&(x.set.t||0)>(VB.set.t||0)) VB.set=Object.assign({},V_SET_DEF,x.set);
-  VB.upd=Math.max(VB.upd,x.upd||0);
+  vFixDays(); VB.upd=Math.max(VB.upd,x.upd||0);
+}
+// French and Catalan answers logged before the day log knew languages: the history says which they were
+function vFixDays(){
+  VB.hist.forEach(h=>{ const l=vParse(h.k).lang, d=VB.days[romeDay(h.t)]; if(l!=='es'&&d&&String(h.t) in d){ d[vDayKey(l,h.t)]=d[h.t]; delete d[h.t]; } });
 }
 async function connectVerbs(db,uid){
   try{
@@ -3978,7 +3982,12 @@ const vKP=()=>VL==='es'?'':VL+':', vKey=(v,tid,p)=>vKP()+v.inf+'|'+tid+'|'+p, vV
 const vActive=v=>!favOn(VB.off,vVKey(v));
 const vTen=()=>VL==='es'?VB.set.tenses:((VB.set.lt||{})[VL]||V_L.def);
 function vSetTen(list){ if(VL==='es') VB.set.tenses=list; else VB.set.lt=Object.assign({},VB.set.lt,{[VL]:list}); }
-const vToday=()=>Object.keys(VB.days[romeDay()]||{}).length;
+// the day log keys answers by time, Spanish bare ("1792…"), others with their language ("fr:1792…")
+const vDayKey=(lang,t)=>(lang==='es'?'':lang+':')+t;
+const vDayKeys=(d,lang)=>Object.keys(VB.days[d]||{}).filter(k=>lang==null||(lang==='es'?k.indexOf(':')<0:k.indexOf(lang+':')===0));
+const vToday=(lang=VL)=>vDayKeys(romeDay(),lang).length;
+const vGoal=(lang=VL)=>lang==='es'?VB.set.goal:((VB.set.lg||{})[lang]||V_SET_DEF.goal);
+function vSetGoal(n){ if(VL==='es') VB.set.goal=n; else VB.set.lg=Object.assign({},VB.set.lg,{[VL]:n}); VB.set.t=Date.now(); }
 // every form in training: active verbs, chosen tenses, all persons (vosotros if wanted)
 function vItems(){
   const out=[];
@@ -4015,12 +4024,12 @@ function vApply(had,ok,now){
 function vGrade(ok){
   const k=VT.k, now=Date.now(), had=VB.p[k];
   VB.p[k]=vApply(had,ok,now); VB.hist.push({k,ok:ok?1:0,t:now,pr:VT.pron||'',prev:had?Object.assign({},had):null}); VB.hist=VB.hist.slice(-200);
-  const d=romeDay(now); (VB.days[d]||(VB.days[d]={}))[now]=ok?1:0; vSave();
+  const d=romeDay(now); (VB.days[d]||(VB.days[d]={}))[vDayKey(VL,now)]=ok?1:0; vSave();
 }
 function vFlip(t){
   const i=VB.hist.findIndex(h=>h.t===t), h=VB.hist[i]; if(!h) return;
   h.ok=h.ok?0:1;
-  const d=VB.days[romeDay(h.t)]; if(d&&String(h.t) in d) d[h.t]=h.ok;
+  const d=VB.days[romeDay(h.t)], dk=vDayKey(vParse(h.k).lang,h.t); if(d&&dk in d) d[dk]=h.ok;
   if(!VB.hist.slice(i+1).some(x=>x.k===h.k)){                       // the form's latest answer sets its review
     if('prev' in h) VB.p[h.k]=vApply(h.prev,!!h.ok,h.t);
     else{ const v=VB.p[h.k]; if(v){ v.r=h.ok; if(h.ok){ v.ok=(v.ok||0)+1; v.b=Math.max(1,v.b||0); v.due=startOfDay(h.t)+SRS_DAYS[v.b]*DAY; } else { v.ok=Math.max(0,(v.ok||0)-1); v.b=0; v.due=h.t; } } }
@@ -4061,7 +4070,7 @@ function vTabsHtml(){
 }
 // a covered card: say the form out loud, tap to see it, tap again for the next one, up to the daily goal
 function vTrainHtml(){
-  const goal=VB.set.goal, n=vToday(); let h=vTabsHtml();
+  const goal=vGoal(), n=vToday(); let h=vTabsHtml();
   h+=`<div class="vgoal"><div class="vbar"><i style="width:${Math.min(100,Math.round(n/goal*100))}%"></i></div><div class="vgl"><span>Daily goal</span><span class="mono">${n} / ${goal}</span></div></div>`;
   if(n>=goal&&!VBV.more&&!(VT&&VT.phase==='shown'))
     return h+`<div class="wcard vcard"><div class="vinf">¡Hecho!</div><div>Today’s goal is done: ${n} ${n===1?'form':'forms'}.</div></div><div class="actions"><span class="spacer"></span><button type="button" class="btn" data-vbact="more">Keep going</button></div><div class="hint">To do more another day, raise the goal in Settings: the forms you’ve already done today count towards it.</div>`;
@@ -4115,7 +4124,7 @@ function vVerbHtml(){
   V_TENSES.filter(t=>t.g===VBV.g&&vPersonsOf(t.id).some(p=>vForm(v,t.id,p)!=null)).forEach(t=>{ h+=vTenseRows(v,t.id); });
   return h;
 }
-const vDayRes=d=>Object.values(VB.days[d]||{});
+const vDayRes=(d,lang)=>vDayKeys(d,lang).map(k=>VB.days[d][k]);
 const vDayDone=d=>vDayRes(d).length>0;   // any answer, in any language, keeps the streak
 function vStreak(){ let n=0, t=Date.now(); if(!vDayDone(romeDay(t))) t-=DAY; while(vDayDone(romeDay(t))){ n++; t-=DAY; } return n; }
 // review stars: none (comes back soon) to three (three months), half stars in between
@@ -4125,7 +4134,7 @@ function vHistHtml(){
   let h=vTabsHtml();
   const today=romeDay(), d0=new Date(today+'T12:00:00Z'), dow=(d0.getUTCDay()+6)%7;
   const week=Array.from({length:7},(_,i)=>new Date(d0.getTime()+(i-dow)*DAY).toISOString().slice(0,10));
-  const res=vDayRes(today), hard=res.filter(x=>!x).length, easy=res.length-hard, streak=vStreak();
+  const res=vDayRes(today,VL), hard=res.filter(x=>!x).length, easy=res.length-hard, streak=vStreak();
   h+=`<div class="vweekcard"><div class="vweek">${week.map((d,i)=>`<div class="vday${vDayDone(d)?' done':''}${d===today?' now':''}"><span>${vDayDone(d)?V_CAT:''}</span><small><span class="dshort">${V_L.days[i][0]}</span><span class="dlong">${V_L.days[i][1]}</span></small></div>`).join('')}</div>`
     +`<div class="vstreak">${streak?`${streak}-day streak`:'Train today to start a streak'}</div>`
     +`<div class="vtoday"><div class="vhard"><b>${hard}</b><span>Hard</span></div><div class="veasy"><b>${easy}</b><span>Easy</span></div></div></div>`;
@@ -4156,7 +4165,7 @@ function vSettingsHtml(){
   h+=`<div class="field"><span class="fl">Tenses to practise</span><div class="chips"><button type="button" class="chip" data-vbtall="all" aria-pressed="${all}">All tenses</button><button type="button" class="chip" data-vbtall="def" aria-pressed="${def}">The usual six</button></div></div>`;
   V_GROUPS.forEach(([g,name])=>{ h+=`<div class="field"><span class="fl">${name}</span><div class="chips">${V_TENSES.filter(t=>t.g===g).map(t=>`<button type="button" class="chip" data-vbtense="${t.id}" aria-pressed="${ten.indexOf(t.id)>=0}">${esc(t.name)}</button>`).join('')}</div></div>`; });
   h+=``;
-  h+=`<div class="field"><span class="fl">Daily goal: forms a day</span><div class="chips">${[10,20,30,50].map(n=>`<button type="button" class="chip mono" data-vbgoal="${n}" aria-pressed="${s.goal===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="200" inputmode="numeric" data-vbgoalin value="${[10,20,30,50].indexOf(s.goal)<0?s.goal:''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">Tenses chosen here are the ones Train asks; the tables always show them all.</div></div>`;
+  h+=`<div class="field"><span class="fl">Daily goal in ${esc(V_L.en)}: forms a day</span><div class="chips">${[10,20,30,50].map(n=>`<button type="button" class="chip mono" data-vbgoal="${n}" aria-pressed="${vGoal()===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="200" inputmode="numeric" data-vbgoalin value="${[10,20,30,50].indexOf(vGoal())<0?vGoal():''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">Tenses chosen here are the ones Train asks; the tables always show them all.</div></div>`;
   return h;
 }
 function vStatsHtml(){
@@ -4215,10 +4224,9 @@ function openConj(){
 }
 function vLangStats(id){ const keep=VL; vUseLang(id); const x={due:vDueCount(),n:VERBS.length}; vUseLang(keep); return x; }
 function vLangsHtml(){
-  const n=vToday();
   return `<div class="vlangs">${Object.values(V_LANGS).map(L=>{ const st=vLangStats(L.id);
-    return `<button type="button" class="vlang" data-vblang="${L.id}"><span class="vlflag">${V_FLAGS[L.id]}</span><span class="vltext"><b>${L.name}</b><small>${L.en} · ${st.n} verbs${st.due?` · ${st.due} forms due`:''}</small></span><span class="vlgo">›</span></button>`; }).join('')}</div>`
-    +`<div class="hint">${n} of ${VB.set.goal} forms today, in any language: the goal and the streak are shared.</div>`;
+    return `<button type="button" class="vlang" data-vblang="${L.id}"><span class="vlflag">${V_FLAGS[L.id]}</span><span class="vltext"><b>${L.name}</b><small>${L.en} · ${st.n} verbs${st.due?` · ${st.due} forms due`:''} · today ${vToday(L.id)} of ${vGoal(L.id)}</small></span><span class="vlgo">›</span></button>`; }).join('')}</div>`
+    +`<div class="hint">Each language has its own daily goal and history; the streak is shared: any answer keeps it going.</div>`;
 }
 function renderConj(){
   if(view!=='conj') return;
@@ -4232,12 +4240,12 @@ function renderConj(){
   $('vjsettings').innerHTML=vSettingsHtml(); $('vjstats').innerHTML=vStatsHtml();
 }
 $('vjbody').addEventListener('click',e=>{ const l=e.target.closest('[data-vblang]'); if(l){ openVerbs(l.dataset.vblang); return; } if(VBV) vClick(e); });
-$('vjsettings').addEventListener('change',e=>{ if(!VBV||!e.target.matches('[data-vbgoalin]')||!+e.target.value) return; VB.set.goal=Math.max(1,Math.min(200,Math.round(+e.target.value))); VB.set.t=Date.now(); vSave(); renderConj(); });
+$('vjsettings').addEventListener('change',e=>{ if(!VBV||!e.target.matches('[data-vbgoalin]')||!+e.target.value) return; vSetGoal(Math.max(1,Math.min(200,Math.round(+e.target.value)))); vSave(); renderConj(); });
 $('vjsettings').addEventListener('click',e=>{
   const t=e.target.closest('[data-vbtense],[data-vbgoal],[data-vbtall]'); if(!t||!VBV) return; const st=VB.set;
   if(t.dataset.vbtall) vSetTen(t.dataset.vbtall==='all'?V_TENSES.map(x=>x.id):V_L.def.slice());
   else if(t.dataset.vbtense){ const ten=vTen().slice(), i=ten.indexOf(t.dataset.vbtense); if(i>=0) ten.splice(i,1); else ten.push(t.dataset.vbtense); vSetTen(ten); }
-  else st.goal=+t.dataset.vbgoal;
+  else vSetGoal(+t.dataset.vbgoal);
   st.t=Date.now(); vSave(); vRecheck(); renderConj();
 });
 document.addEventListener('keydown',e=>{ if(view!=='conj'||e.key!=='Escape'||review) return; const tg=e.target&&e.target.tagName; if(tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT') return; if(VBV) navBack(vbBack); });
@@ -4457,7 +4465,8 @@ function renderToday(){
     el.textContent=done?'Done today':g>1?`Today ${n} / ${g}`:'Not done yet today';
     if(card) card.classList.toggle('done',done);
   });
-  const el=$('todayConj'); if(el){ const n=vToday(), g=VB.set.goal, done=n>=g; el.className='today'+(done?' done':''); el.textContent=done?'Done today':`Today ${n} / ${g}`; el.closest('.pick').classList.toggle('done',done); }
+  const el=$('todayConj'); if(el){ const ls=Object.keys(V_LANGS), done=ls.some(l=>vToday(l)>=vGoal(l)), on=ls.filter(l=>vToday(l)>0);
+    el.className='today'+(done?' done':''); el.textContent=done?'Done today':on.length?'Today '+on.map(l=>`${V_LANGS[l].name} ${vToday(l)} / ${vGoal(l)}`).join(' · '):'Not done yet today'; el.closest('.pick').classList.toggle('done',done); }
 }
 
 /* =====================================================================

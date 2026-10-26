@@ -65,7 +65,7 @@ test('French and Catalan: every form exists, its building blocks spell it, and i
   for(const lang of ['es','fr','ca']){
     W.vUseLang(lang); const L=W.V_LANGS[lang]; assert.equal(L.verbs.length,10,lang);
     for(const v of L.verbs) for(const t of L.tenses) for(const p of W.vPersonsOf(t.id)){
-      const f=W.vForm(v,t.id,p); if(f==null){ assert.ok(v.inf==='pouvoir'&&t.id==='imp',`${lang} ${v.inf} ${t.id} ${p} missing`); continue; }
+      const f=W.vForm(v,t.id,p); if(f==null){ assert.ok(['pouvoir','haver'].includes(v.inf)&&t.id==='imp',`${lang} ${v.inf} ${t.id} ${p} missing`); continue; }
       assert.ok(!/undefined|null/.test(f),`${lang} ${v.inf} ${t.id} ${p}: ${f}`);
       const built=W.vFormTokens(v,t.id,p).filter(x=>!x.op&&x.c!=='cut').map(x=>x.t.includes('→')?x.t.split('→')[1]:x.t).join('');
       assert.equal(built,f.replace(/ /g,''),`${lang} ${v.inf} ${t.id} ${p}`);
