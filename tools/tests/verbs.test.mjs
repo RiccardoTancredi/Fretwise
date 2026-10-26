@@ -41,14 +41,20 @@ test('what is irregular is told apart from stem and spelling changes',()=>{
 
 test('the building blocks of every form spell the form, and every form has a rule to read',()=>{
   const c=src.indexOf('/* ---------- progress ---------- */');
-  const W=new Function('esc',src.slice(a,c)+';return {VERBS,V_TENSES,vForm,vFormTokens,vRules,vPersonsOf};')(esc);
+  const W=new Function('esc',src.slice(a,c)+';return {VERBS,V_TENSES,vForm,vFormTokens,vRules,vBuild,vPersonsOf};')(esc);
   for(const v of W.VERBS) for(const t of W.V_TENSES) for(const p of W.vPersonsOf(t.id)){
     const T=W.vFormTokens(v,t.id,p), built=T.filter(x=>!x.op&&x.c!=='cut').map(x=>x.t.includes('→')?x.t.split('→')[1]:x.t).join('');
     assert.equal(built,W.vForm(v,t.id,p).replace(/ /g,''),`${v.inf} ${t.id} ${p}`);
-    assert.ok(W.vRules(v,t.id,p).some(r=>r.text),`${v.inf} ${t.id} ${p} has no rule`);
+    assert.ok(W.vBuild(v,t.id,p).notes.length+W.vRules(v,t.id,p).length>0,`${v.inf} ${t.id} ${p} has nothing to read`);
   }
   const tok=(inf,t,p)=>W.vFormTokens(W.VERBS.find(v=>v.inf===inf),t,p).map(x=>x.op||x.t).join(' ');
   assert.equal(tok('ser','pres',0),'s − er + o + y');
-  assert.equal(tok('tener','pres',1),'t e→ie n − er + es');
-  assert.equal(tok('tener','pret',0),'tuv + e');
+  assert.equal(tok('ser','pres',1),'er + es');
+  assert.equal(tok('ser','pres',5),'s − er + e→o + n');
+  assert.equal(tok('tener','pres',1),'t + e→ie + n − er + es');
+  assert.equal(tok('tener','pres',0),'ten − er + g + o');
+  assert.equal(tok('tener','pret',0),'t + en→uv − er + í→e');
+  assert.equal(tok('hacer','fut',5),'ha − ce + r + án');
+  assert.equal(tok('hacer','pperf',0),'he + h + ac→ech − er + ido→o');
+  assert.equal(tok('hacer','imp',1),'ha + c→z − er − e');
 });
