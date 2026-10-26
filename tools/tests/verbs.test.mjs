@@ -58,3 +58,23 @@ test('the building blocks of every form spell the form, and every form has a rul
   assert.equal(tok('hacer','pperf',0),'he + h + ac→ech − er + ido→o');
   assert.equal(tok('hacer','imp',1),'ha + c→z − er − e');
 });
+
+test('French and Catalan: every form exists, its building blocks spell it, and it has something to read',()=>{
+  const c=src.indexOf('/* ---------- progress ---------- */');
+  const W=new Function('esc',src.slice(a,c)+';return {vUseLang,V_LANGS,vForm,vFormTokens,vRules,vBuild,vPersonsOf};')(esc);
+  for(const lang of ['es','fr','ca']){
+    W.vUseLang(lang); const L=W.V_LANGS[lang]; assert.equal(L.verbs.length,10,lang);
+    for(const v of L.verbs) for(const t of L.tenses) for(const p of W.vPersonsOf(t.id)){
+      const f=W.vForm(v,t.id,p); if(f==null){ assert.ok(v.inf==='pouvoir'&&t.id==='imp',`${lang} ${v.inf} ${t.id} ${p} missing`); continue; }
+      assert.ok(!/undefined|null/.test(f),`${lang} ${v.inf} ${t.id} ${p}: ${f}`);
+      const built=W.vFormTokens(v,t.id,p).filter(x=>!x.op&&x.c!=='cut').map(x=>x.t.includes('→')?x.t.split('→')[1]:x.t).join('');
+      assert.equal(built,f.replace(/ /g,''),`${lang} ${v.inf} ${t.id} ${p}`);
+      assert.ok(W.vBuild(v,t.id,p).notes.length+W.vRules(v,t.id,p).length>0,`${lang} ${v.inf} ${t.id} ${p} has nothing to read`);
+    }
+  }
+  W.vUseLang('fr'); const fr=inf=>W.V_LANGS.fr.verbs.find(v=>v.inf===inf);
+  assert.equal(W.vForm(fr('aller'),'pc',3),'sommes allés'); assert.equal(W.vForm(fr('faire'),'pc',0),'ai fait'); assert.equal(W.vForm(fr('venir'),'fut',5),'viendront');
+  W.vUseLang('ca'); const ca=inf=>W.V_LANGS.ca.verbs.find(v=>v.inf===inf);
+  assert.equal(W.vForm(ca('fer'),'perif',0),'vaig fer'); assert.equal(W.vForm(ca('tenir'),'spres',0),'tingui'); assert.equal(W.vForm(ca('dir'),'perf',3),'hem dit');
+  W.vUseLang('es');
+});

@@ -540,6 +540,8 @@ mark.v-irr{color:var(--bad)} mark.v-stem{color:#cf2a9b} mark.v-spell{color:#2a86
 .vday.done .vcat{width:76%;height:76%;vertical-align:0}
 .vday.now small{color:var(--ink);font-weight:700}
 .vday small{color:var(--muted);font-size:.8rem}
+.vday .dlong{display:none}
+@media (min-width:640px){.vday .dlong{display:inline}.vday .dshort{display:none}}
 .vstreak{text-align:center;font-family:var(--font-display);font-weight:800;font-size:1.1rem}
 .vtoday{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .vtoday div{display:flex;flex-direction:column;align-items:center;padding:10px;border-radius:14px}
@@ -684,7 +686,7 @@ mark.v-irr{color:var(--bad)} mark.v-stem{color:#cf2a9b} mark.v-spell{color:#2a86
       <button class="pick" type="button" data-inst="conj">
         <div class="conjart" id="conjArt" aria-hidden="true"></div>
         <b>Conjugate</b>
-        <span class="sub">Verb conjugations to say out loud: Spanish now, French and Catalan coming</span>
+        <span class="sub">Verb conjugations to say out loud: Spanish, French and Catalan</span>
         <span class="meta" id="metaConj"></span>
         <span class="today" id="todayConj"></span>
       </button>
@@ -2156,7 +2158,7 @@ function renderHome(){
   $('metaWords').textContent=wordsHomeMeta();
   if(PAINT_ON){ $('pickPaintings').hidden=false; $('metaPaintings').textContent=paintHomeMeta(); }
   $('conjArt').innerHTML=`${V_CAT}<span>${V_FLAGS.es}${V_FLAGS.fr}${V_FLAGS.ca}</span>`;
-  { const due=vDueCount(); $('metaConj').textContent=`Español · ${VERBS.length} verbs${due?` · ${due} forms due`:''}`; }
+  { const due=Object.keys(V_LANGS).reduce((n,id)=>n+vLangStats(id).due,0); $('metaConj').textContent=`Español, Français, Català${due?` · ${due} forms due`:''}`; }
   renderToday();
 }
 function showHome(){
@@ -3386,31 +3388,11 @@ function wordViewHtml(L,map){
    regular pattern: red irregular, fuchsia stem change, blue spelling.
    ===================================================================== */
 /* ---------- verb data (pure: tools/tests/verbs.test.mjs reads this block) ---------- */
-const V_PERSONS=['yo','tú','él/ella/Ud.','nosotros','vosotros','ellos/ellas/Uds.'];
-const V_SAY=['yo','tú','él','nosotros','vosotros','ellos'];
-const V_TENSES=[
-  {id:'pres',g:'ind',name:'Presente'},
-  {id:'pret',g:'ind',name:'Pretérito indefinido'},
-  {id:'impf',g:'ind',name:'Pretérito imperfecto'},
-  {id:'cond',g:'ind',name:'Condicional'},
-  {id:'fut',g:'ind',name:'Futuro'},
-  {id:'pperf',g:'ind',name:'Pretérito perfecto',aux:'pres'},
-  {id:'plusc',g:'ind',name:'Pretérito pluscuamperfecto',aux:'impf'},
-  {id:'futp',g:'ind',name:'Futuro perfecto',aux:'fut'},
-  {id:'condp',g:'ind',name:'Condicional perfecto',aux:'cond'},
-  {id:'spres',g:'sub',name:'Presente de subjuntivo'},
-  {id:'sira',g:'sub',name:'Imperfecto de subjuntivo (-ra)'},
-  {id:'sise',g:'sub',name:'Imperfecto de subjuntivo (-se)'},
-  {id:'sperf',g:'sub',name:'Pretérito perfecto de subjuntivo',aux:'spres'},
-  {id:'splus',g:'sub',name:'Pluscuamperfecto de subjuntivo',aux:'sira'},
-  {id:'imp',g:'other',name:'Imperativo'},
-  {id:'impn',g:'other',name:'Imperativo negativo'},
-  {id:'prog',g:'other',name:'Presente progresivo'}
-];
-const V_T={}; V_TENSES.forEach(t=>{ V_T[t.id]=t; });
-const vPersonsOf=tid=>tid==='imp'||tid==='impn'?[1,2,3,4,5]:[0,1,2,3,4,5];
-// regular endings; the future and conditional add theirs to the whole infinitive (or an irregular stem)
-const V_END={
+// One entry per language: persons, tenses (simple ones come from the tables; compound ones are an
+// auxiliary + the participle, gerund or infinitive), the regular endings of each conjugation class, and
+// the first ten verbs, of which only what differs from the regular pattern is written out
+// (t: tense -> six forms, '-' where there is none; fs: future/conditional stem; aux: être in French).
+const V_ES_END={
   ar:{pres:['o','as','a','amos','áis','an'],pret:['é','aste','ó','amos','asteis','aron'],impf:['aba','abas','aba','ábamos','abais','aban'],
       spres:['e','es','e','emos','éis','en'],sira:['ara','aras','ara','áramos','arais','aran'],sise:['ase','ases','ase','ásemos','aseis','asen'],
       imp:[null,'a','e','emos','ad','en'],ger:'ando',part:'ado'},
@@ -3418,18 +3400,8 @@ const V_END={
       spres:['a','as','a','amos','áis','an'],sira:['iera','ieras','iera','iéramos','ierais','ieran'],sise:['iese','ieses','iese','iésemos','ieseis','iesen'],
       imp:[null,'e','a','amos','ed','an'],ger:'iendo',part:'ido'}
 };
-V_END.ir=Object.assign({},V_END.er,{pres:['o','es','e','imos','ís','en'],imp:[null,'e','a','amos','id','an']});
-const V_FUT=['é','ás','á','emos','éis','án'], V_COND=['ía','ías','ía','íamos','íais','ían'];
-function vRegular(inf,futStem){
-  const e=V_END[inf.slice(-2)], st=inf.slice(0,-2), fs=futStem||inf, t={};
-  ['pres','pret','impf','spres','sira','sise'].forEach(k=>{ t[k]=e[k].map(x=>st+x); });
-  t.fut=V_FUT.map(x=>fs+x); t.cond=V_COND.map(x=>fs+x); t.imp=e.imp.map(x=>x==null?null:st+x);
-  t.ger=st+e.ger; t.part=st+e.part; t.impn=t.spres.map((x,i)=>i?x:null);
-  return t;
-}
-// the first ten verbs by frequency; only what differs from the regular pattern is written out
-// (t: tense -> six forms, '-' where there is none; fs: irregular future/conditional stem)
-const VERBS=[
+V_ES_END.ir=Object.assign({},V_ES_END.er,{pres:['o','es','e','imos','ís','en'],imp:[null,'e','a','amos','id','an']});
+const V_ES_VERBS=[
   {inf:'ser',it:'essere',t:{pres:'soy eres es somos sois son',pret:'fui fuiste fue fuimos fuisteis fueron',impf:'era eras era éramos erais eran',
     spres:'sea seas sea seamos seáis sean',sira:'fuera fueras fuera fuéramos fuerais fueran',sise:'fuese fueses fuese fuésemos fueseis fuesen',imp:'- sé sea seamos sed sean'}},
   {inf:'estar',it:'stare, trovarsi',t:{pres:'estoy estás está estamos estáis están',pret:'estuve estuviste estuvo estuvimos estuvisteis estuvieron',
@@ -3457,27 +3429,172 @@ const VERBS=[
     spres:'vea veas vea veamos veáis vean',imp:'- ve vea veamos ved vean'}},
   {inf:'dar',it:'dare',t:{pres:'doy das da damos dais dan',pret:'di diste dio dimos disteis dieron',spres:'dé des dé demos deis den',
     sira:'diera dieras diera diéramos dierais dieran',sise:'diese dieses diese diésemos dieseis diesen',imp:'- da dé demos dad den'}}
+];;
+const V_FR_END={
+  er:{pres:['e','es','e','ons','ez','ent'],impf:['ais','ais','ait','ions','iez','aient'],ps:['ai','as','a','âmes','âtes','èrent'],
+      spres:['e','es','e','ions','iez','ent'],simp:['asse','asses','ât','assions','assiez','assent'],imp:[null,'e',null,'ons','ez',null],ger:'ant',part:'é'},
+  ir:{pres:['is','is','it','issons','issez','issent'],impf:['issais','issais','issait','issions','issiez','issaient'],ps:['is','is','it','îmes','îtes','irent'],
+      spres:['isse','isses','isse','issions','issiez','issent'],simp:['isse','isses','ît','issions','issiez','issent'],imp:[null,'is',null,'issons','issez',null],ger:'issant',part:'i'},
+  re:{pres:['s','s','','ons','ez','ent'],impf:['ais','ais','ait','ions','iez','aient'],ps:['is','is','it','îmes','îtes','irent'],
+      spres:['e','es','e','ions','iez','ent'],simp:['isse','isses','ît','issions','issiez','issent'],imp:[null,'s',null,'ons','ez',null],ger:'ant',part:'u'}
+};
+V_FR_END.oir=Object.assign({},V_FR_END.re,{ps:['us','us','ut','ûmes','ûtes','urent'],simp:['usse','usses','ût','ussions','ussiez','ussent']});
+// third-group -ir verbs (partir, dormir) follow their own pattern, not finir's
+V_FR_END.ir3=Object.assign({},V_FR_END.re,{pres:['s','s','t','ons','ez','ent'],part:'i'});
+const V_FR_VERBS=[
+  {inf:'être',it:'essere',fs:'ser',ger:'étant',part:'été',t:{pres:'suis es est sommes êtes sont',impf:'étais étais était étions étiez étaient',ps:'fus fus fut fûmes fûtes furent',
+    spres:'sois sois soit soyons soyez soient',simp:'fusse fusses fût fussions fussiez fussent',imp:'- sois - soyons soyez -'}},
+  {inf:'avoir',it:'avere',fs:'aur',ger:'ayant',part:'eu',t:{pres:'ai as a avons avez ont',impf:'avais avais avait avions aviez avaient',ps:'eus eus eut eûmes eûtes eurent',
+    spres:'aie aies ait ayons ayez aient',simp:'eusse eusses eût eussions eussiez eussent',imp:'- aie - ayons ayez -'}},
+  {inf:'faire',it:'fare',fs:'fer',ger:'faisant',part:'fait',t:{pres:'fais fais fait faisons faites font',impf:'faisais faisais faisait faisions faisiez faisaient',ps:'fis fis fit fîmes fîtes firent',
+    spres:'fasse fasses fasse fassions fassiez fassent',simp:'fisse fisses fît fissions fissiez fissent',imp:'- fais - faisons faites -'}},
+  {inf:'dire',it:'dire',ger:'disant',part:'dit',t:{pres:'dis dis dit disons dites disent',impf:'disais disais disait disions disiez disaient',ps:'dis dis dit dîmes dîtes dirent',
+    spres:'dise dises dise disions disiez disent',simp:'disse disses dît dissions dissiez dissent',imp:'- dis - disons dites -'}},
+  {inf:'pouvoir',it:'potere',fs:'pourr',ger:'pouvant',part:'pu',t:{pres:'peux peux peut pouvons pouvez peuvent',impf:'pouvais pouvais pouvait pouvions pouviez pouvaient',ps:'pus pus put pûmes pûtes purent',
+    spres:'puisse puisses puisse puissions puissiez puissent',simp:'pusse pusses pût pussions pussiez pussent',imp:'- - - - - -'}},
+  {inf:'aller',it:'andare',aux:'être',fs:'ir',t:{pres:'vais vas va allons allez vont',spres:'aille ailles aille allions alliez aillent',imp:'- va - allons allez -'}},
+  {inf:'voir',it:'vedere',fs:'verr',ger:'voyant',part:'vu',t:{pres:'vois vois voit voyons voyez voient',impf:'voyais voyais voyait voyions voyiez voyaient',ps:'vis vis vit vîmes vîtes virent',
+    spres:'voie voies voie voyions voyiez voient',simp:'visse visses vît vissions vissiez vissent',imp:'- vois - voyons voyez -'}},
+  {inf:'savoir',it:'sapere',fs:'saur',ger:'sachant',part:'su',t:{pres:'sais sais sait savons savez savent',impf:'savais savais savait savions saviez savaient',ps:'sus sus sut sûmes sûtes surent',
+    spres:'sache saches sache sachions sachiez sachent',simp:'susse susses sût sussions sussiez sussent',imp:'- sache - sachons sachez -'}},
+  {inf:'vouloir',it:'volere',fs:'voudr',ger:'voulant',part:'voulu',t:{pres:'veux veux veut voulons voulez veulent',impf:'voulais voulais voulait voulions vouliez voulaient',ps:'voulus voulus voulut voulûmes voulûtes voulurent',
+    spres:'veuille veuilles veuille voulions vouliez veuillent',simp:'voulusse voulusses voulût voulussions voulussiez voulussent',imp:'- veuille - veuillons veuillez -'}},
+  {inf:'venir',it:'venire',cls:'ir3',aux:'être',fs:'viendr',ger:'venant',part:'venu',t:{pres:'viens viens vient venons venez viennent',impf:'venais venais venait venions veniez venaient',ps:'vins vins vint vînmes vîntes vinrent',
+    spres:'vienne viennes vienne venions veniez viennent',simp:'vinsse vinsses vînt vinssions vinssiez vinssent',imp:'- viens - venons venez -'}}
 ];
+const V_CA_END={
+  ar:{pres:['o','es','a','em','eu','en'],impf:['ava','aves','ava','àvem','àveu','aven'],ps:['í','ares','à','àrem','àreu','aren'],
+      spres:['i','is','i','em','eu','in'],simp:['és','essis','és','éssim','éssiu','essin'],imp:[null,'a','i','em','eu','in'],ger:'ant',part:'at'},
+  er:{pres:['o','s','','em','eu','en'],impf:['ia','ies','ia','íem','íeu','ien'],ps:['í','eres','é','érem','éreu','eren'],
+      spres:['i','is','i','em','eu','in'],simp:['és','essis','és','éssim','éssiu','essin'],imp:[null,'','i','em','eu','in'],ger:'ent',part:'ut'},
+  ir:{pres:['eixo','eixes','eix','im','iu','eixen'],impf:['ia','ies','ia','íem','íeu','ien'],ps:['í','ires','í','írem','íreu','iren'],
+      spres:['eixi','eixis','eixi','im','iu','eixin'],simp:['ís','issis','ís','íssim','íssiu','issin'],imp:[null,'eix','eixi','im','iu','eixin'],ger:'int',part:'it'}
+};
+V_CA_END.re=V_CA_END.er;
+// pure -ir verbs (dormir, sentir), without the -eix- of servir
+V_CA_END.ir2={pres:['o','s','','im','iu','en'],impf:['ia','ies','ia','íem','íeu','ien'],ps:['í','ires','í','írem','íreu','iren'],
+  spres:['i','is','i','im','iu','in'],simp:['ís','issis','ís','íssim','íssiu','issin'],imp:[null,'','i','im','iu','in'],ger:'int',part:'it'};
+const V_CA_VERBS=[
+  {inf:'ser',it:'essere',ger:'sent',part:'estat',t:{pres:'sóc ets és som sou són',impf:'era eres era érem éreu eren',ps:'fui fores fou fórem fóreu foren',
+    spres:'sigui siguis sigui siguem sigueu siguin',simp:'fos fossis fos fóssim fóssiu fossin',imp:'- sigues sigui siguem sigueu siguin'}},
+  {inf:'estar',it:'stare',t:{pres:'estic estàs està estem esteu estan',ps:'estiguí estigueres estigué estiguérem estiguéreu estigueren',
+    spres:'estigui estiguis estigui estiguem estigueu estiguin',simp:'estigués estiguessis estigués estiguéssim estiguéssiu estiguessin',imp:'- estigues estigui estiguem estigueu estiguin'}},
+  {inf:'haver',it:'avere (ausiliare)',fs:'haur',part:'hagut',t:{pres:'he has ha hem heu han',ps:'haguí hagueres hagué haguérem haguéreu hagueren',
+    spres:'hagi hagis hagi hàgim hàgiu hagin',simp:'hagués haguessis hagués haguéssim haguéssiu haguessin',imp:'- hagues hagi hàgim hàgiu hagin'}},
+  {inf:'tenir',it:'avere, possedere',cls:'ir2',fs:'tindr',ger:'tenint',part:'tingut',t:{pres:'tinc tens té tenim teniu tenen',impf:'tenia tenies tenia teníem teníeu tenien',
+    ps:'tinguí tingueres tingué tinguérem tinguéreu tingueren',spres:'tingui tinguis tingui tinguem tingueu tinguin',
+    simp:'tingués tinguessis tingués tinguéssim tinguéssiu tinguessin',imp:'- té tingui tinguem teniu tinguin'}},
+  {inf:'fer',it:'fare',fs:'far',ger:'fent',part:'fet',t:{pres:'faig fas fa fem feu fan',impf:'feia feies feia fèiem fèieu feien',ps:'fiu feres féu férem féreu feren',
+    spres:'faci facis faci fem feu facin',simp:'fes fessis fes féssim féssiu fessin',imp:'- fes faci fem feu facin'}},
+  {inf:'poder',it:'potere',fs:'podr',part:'pogut',t:{pres:'puc pots pot podem podeu poden',ps:'poguí pogueres pogué poguérem poguéreu pogueren',
+    spres:'pugui puguis pugui puguem pugueu puguin',simp:'pogués poguessis pogués poguéssim poguéssiu poguessin',imp:'- pugues pugui puguem pugueu puguin'}},
+  {inf:'dir',it:'dire',cls:'ir2',ger:'dient',part:'dit',t:{pres:'dic dius diu diem dieu diuen',impf:'deia deies deia dèiem dèieu deien',ps:'diguí digueres digué diguérem diguéreu digueren',
+    spres:'digui diguis digui diguem digueu diguin',simp:'digués diguessis digués diguéssim diguéssiu diguessin',imp:'- digues digui diguem digueu diguin'}},
+  {inf:'anar',it:'andare',fs:'anir',t:{pres:'vaig vas va anem aneu van',spres:'vagi vagis vagi anem aneu vagin',imp:'- vés vagi anem aneu vagin'}},
+  {inf:'veure',it:'vedere',ger:'veient',part:'vist',t:{pres:'veig veus veu veiem veieu veuen',impf:'veia veies veia vèiem vèieu veien',ps:'viu veieres veié veiérem veiéreu veieren',
+    spres:'vegi vegis vegi vegem vegeu vegin',simp:'veiés veiessis veiés veiéssim veiéssiu veiessin',imp:'- veges vegi vegem veieu vegin'}},
+  {inf:'voler',it:'volere',fs:'voldr',part:'volgut',t:{pres:'vull vols vol volem voleu volen',ps:'volguí volgueres volgué volguérem volguéreu volgueren',
+    spres:'vulgui vulguis vulgui vulguem vulgueu vulguin',simp:'volgués volguessis volgués volguéssim volguéssiu volguessin',imp:'- vulgues vulgui vulguem vulgueu vulguin'}}
+];
+const V_LANGS={
+  es:{id:'es',name:'Español',en:'Spanish',speech:'es-ES',aux:'haber',
+    persons:['yo','tú','él/ella/Ud.','nosotros','vosotros','ellos/ellas/Uds.'],say:['yo','tú','él','nosotros','vosotros','ellos'],
+    pron:{2:['él','ella','usted'],5:['ellos','ellas','ustedes']},impPron:{2:'usted',5:'ustedes'},impP:[1,2,3,4,5],
+    simple:['pres','pret','impf','spres','sira','sise'],cls:inf=>inf.slice(-2),futBase:inf=>inf,
+    fut:['é','ás','á','emos','éis','án'],cond:['ía','ías','ía','íamos','íais','ían'],end:V_ES_END,verbs:V_ES_VERBS,
+    def:['pres','pret','impf','cond','fut','spres'],
+    days:[['Lun','Lunes'],['Mar','Martes'],['Mié','Miércoles'],['Jue','Jueves'],['Vie','Viernes'],['Sáb','Sábado'],['Dom','Domingo']],
+    tenses:[
+      {id:'pres',g:'ind',name:'Presente'},{id:'pret',g:'ind',name:'Pretérito indefinido'},{id:'impf',g:'ind',name:'Pretérito imperfecto'},
+      {id:'cond',g:'ind',name:'Condicional (Pospretérito)'},{id:'fut',g:'ind',name:'Futuro'},
+      {id:'pperf',g:'ind',name:'Pretérito perfecto (Antepresente)',aux:'pres',with:'part'},
+      {id:'plusc',g:'ind',name:'Pretérito pluscuamperfecto (Antecopretérito)',aux:'impf',with:'part'},
+      {id:'condp',g:'ind',name:'Condicional perfecto (Antepospretérito)',aux:'cond',with:'part'},
+      {id:'futp',g:'ind',name:'Futuro perfecto (Antefuturo)',aux:'fut',with:'part'},
+      {id:'spres',g:'sub',name:'Presente de subjuntivo'},{id:'sira',g:'sub',name:'Imperfecto de subjuntivo (-ra)'},{id:'sise',g:'sub',name:'Imperfecto de subjuntivo (-se)'},
+      {id:'sperf',g:'sub',name:'Pretérito perfecto de subjuntivo',aux:'spres',with:'part'},{id:'splus',g:'sub',name:'Pluscuamperfecto de subjuntivo',aux:'sira',with:'part'},
+      {id:'imp',g:'other',name:'Imperativo'},{id:'impn',g:'other',name:'Imperativo negativo',neg:'no',from:'spres'},
+      {id:'prog',g:'other',name:'Presente progresivo',aux:'pres',auxv:'estar',with:'ger'},
+      {id:'pretprog',g:'other',name:'Pretérito indefinido progresivo',aux:'pret',auxv:'estar',with:'ger'},
+      {id:'impfprog',g:'other',name:'Pretérito imperfecto progresivo',aux:'impf',auxv:'estar',with:'ger'},
+      {id:'condprog',g:'other',name:'Condicional (Pospretérito) progresivo',aux:'cond',auxv:'estar',with:'ger'},
+      {id:'futprog',g:'other',name:'Futuro progresivo',aux:'fut',auxv:'estar',with:'ger'}]},
+  fr:{id:'fr',name:'Français',en:'French',speech:'fr-FR',aux:'avoir',agree:true,
+    persons:['je','tu','il/elle/on','nous','vous','ils/elles'],say:['je','tu','il','nous','vous','ils'],
+    pron:{2:['il','elle','on'],5:['ils','elles']},impPron:{},impP:[1,3,4],
+    simple:['pres','impf','ps','spres','simp'],cls:inf=>inf.endsWith('oir')?'oir':inf.slice(-2),futBase:inf=>inf.endsWith('re')?inf.slice(0,-1):inf,
+    fut:['ai','as','a','ons','ez','ont'],cond:['ais','ais','ait','ions','iez','aient'],end:V_FR_END,verbs:V_FR_VERBS,
+    def:['pres','impf','pc','fut','cond','spres'],
+    days:[['Lun','Lundi'],['Mar','Mardi'],['Mer','Mercredi'],['Jeu','Jeudi'],['Ven','Vendredi'],['Sam','Samedi'],['Dim','Dimanche']],
+    tenses:[
+      {id:'pres',g:'ind',name:'Présent'},{id:'impf',g:'ind',name:'Imparfait'},{id:'ps',g:'ind',name:'Passé simple'},{id:'fut',g:'ind',name:'Futur simple'},
+      {id:'pc',g:'ind',name:'Passé composé',aux:'pres',with:'part'},{id:'pqp',g:'ind',name:'Plus-que-parfait',aux:'impf',with:'part'},
+      {id:'pa',g:'ind',name:'Passé antérieur',aux:'ps',with:'part'},{id:'fa',g:'ind',name:'Futur antérieur',aux:'fut',with:'part'},
+      {id:'cond',g:'ind',name:'Conditionnel présent'},{id:'condp',g:'ind',name:'Conditionnel passé',aux:'cond',with:'part'},
+      {id:'spres',g:'sub',name:'Subjonctif présent'},{id:'simp',g:'sub',name:'Subjonctif imparfait'},
+      {id:'spc',g:'sub',name:'Subjonctif passé',aux:'spres',with:'part'},{id:'spqp',g:'sub',name:'Subjonctif plus-que-parfait',aux:'simp',with:'part'},
+      {id:'imp',g:'other',name:'Impératif présent'}]},
+  ca:{id:'ca',name:'Català',en:'Catalan',speech:'ca-ES',aux:'haver',perif:['vaig','vas','va','vam','vau','van'],
+    persons:['jo','tu','ell/ella/vostè','nosaltres','vosaltres','ells/elles/vostès'],say:['jo','tu','ell','nosaltres','vosaltres','ells'],
+    pron:{2:['ell','ella','vostè'],5:['ells','elles','vostès']},impPron:{2:'vostè',5:'vostès'},impP:[1,2,3,4,5],
+    simple:['pres','impf','ps','spres','simp'],cls:inf=>inf.endsWith('re')?'re':inf.slice(-2),futBase:inf=>inf.endsWith('re')?inf.slice(0,-1):inf,
+    fut:['é','às','à','em','eu','an'],cond:['ia','ies','ia','íem','íeu','ien'],end:V_CA_END,verbs:V_CA_VERBS,
+    def:['pres','impf','perif','fut','cond','spres'],
+    days:[['Dl','Dilluns'],['Dt','Dimarts'],['Dc','Dimecres'],['Dj','Dijous'],['Dv','Divendres'],['Ds','Dissabte'],['Dg','Diumenge']],
+    tenses:[
+      {id:'pres',g:'ind',name:'Present'},{id:'impf',g:'ind',name:'Imperfet'},{id:'ps',g:'ind',name:'Passat simple'},
+      {id:'perif',g:'ind',name:'Passat perifràstic',aux:'perif',with:'inf'},{id:'fut',g:'ind',name:'Futur'},{id:'cond',g:'ind',name:'Condicional'},
+      {id:'perf',g:'ind',name:'Perfet',aux:'pres',with:'part'},{id:'plusc',g:'ind',name:'Plusquamperfet',aux:'impf',with:'part'},
+      {id:'futp',g:'ind',name:'Futur perfet',aux:'fut',with:'part'},{id:'condp',g:'ind',name:'Condicional perfet',aux:'cond',with:'part'},
+      {id:'spres',g:'sub',name:'Present de subjuntiu'},{id:'simp',g:'sub',name:'Imperfet de subjuntiu'},
+      {id:'sperf',g:'sub',name:'Perfet de subjuntiu',aux:'spres',with:'part'},{id:'splus',g:'sub',name:'Plusquamperfet de subjuntiu',aux:'simp',with:'part'},
+      {id:'imp',g:'other',name:'Imperatiu'}]}
+};
+// the language on screen: these follow it
+let VL, V_L, V_PERSONS, V_SAY, V_TENSES, V_T, V_END, V_FUT, V_COND, VERBS;
+function vUseLang(id){
+  VL=id; V_L=V_LANGS[id]; V_PERSONS=V_L.persons; V_SAY=V_L.say; V_TENSES=V_L.tenses; V_T={}; V_TENSES.forEach(t=>{ V_T[t.id]=t; });
+  V_END=V_L.end; V_FUT=V_L.fut; V_COND=V_L.cond; VERBS=V_L.verbs;
+}
+const vPersonsOf=tid=>tid==='imp'||tid==='impn'?V_L.impP:[0,1,2,3,4,5];
+// a verb's conjugation class: from its ending, unless the verb names a subclass (ir3, ir2)
+const vClsOf=inf=>{ const v=VERBS.find(x=>x.inf===inf); return v&&v.cls||V_L.cls(inf); };
+const vStemOf=inf=>inf.slice(0,inf.length-vClsOf(inf).replace(/\d$/,'').length);
+function vRegular(inf,futStem){
+  const e=V_END[vClsOf(inf)], st=vStemOf(inf), fs=futStem||V_L.futBase(inf), t={};
+  V_L.simple.forEach(k=>{ t[k]=e[k].map(x=>x==null?null:st+x); });
+  t.fut=V_FUT.map(x=>fs+x); t.cond=V_COND.map(x=>fs+x); t.imp=e.imp.map(x=>x==null?null:st+x);
+  t.ger=st+e.ger; t.part=st+e.part;
+  return t;
+}
 const vVerb=inf=>VERBS.find(v=>v.inf===inf);
 const V_CONJ=new Map(), V_REG=new Map();
 // every simple form of a verb: the regular pattern with the written-out forms laid over it
 function vConj(v){
-  if(V_CONJ.has(v.inf)) return V_CONJ.get(v.inf);
+  const key=VL+'|'+v.inf; if(V_CONJ.has(key)) return V_CONJ.get(key);
   const t=vRegular(v.inf,v.fs);
   Object.entries(v.t||{}).forEach(([k,s])=>{ t[k]=s.split(' ').map(x=>x==='-'?null:x); });
   if(v.ger) t.ger=v.ger; if(v.part) t.part=v.part;
-  t.impn=t.spres.map((x,i)=>i?x:null);
-  V_CONJ.set(v.inf,t); return t;
+  V_CONJ.set(key,t); return t;
 }
 // the pattern a regular verb with this ending would follow, to compare against
-function vRegConj(v){ if(!V_REG.has(v.inf)) V_REG.set(v.inf,vRegular(v.inf)); return V_REG.get(v.inf); }
-// the full answer: compound tenses take haber, the progressive estar, the negative imperative "no"
+function vRegConj(v){ const key=VL+'|'+v.inf; if(!V_REG.has(key)) V_REG.set(key,vRegular(v.inf)); return V_REG.get(key); }
+// compound tenses: the auxiliary (haber, estar, avoir or être, haver, or Catalan's past «vaig») and the
+// verb's own part; in French the participle agrees with a plural subject after être
+const vAuxName=(v,t)=>t.auxv||v.aux||V_L.aux;
+const vAgree=(v,t,p)=>V_L.agree&&vAuxName(v,t)==='être'&&p>=3?'s':'';
+const vAuxForm=(v,t,p)=>t.aux==='perif'?V_L.perif[p]:vConj(vVerb(vAuxName(v,t)))[t.aux][p];
+// the verb's own part of a form, and its regular counterpart
+function vOwn(v,tid,p){
+  const c=vConj(v), r=vRegConj(v), t=V_T[tid];
+  if(t.aux){ if(t.with==='inf') return {f:v.inf,g:v.inf,tt:'inf'}; if(t.with==='ger') return {f:c.ger,g:r.ger,tt:'ger'}; const s=vAgree(v,t,p); return {f:c.part+s,g:r.part+s,tt:'part'}; }
+  if(t.neg) return {f:c[t.from][p],g:r[t.from][p],tt:t.from};
+  return {f:c[tid][p],g:r[tid][p],tt:tid};
+}
+// the full answer, or null where the verb has no such form (pouvoir has no imperative)
 function vForm(v,tid,p){
-  const c=vConj(v), t=V_T[tid];
-  if(t.aux) return vConj(vVerb('haber'))[t.aux][p]+' '+c.part;
-  if(tid==='prog') return vConj(vVerb('estar')).pres[p]+' '+c.ger;
-  if(tid==='impn') return 'no '+c.spres[p];
-  return c[tid][p];
+  const t=V_T[tid], o=vOwn(v,tid,p); if(o.f==null) return null;
+  return t.aux?vAuxForm(v,t,p)+' '+o.f:t.neg?t.neg+' '+o.f:o.f;
 }
 // how a form departs from the regular one: '' regular, 'stem' a vowel of the stem changes (e→ie, o→ue,
 // e→i...), 'spell' only the spelling changes (c→z, an accent dropped on a one-syllable form), else 'irr'
@@ -3510,19 +3627,18 @@ function vMark(f,r){
 const V_LEVEL=['Regular','Slightly irregular','Irregular','Strongly irregular'];
 function vLevel(v){
   const c=vConj(v), r=vRegConj(v); let n=0, k=0;
-  ['pres','pret','impf','fut','cond','spres','sira','imp'].forEach(t=>c[t].forEach((f,i)=>{ if(f==null) return; n++; if(vKind(f,r[t][i])) k++; }));
+  V_L.simple.concat(['fut','cond','imp']).forEach(t=>c[t].forEach((f,i)=>{ if(f==null) return; n++; if(vKind(f,r[t][i])) k++; }));
   ['ger','part'].forEach(t=>{ n++; if(vKind(c[t],r[t])) k++; });
   const x=k/n; return x>=.3?3:x>=.1?2:x>0?1:0;
 }
+vUseLang('es');
 /* ---------- end of verb data ---------- */
 
 // the form as shown: only the verb's own part is coloured (not haber, estar or "no")
 function vFormHtml(v,tid,p){
-  const c=vConj(v), r=vRegConj(v), t=V_T[tid];
-  if(t.aux) return esc(vConj(vVerb('haber'))[t.aux][p])+' '+vMark(c.part,r.part);
-  if(tid==='prog') return esc(vConj(vVerb('estar')).pres[p])+' '+vMark(c.ger,r.ger);
-  if(tid==='impn') return 'no '+vMark(c.spres[p],r.spres[p]);
-  return vMark(c[tid][p],r[tid][p]);
+  const t=V_T[tid], o=vOwn(v,tid,p); if(o.f==null) return '';
+  const m=vMark(o.f,o.g);
+  return t.aux?esc(vAuxForm(v,t,p))+' '+m:t.neg?esc(t.neg)+' '+m:m;
 }
 /* ---------- how each form is built ---------- */
 // Each form is compared with the one a regular verb would have: both are split into stem and ending, and
@@ -3532,6 +3648,7 @@ const vPre=(a,b)=>{ let i=0; while(i<a.length&&i<b.length&&a[i]===b[i]) i++; ret
 const vSuf=(a,b)=>{ let i=0; while(i<a.length&&i<b.length&&a[a.length-1-i]===b[b.length-1-i]) i++; return i; };
 // where the form's own ending starts: [stem, ending], or null for a form that shares nothing with the pattern
 function vSplit(f,B,E,alts){
+  if(!E&&B) return [f,''];   // a person with no ending (il vend, ell perd): it's all stem
   if(!B) return f.length>E.length&&f.endsWith(E)?[f.slice(0,-E.length),E]:null;   // ir: fu + iste, vay + a
   if(f.length>E.length&&f.endsWith(E)) return [f.slice(0,-E.length),E];
   for(const a of alts||[]) if(a!==E&&f.length>a.length&&vBare(f).endsWith(vBare(a))) return [f.slice(0,-a.length),f.slice(-a.length)];
@@ -3573,10 +3690,12 @@ function vAnalyse(f,B,cut,E,fut,alts){
   if(cut&&!replaced){ T.push({op:'−'}); T.push({t:cut,c:'cut'}); }
   T.push(...after);
   // the ending
-  if(F===E){ T.push({op:'+'}); T.push({t:E}); notes.push(fut?`The regular ending ${vQ(E)} is added after the infinitive.`:`The regular ending ${vQ(E)} is added.`); }
+  if(F===E&&!E){ notes.push('No ending in this person: just the stem.'); }
+  else if(F===E){ T.push({op:'+'}); T.push({t:E}); notes.push(fut?`The regular ending ${vQ(E)} is added after the infinitive.`:`The regular ending ${vQ(E)} is added.`); }
   else if(!F){ T.push({op:'−'}); T.push({t:E,c:'cut'}); notes.push(`The ending ${vQ(E)} drops: the form is just the stem.`); }
-  else if(alts&&alts.some(x=>vBare(x[1])===vBare(F)&&x[1]!==E)){ const a=alts.find(x=>vBare(x[1])===vBare(F)&&x[1]!==E); T.push({op:'+'}); T.push({t:E+'→'+F,c:'irr'});
-    notes.push(`It takes the ending of ${a[0]==='ar'?'-ar':'-er and -ir'} verbs, ${vQ(a[1])}, instead of ${vQ(E)}${F!==a[1]?`, written ${vQ(F)} since one-syllable forms take no accent`:''}.`); }
+  else if(alts&&alts.some(x=>vBare(x[1])===vBare(F)&&x[1]!==E)){ const m=alts.filter(x=>vBare(x[1])===vBare(F)&&x[1]!==E), a=m[0]; T.push({op:'+'}); T.push({t:E+'→'+F,c:'irr'});
+    const names=[...new Set(m.map(x=>'-'+x[0]))], list=names.length>1?names.slice(0,-1).join(', ')+' and '+names[names.length-1]:names[0];
+    notes.push(`It takes the ending of ${list} verbs, ${vQ(a[1])}, instead of ${vQ(E)}${F!==a[1]?`, written ${vQ(F)} since one-syllable forms take no accent`:''}.`); }
   else if(F.startsWith(E)){ T.push({op:'+'}); T.push({t:E}); T.push({op:'+'}); T.push({t:F.slice(E.length),c:'irr'}); notes.push(`${vQ(F.slice(E.length))} is added after the ending ${vQ(E)}.`); }
   else if(vBare(F)===vBare(E)){ const k=vAcc(F)<vAcc(E)?'spell':'irr'; T.push({op:'+'}); T.push({t:E+'→'+F,c:k});
     notes.push(k==='spell'?`No written accent: one-syllable forms don’t take one (${vQ(F)}, not ${vQ(E)}).`:`The stress falls on the ending, so it takes a written accent: ${vQ(F)}.`); }
@@ -3588,26 +3707,18 @@ function vAnalyse(f,B,cut,E,fut,alts){
     notes.push(cp||cs2?`In the ending, ${vQ(Y||'')} becomes ${vQ(X)}: ${vQ(F)} instead of the usual ${vQ(E)}.`:`The ending is ${vQ(F)} instead of the usual ${vQ(E)}.`); }
   return {T,notes};
 }
-// the verb's own part of a form, and its regular counterpart
-function vOwn(v,tid,p){
-  const c=vConj(v), r=vRegConj(v), t=V_T[tid];
-  if(t.aux) return {f:c.part,g:r.part,tt:'part'};
-  if(tid==='prog') return {f:c.ger,g:r.ger,tt:'ger'};
-  if(tid==='impn') return {f:c.spres[p],g:r.spres[p],tt:'spres'};
-  return {f:c[tid][p],g:r[tid][p],tt:tid};
-}
-const V_PNAME=['yo','tú','él/ella/usted','nosotros','vosotros','ellos/ellas/ustedes'];
 function vBuild(v,tid,p){
-  const cls=v.inf.slice(-2), st=v.inf.slice(0,-2), t=V_T[tid], o=vOwn(v,tid,p);
-  const fut=o.tt==='fut'||o.tt==='cond';
-  const alts=fut?null:['ar','er','ir'].filter(x=>x!==cls).map(x=>[x,o.tt==='part'||o.tt==='ger'?V_END[x][o.tt]:V_END[x][o.tt][p]]).filter(x=>x[1]);
-  const a=fut?vAnalyse(o.f,v.inf,'',(o.tt==='fut'?V_FUT:V_COND)[p],true)
-    :vAnalyse(o.f,st,cls,o.tt==='part'||o.tt==='ger'?V_END[cls][o.tt]:o.g.slice(st.length),false,alts);
+  const cls=vClsOf(v.inf), st=vStemOf(v.inf), t=V_T[tid], o=vOwn(v,tid,p);
+  const fut=o.tt==='fut'||o.tt==='cond', nf=o.tt==='part'||o.tt==='ger';
+  const alts=fut||o.tt==='inf'?null:Object.keys(V_END).filter(x=>x!==cls&&V_END[x]!==V_END[cls]).map(x=>[x.replace(/\d$/,''),nf?V_END[x][o.tt]:(V_END[x][o.tt]||[])[p]]).filter(x=>x[1]);
+  const a=o.tt==='inf'?{T:[{t:o.f}],notes:[]}:fut?vAnalyse(o.f,V_L.futBase(v.inf),'',(o.tt==='fut'?V_FUT:V_COND)[p],true)
+    :vAnalyse(o.f,st,cls.replace(/\d$/,''),o.g.slice(st.length),false,alts);
   const pre=[], lead=[];
-  if(t.aux){ const h=vConj(vVerb('haber'))[t.aux][p]; pre.push({t:h,c:'aux'},{op:'+'}); lead.push(`The ${V_PNAME[p]} form of <i>haber</i> in the ${esc(V_T[t.aux].name)}, ${vQ(h)}, goes with the participle${vKind(o.f,o.g)?'':` ${vQ(o.f)}, which is regular`}.`); }
-  if(tid==='prog'){ const e=vConj(vVerb('estar')).pres[p]; pre.push({t:e,c:'aux'},{op:'+'}); lead.push(`<i>estar</i> in the present, ${vQ(e)}, + the gerund: something going on right now.`); }
-  if(tid==='impn'){ pre.push({t:'no',c:'aux'},{op:'+'}); lead.push('<i>no</i> + the present subjunctive, for every person.'); }
-  const notes=(t.aux||tid==='prog')&&!vKind(o.f,o.g)?[]:a.notes;
+  if(t.aux){ const af=vAuxForm(v,t,p), an=vAuxName(v,t); pre.push({t:af,c:'aux'},{op:'+'});
+    if(t.aux==='perif') lead.push(`<i>anar</i> in its past form ${vQ(af)} + the infinitive.`);
+    else lead.push(`The ${esc(V_PERSONS[p])} form of <i>${esc(an)}</i> in the ${esc(V_T[t.aux].name)}, ${vQ(af)}, + the ${t.with==='ger'?'gerund':'participle'}${vAgree(v,t,p)?`, which agrees with the plural subject: ${vQ(o.f)}`:''}${vKind(o.f,o.g)?'':` ${vQ(o.f)}, which is regular`}.`); }
+  if(t.neg){ pre.push({t:t.neg,c:'aux'},{op:'+'}); lead.push(`<i>${esc(t.neg)}</i> + the ${esc(V_T[t.from].name)}, for every person.`); }
+  const notes=t.aux&&!vKind(o.f,o.g)?[]:a.notes;
   return {T:pre.concat(a.T),notes:lead.concat(notes),reg:vKind(o.f,o.g)?o.g:null,own:o.f};
 }
 const vFormTokens=(v,tid,p)=>vBuild(v,tid,p).T;
@@ -3639,11 +3750,12 @@ const V_FUTWHY={tener:['futd','tendr-: the «e» of the infinitive drops and a �
   hacer:['futshort','har-: a short stem, only in hacer and its compounds (deshacer, rehacer, satisfacer).'],
   decir:['futshort','dir-: a short stem, only in decir and some compounds (predecir, contradecir).']};
 // where this form fits: which verbs share it and why ([{text, same}]); the building blocks say what changed
-function vRules(v,tid,p){
+const vRules=(v,tid,p)=>VL==='fr'?vRulesFr(v,tid,p):VL==='ca'?vRulesCa(v,tid,p):vRulesEs(v,tid,p);
+function vRulesEs(v,tid,p){
   const c=vConj(v), r=vRegConj(v), t=V_T[tid], inf=v.inf, cls=inf.slice(-2), out=[];
   const add=(text,same)=>out.push({text,same:same||''});
-  if(t.aux){ if(vKind(c.part,r.part)) add(`An irregular participle, only in ${esc(inf)}${V_PARTSAME[inf]?' and its compounds':''}.`,V_PARTSAME[inf]?'part:'+inf:''); return out; }
-  if(tid==='prog'){ const d=vInfo(c.ger,r.ger); if(d.k==='stem') add('-ir verbs with a stem change (and poder) change it in the gerund too.',d.to==='u'?'geru':'geri'); else if(d.k) add('An irregular gerund: ir is the only verb with «yendo».'); return out; }
+  if(t.aux&&t.with==='part'){ if(vKind(c.part,r.part)) add(`An irregular participle, only in ${esc(inf)}${V_PARTSAME[inf]?' and its compounds':''}.`,V_PARTSAME[inf]?'part:'+inf:''); return out; }
+  if(t.with==='ger'){ const d=vInfo(c.ger,r.ger); if(d.k==='stem') add('-ir verbs with a stem change (and poder) change it in the gerund too.',d.to==='u'?'geru':'geri'); else if(d.k) add('An irregular gerund: ir is the only verb with «yendo».'); return out; }
   const T=tid==='impn'?'spres':tid, f=c[T][p], g=r[T][p], d=vInfo(f,g);
   const stemPres=c.pres.some((x,i)=>vKind(x,r.pres[i])==='stem');
   if(d.k==='spell'&&vBare(f)===vBare(g)) add('Written accents drop on one-syllable forms.','mono');
@@ -3690,6 +3802,127 @@ function vRules(v,tid,p){
   return out;
 }
 
+// French: where each form fits
+const V_SAME_FR={
+  futst:'serai, aurai, ferai, irai, pourrai, verrai, saurai, voudrai, viendrai, devrai, enverrai',
+  etre:'aller, venir, arriver, partir, entrer, sortir, rester, tomber, naître, mourir, devenir, revenir',
+  subjown:'sois, aie, fasse, aille, puisse, sache, veuille', ps_us:'eus, fus, pus, sus, voulus, dus, lus, crus',
+  ps_is:'fis, dis, vis, mis, pris, partis, finis', ps_in:'vins, tins, devins, revins, obtins',
+  ien:'viens, tiens, deviens, reviens, obtiens', eu:'peux, veux, peuvent, veulent', part_t:'fait, dit, écrit, mis, pris'
+};
+const V_PARTSAME_FR={faire:'défait, refait, satisfait',dire:'redit, prédit',venir:'devenu, revenu, tenu',voir:'revu, prévu'};
+function vRulesFr(v,tid,p){
+  const c=vConj(v), r=vRegConj(v), t=V_T[tid], inf=v.inf, out=[], add=(text,same)=>out.push({text,same:same||''});
+  if(t.aux){
+    if(vAuxName(v,t)==='être') add(`${esc(inf)} takes <i>être</i> in compound tenses, and the participle agrees with the subject (allé, allée, allés).`,'etre');
+    else add('Most verbs take <i>avoir</i>; être, aller and venir… are the exceptions, and the participle stays the same.');
+    if(vKind(c.part,r.part)) add(`An irregular participle${V_PARTSAME_FR[inf]?', shared by its compounds':''}.`,V_PARTSAME_FR[inf]?'part:'+inf:/t$/.test(c.part)?'part_t':'');
+    return out;
+  }
+  const T=tid, f=c[T][p], g=r[T][p], d=vInfo(f,g);
+  if(T==='pres'){
+    if(['pouvoir','vouloir'].includes(inf)&&[0,1,2,5].includes(p)) add('The stem becomes «eu» where the ending is silent (je, tu, il, ils); nous and vous keep the infinitive’s «ou».','eu');
+    if(inf==='venir'&&[0,1,2,5].includes(p)) add('«e» becomes «ie» where the stress falls on the stem; ils viennent also doubles the «n».','ien');
+    if((inf==='faire'||inf==='dire')&&p===4) add('vous faites, vous dites: with être (vous êtes), the only «-tes» endings in the present.');
+    if(['être','avoir','aller','faire'].includes(inf)&&p===5) add('One of four «-ont» endings in ils: sont, ont, vont, font.');
+    if(p===0&&f===c.pres[1]) add('je and tu share this form; only the pronoun tells them apart.');
+  }
+  if(T==='impf'){ if(inf==='être') add('The only irregular imparfait: the stem «ét-».'); else add(`Built on the nous form of the present without «-ons» (${esc(c.pres[3])} → ${esc(c.pres[3].replace(/ons$/,''))}-) + -ais, -ais, -ait, -ions, -iez, -aient.`); }
+  if(T==='ps'){
+    const e=c.ps[0].slice(-2), k=/us$/.test(c.ps[0])?'ps_us':/ins$/.test(c.ps[0])?'ps_in':/is$/.test(c.ps[0])?'ps_is':'';
+    add(inf.endsWith('er')?'-er verbs take -ai, -as, -a, -âmes, -âtes, -èrent.':`A passé simple in «-${esc(e)}»: ${esc(c.ps.join(', '))}.`,k);
+    add('Written language: in speech the passé composé is used instead.');
+  }
+  if(T==='fut'||T==='cond'){
+    const stem=c.fut[0].slice(0,-2);
+    if(v.fs) add(`An irregular stem, «${esc(stem)}-»; the ${T==='fut'?'conditionnel':'futur'} uses the same one.`,'futst');
+    else add(`Regular: the infinitive${inf.endsWith('re')?' without its final «e»':''} + ${T==='fut'?'-ai, -as, -a, -ons, -ez, -ont':'the imparfait endings -ais, -ais, -ait, -ions, -iez, -aient'}.`);
+  }
+  if(T==='spres'){
+    if(['être','avoir','faire','aller','pouvoir','savoir','vouloir'].includes(inf)) add('One of the seven subjunctives with a stem of their own.','subjown');
+    else add(`Built on the ils form of the present without «-ent» (${esc(c.pres[5])} → ${esc(c.pres[5].replace(/ent$/,''))}-) + -e, -es, -e, -ions, -iez, -ent.`);
+    if(p===3||p===4) add('nous and vous look like the imparfait (-ions, -iez).');
+  }
+  if(T==='simp'){ add(`Built on the passé simple (${esc(c.ps[1])} → ${esc(c.simp[0])}); il takes a circumflex: ${esc(c.simp[2])}. Literary.`); }
+  if(T==='imp'){
+    if(['être','avoir','savoir','vouloir'].includes(inf)) add('Taken from the subjunctive, like être, avoir, savoir and vouloir.');
+    else if(inf==='aller'&&p===1) add('va: -er verbs (and aller) drop the «s» of tu in the imperative; it comes back before y: vas-y.');
+    else add('The present without the subject pronoun.');
+  }
+  if(!out.length&&d.k==='irr') add('One of the forms to learn as they are.');
+  return out;
+}
+// Catalan: where each form fits
+const V_SAME_CA={
+  velar:'tinc, puc, dic, faig, vaig, veig, vull, sóc, estic', gu:'tingui, pugui, digui, vulgui, estigui, sigui, begui, visqui',
+  perif:'vaig cantar, vas dir, va fer, vam anar, vau veure, van tenir', futst:'tindré, podré, voldré, faré, hauré, aniré, vindré, sabré',
+  gut:'tingut, pogut, volgut, hagut, begut, vingut, sabut', subjps:'tingués, pogués, volgués, digués, estigués, hagués',
+  ia:'feia, deia, veia, reia, creia', ent:'fent, dient, veient, sent, rient'
+};
+const V_PARTSAME_CA={fer:'desfet, refet, satisfet',dir:'predit, contradit',veure:'previst'};
+function vRulesCa(v,tid,p){
+  const c=vConj(v), r=vRegConj(v), t=V_T[tid], inf=v.inf, out=[], add=(text,same)=>out.push({text,same:same||''});
+  if(t.aux==='perif'){ add('The everyday past tense of spoken Catalan: «anar» in a special set of forms (vaig, vas, va, vam, vau, van) + the infinitive. It never changes the verb itself.','perif'); return out; }
+  if(t.aux){
+    add('<i>haver</i> + the participle, for every verb.');
+    if(vKind(c.part,r.part)) add(/gut$/.test(c.part)?'A participle in «-gut», like the velar verbs.':`An irregular participle${V_PARTSAME_CA[inf]?', shared by its compounds':''}.`,/gut$/.test(c.part)?'gut':V_PARTSAME_CA[inf]?'part:'+inf:'');
+    return out;
+  }
+  const T=tid, f=c[T][p], g=r[T][p], d=vInfo(f,g);
+  if(T==='pres'){
+    if(p===0&&/(c|g)$/.test(f)&&!/(c|g)$/.test(g)) add('A «velar» jo form ending in «-c» or «-g»: the present subjunctive and the passat simple take «-gu-» from it (tinc → tingui).','velar');
+    if(inf==='ser'&&p!==0) add('ser is irregular all through the present: sóc, ets, és, som, sou, són.');
+    if(inf==='estar'&&p>0&&d.k) add('The stress falls on the ending, so it takes a written accent: estàs, està.');
+    if(inf==='anar'&&(p===3||p===4)) add('nosaltres and vosaltres are regular (anem, aneu); the other persons are built on «v-».');
+  }
+  if(T==='impf'){
+    if(/eia$|ia$/.test(c.impf[0])&&['fer','dir','veure'].includes(inf)) add('After a vowel the «-ia» endings read «-eia»: feia, deia, veia.','ia');
+    else if(inf==='ser') add('ser has its own imperfet: era, eres, era…');
+    else add('Regular: the stem + «-ava» (-ar verbs) or «-ia» (the others).');
+  }
+  if(T==='ps'){ add('Mostly written: in speech the passat perifràstic (vaig dir) is used.'); if(/gu/.test(f)) add('Velar verbs take «-gu-» here too.','gu'); }
+  if(T==='fut'||T==='cond'){
+    if(v.fs) add(`An irregular stem, «${esc(c.fut[0].slice(0,-1))}-»; the ${T==='fut'?'condicional':'futur'} uses the same one.`,'futst');
+    else add(`Regular: the infinitive${inf.endsWith('re')?' without its final «e»':''} + ${T==='fut'?'-é, -às, -à, -em, -eu, -an':'-ia, -ies, -ia, -íem, -íeu, -ien'}.`);
+  }
+  if(T==='spres'){
+    if(/gu/.test(f)) add('The «-gu-» of the velar verbs: tingui, pugui, digui, vulgui.','gu');
+    else if(inf==='fer') add('fer builds it on «fac-»: faci, facis… (but fem, feu).');
+    else if(inf==='anar') add('Built on «vag-» (vagi), except nosaltres and vosaltres (anem, aneu).');
+    else if(inf==='veure') add('Built on «veg-»: vegi, vegis…');
+    else if(inf==='haver'&&(p===3||p===4)) add('hàgim, hàgiu take a written accent.');
+  }
+  if(T==='simp'){ add(`Built on the stem of the passat simple (${esc(c.ps[2])} → ${esc(c.simp[0])}).`,/gu/.test(f)?'subjps':''); }
+  if(T==='imp'){ if(p===1&&f!==c.pres[2]) add('A tu imperative of its own, often from the subjunctive (sigues, pugues).'); else if(p===1) add('tu: the same as the ell form of the present.'); else if(p===4&&f===c.pres[4]) add('vosaltres: the same as the present.'); else add('vostè, nosaltres and vostès take the present subjunctive.'); }
+  if(!out.length&&d.k==='irr') add('One of the forms to learn as they are.');
+  return out;
+}
+const V_ABOUT_FR={
+  'être':['The most irregular verb: four stems (s-, ét-, f-, ser-). Auxiliary of the compound tenses of aller, venir and the reflexive verbs.',''],
+  avoir:['The usual auxiliary (j’ai fait). Irregular in the present (ai, as, a, ont), the future aur- and the subjunctive (aie, ait, ayons).',''],
+  faire:['fais, fait, faisons but vous faites and ils font; future fer-, passé simple fis, subjunctive fasse, participle fait.','défaire, refaire, satisfaire'],
+  dire:['Regular-looking in the -re pattern but vous dites; participle dit.','redire, prédire (vous prédisez), contredire (vous contredisez)'],
+  pouvoir:['peux, peut, peuvent: «eu» where the ending is silent; future pourr-, subjunctive puisse, no imperative.',''],
+  aller:['The only irregular -er verb: vais, vas, va, vont; future ir-; subjunctive aille; compound tenses with être.',''],
+  voir:['vois, voyons («i» becomes «y» before a pronounced ending); future verr-, passé simple vis, participle vu.','revoir, entrevoir; prévoir (but prévoirai)'],
+  savoir:['sais, savons; future saur-, subjunctive and imperative sache-, participle su, present participle sachant.',''],
+  vouloir:['veux, veut, veulent: «eu» like pouvoir; future voudr-, subjunctive veuille, imperative veuillez.',''],
+  venir:['viens, venons, viennent; future viendr-, passé simple vins; compound tenses with être.','devenir, revenir, se souvenir, tenir, obtenir, appartenir, retenir']
+};
+const V_ABOUT_CA={
+  ser:['The most irregular verb: sóc, ets, és; passat simple fui, fou; subjunctive sigui. Participle estat (also sigut).',''],
+  estar:['Velar: estic, estigui, estiguí; the present has accents on the ending (estàs, està).','anar has the same set of special forms in the present (vaig)'],
+  haver:['Auxiliary of every compound tense (he fet) and of hi ha (there is / there are).',''],
+  tenir:['Velar: tinc, tingui, tinguí, tingut; future tindr-.','mantenir, obtenir, contenir, detenir, retenir; venir works the same way (vinc, vingui, vindré)'],
+  fer:['faig, fas, fa; imperfet feia; future far-; participle fet; subjunctive faci.','desfer, refer, satisfer'],
+  poder:['Velar: puc, pugui, poguí, pogut; future podr-.',''],
+  dir:['Velar: dic, digui, diguí; imperfet deia; gerund dient; participle dit.','predir, contradir, desdir'],
+  anar:['vaig, vas, va, van but anem, aneu; future anir-; subjunctive vagi. Its present also builds the passat perifràstic (vaig anar).',''],
+  veure:['veig, veus; imperfet veia; subjunctive vegi; participle vist.','preveure, reveure'],
+  voler:['Velar: vull, vulgui, volguí, volgut; future voldr-.','']
+};
+
+const V_SAMES={es:null,fr:V_SAME_FR,ca:V_SAME_CA}, V_PARTSAMES={es:null,fr:V_PARTSAME_FR,ca:V_PARTSAME_CA};
 // about each verb, and verbs conjugated the same way
 const V_ABOUT={
   ser:['Unique, and the most irregular verb: three stems (s-, er-, fu-). It shares its preterite and imperfect subjunctive with ir.',''],
@@ -3740,13 +3973,18 @@ async function connectVerbs(db,uid){
     ref.onSnapshot(sn=>{ const x=sn.exists?sn.data():null; if(!x||x.upd===VB.upd) return; mergeVerbs(x); vStore(); if(view==='conj'&&!(VBV&&VBV.tab==='train'&&VT&&VT.phase==='ask')) renderConj(); else if(view==='home') renderToday(); },()=>{});
   }catch(e){}
 }
-const vActive=v=>!favOn(VB.off,v.inf);
+// Spanish keys are bare ("ser|pres|0"); other languages carry theirs ("fr:être|pres|0")
+const vKP=()=>VL==='es'?'':VL+':', vKey=(v,tid,p)=>vKP()+v.inf+'|'+tid+'|'+p, vVKey=v=>vKP()+v.inf;
+const vActive=v=>!favOn(VB.off,vVKey(v));
+const vTen=()=>VL==='es'?VB.set.tenses:((VB.set.lt||{})[VL]||V_L.def);
+function vSetTen(list){ if(VL==='es') VB.set.tenses=list; else VB.set.lt=Object.assign({},VB.set.lt,{[VL]:list}); }
 const vToday=()=>Object.keys(VB.days[romeDay()]||{}).length;
 // every form in training: active verbs, chosen tenses, all persons (vosotros if wanted)
 function vItems(){
   const out=[];
-  VERBS.filter(vActive).forEach(v=>V_TENSES.forEach(t=>{ if(VB.set.tenses.indexOf(t.id)<0) return;
-    vPersonsOf(t.id).forEach(p=>{ const k=v.inf+'|'+t.id+'|'+p; if(favOn(VB.foff,k)) return; out.push(k); }); }));
+  const ten=vTen();
+  VERBS.filter(vActive).forEach(v=>V_TENSES.forEach(t=>{ if(ten.indexOf(t.id)<0) return;
+    vPersonsOf(t.id).forEach(p=>{ const k=vKey(v,t.id,p); if(favOn(VB.foff,k)||vForm(v,t.id,p)==null) return; out.push(k); }); }));
   return out;
 }
 const vDueCount=()=>{ const now=Date.now(); return vItems().filter(k=>VB.p[k]&&VB.p[k].due<=now).length; };
@@ -3762,10 +4000,11 @@ function vPick(){
   const pool=items.filter(k=>recent.indexOf(k)<0); return {k:rnd(pool.length?pool:items),practice:true};
 }
 // the third persons take one pronoun at a time: él, ella or usted; ellos, ellas or ustedes
-const V_PRON={2:['él','ella','usted'],5:['ellos','ellas','ustedes']};
-function vPron(tid,p){ if(tid==='imp'||tid==='impn') return p===2?'usted':p===5?'ustedes':V_PERSONS[p]; return V_PRON[p]?V_PRON[p][Math.floor(Math.random()*3)]:V_PERSONS[p]; }
-const vParse=k=>{ const a=k.split('|'); return {v:vVerb(a[0]),tid:a[1],p:+a[2]}; };
-function vNew(){ const it=vPick(); if(!it){ VT=null; return; } const x=vParse(it.k); VT={k:it.k,practice:!!it.practice,phase:'ask',pron:vPron(x.tid,x.p)}; }
+function vPron(tid,p){ if(tid==='imp'||tid==='impn') return V_L.impPron[p]||(VL==='fr'?`(${V_PERSONS[p]})`:V_PERSONS[p]); const x=V_L.pron[p]; return x?x[Math.floor(Math.random()*x.length)]:V_PERSONS[p]; }
+const vParse=k=>{ const m=/^([a-z]{2}):/.exec(k), lang=m?m[1]:'es', a=(m?k.slice(3):k).split('|'); return {lang,v:V_LANGS[lang].verbs.find(x=>x.inf===a[0]),tid:a[1],p:+a[2]}; };
+// how a form is said: French elides je before a vowel (j’ai)
+const vSayForm=(pron,form)=>VL==='fr'&&pron==='je'&&/^[aeiouyhâàéèêîôû]/i.test(form)?'j’'+form:String(pron).replace(/[()]/g,'')+' '+form;
+function vNew(){ const it=vPick(); if(!it){ VT=null; return; } const x=vParse(it.k); VT={k:it.k,lang:VL,practice:!!it.practice,phase:'ask',pron:vPron(x.tid,x.p)}; }
 // a right answer moves a due form up a box; a wrong one brings it back in a few questions
 function vApply(had,ok,now){
   const v=Object.assign({b:0,n:0,ok:0,due:0},had||{}); v.n++; v.last=now; v.r=ok?1:0;
@@ -3796,8 +4035,8 @@ function vAdvance(ok){ if(!VT||VT.phase!=='shown') return; vGrade(ok); vNew(); r
 const vCanSay=()=>typeof window.speechSynthesis!=='undefined'&&typeof window.SpeechSynthesisUtterance!=='undefined';
 function vSay(text){
   if(!vCanSay()) return;
-  try{ const u=new SpeechSynthesisUtterance(text), vs=speechSynthesis.getVoices(); u.lang='es-ES'; u.rate=.9;
-    const voice=vs.find(x=>/^es[-_]ES/i.test(x.lang))||vs.find(x=>/^es/i.test(x.lang)); if(voice) u.voice=voice;
+  try{ const u=new SpeechSynthesisUtterance(text), vs=speechSynthesis.getVoices(); u.lang=V_L.speech; u.rate=.9;
+    const voice=vs.find(x=>x.lang.replace('_','-').toLowerCase()===V_L.speech.toLowerCase())||vs.find(x=>x.lang.toLowerCase().startsWith(VL)); if(voice) u.voice=voice;
     speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){}
 }
 
@@ -3814,7 +4053,7 @@ const V_ICON={
 const V_CAT='<svg class="vcat" viewBox="0 0 64 64" aria-hidden="true"><path d="M15 52c-9-1-11-12-4-15" fill="none" stroke="#26262d" stroke-width="4.5" stroke-linecap="round"/><ellipse cx="32" cy="50" rx="13" ry="11.5" fill="#2c2c34"/><ellipse cx="26" cy="60.5" rx="4.2" ry="2.5" fill="#f2a6ae"/><ellipse cx="38" cy="60.5" rx="4.2" ry="2.5" fill="#f2a6ae"/><path d="M12.5 24 15.5 3.5 29 14z M51.5 24 48.5 3.5 35 14z" fill="#2c2c34"/><path d="M16 19 17.3 8.5 25.5 14.5z M48 19 46.7 8.5 38.5 14.5z" fill="#f2a6ae"/><ellipse cx="32" cy="27" rx="20.5" ry="16.5" fill="#2c2c34"/><circle cx="23.5" cy="27.5" r="6.4" fill="#f0892a"/><circle cx="40.5" cy="27.5" r="6.4" fill="#f0892a"/><circle cx="23.5" cy="28" r="3.9" fill="#141418"/><circle cx="40.5" cy="28" r="3.9" fill="#141418"/><circle cx="21.6" cy="25.6" r="1.7" fill="#fff"/><circle cx="38.6" cy="25.6" r="1.7" fill="#fff"/><path d="M30.5 33.6h3l-1.5 1.7z" fill="#f2a6ae"/><path d="M29 36.2q1.5 1.4 3 0q1.5 1.4 3 0" fill="none" stroke="#111" stroke-width=".9" stroke-linecap="round"/></svg>';
 const V_FLAG='<svg class="vflag" viewBox="0 0 30 20" aria-label="Spanish"><rect width="30" height="20" rx="2" fill="#c60b1e"/><rect y="5" width="30" height="10" fill="#ffc400"/></svg>';
 const V_GROUPS=[['ind','Indicative'],['sub','Subjunctive'],['other','Other forms']];
-function openVerbs(){ if(!VBV) subPush(); VBV={tab:'train'}; if(!VT||VT.phase==='done') vNew(); renderConj(); scrollTo(0,0); }
+function openVerbs(lang){ vUseLang(lang||VL); if(!VBV) subPush(); VBV={tab:'train'}; if(!VT||VT.lang!==VL||VT.phase==='done') vNew(); renderConj(); scrollTo(0,0); }
 function openVerb(inf,tid,p,back){ subPush(); VBV={tab:'verb',inf,g:tid?V_T[tid].g:'ind',open:tid!=null&&p!=null?tid+'|'+p:null,back:back||'verbs',scroll:tid||null}; renderConj(); }
 function vbBack(){ if(VBV&&VBV.tab==='verb') VBV={tab:VBV.back}; else VBV=null; renderConj(); scrollTo(0,0); }
 function vTabsHtml(){
@@ -3847,20 +4086,20 @@ function vListHtml(){
 }
 // the card under an open form: how irregular, how it's built, the rules, forms built alike, training
 function vFormCard(v,tid,p,st){
-  const lv=vFormLevel(v,tid,p), key=v.inf+'|'+tid+'|'+p, full=vForm(v,tid,p), b=vBuild(v,tid,p);
-  const sameOf=k=>k.indexOf('part:')===0?V_PARTSAME[k.slice(5)]:V_SAME[k];
+  const lv=vFormLevel(v,tid,p), key=vKey(v,tid,p), full=vForm(v,tid,p), b=vBuild(v,tid,p);
+  const sameOf=k=>(k.indexOf('part:')===0?(V_PARTSAMES[VL]||V_PARTSAME)[k.slice(5)]:(V_SAMES[VL]||V_SAME)[k])||'';
   const lines=b.notes.map(x=>`<li>${x}</li>`).concat(vRules(v,tid,p).map(x=>{ const same=x.same?sameOf(x.same).split(', ').filter(y=>y.split(' ')[0]!==b.own&&y!==full):[];
     return `<li>${x.text}</li>`+(same.length?`<li class="vsame">Built the same way: <i>${same.map(esc).join(', ')}</i></li>`:''); })).join('');
-  const why=!vActive(v)?'The whole verb is turned off for training.':VB.set.tenses.indexOf(tid)<0?'Active, but this tense isn’t in your training: add it in Settings.':'';
+  const why=!vActive(v)?'The whole verb is turned off for training.':vTen().indexOf(tid)<0?'Active, but this tense isn’t in your training: add it in Settings.':'';
   return `<div class="vexp"><div class="vexptop"><span class="vlevel k-${lv.k||'reg'}">${lv.label}</span><span class="vstars" aria-label="${lv.n} of 3 stars">${'★'.repeat(lv.n)}${'☆'.repeat(3-lv.n)}</span></div>`
     +vTokHtml(b.T)+(b.reg?`<div class="vreg">A regular verb would give <s>${esc(b.reg)}</s>, not <b>${esc(b.own)}</b>.</div>`:'')+`<ul class="vrules">${lines}</ul>`
     +(st?`<div class="hint">Practised ${st.n} ${st.n===1?'time':'times'}, right ${st.ok} · ${nextReviewText(st)}</div>`:'')
-    +`<div class="vexpfoot"><label class="vformon"><input type="checkbox" data-vbfon="${key}" ${favOn(VB.foff,key)?'':'checked'}><span>Active for training</span></label>${vCanSay()?`<button type="button" class="btn sm" data-vbsay="${esc(V_SAY[p]+' '+full)}" aria-label="Listen">${V_ICON.say}</button>`:''}</div>`
+    +`<div class="vexpfoot"><label class="vformon"><input type="checkbox" data-vbfon="${key}" ${favOn(VB.foff,key)?'':'checked'}><span>Active for training</span></label>${vCanSay()?`<button type="button" class="btn sm" data-vbsay="${esc(vSayForm(V_SAY[p],full))}" aria-label="Listen">${V_ICON.say}</button>`:''}</div>`
     +(why?`<div class="hint">${why}</div>`:'')+`</div>`;
 }
 function vTenseRows(v,tid){
   const r=VB.p;
-  return `<section class="vsec" id="vsec-${tid}"><h3>${esc(V_T[tid].name)}</h3>${vPersonsOf(tid).map(p=>{ const key=tid+'|'+p, open=VBV.open===key, st=r[v.inf+'|'+tid+'|'+p];
+  return `<section class="vsec" id="vsec-${tid}"><h3>${esc(V_T[tid].name)}</h3>${vPersonsOf(tid).filter(p=>vForm(v,tid,p)!=null).map(p=>{ const key=tid+'|'+p, open=VBV.open===key, st=r[vKey(v,tid,p)];
     return `<button type="button" class="vrow" data-vbrow="${key}" aria-expanded="${open}"><span class="vp">${esc(V_PERSONS[p])}</span><b>${vFormHtml(v,tid,p)}</b></button>`
       +(open?vFormCard(v,tid,p,st):'');
   }).join('')}</section>`;
@@ -3869,15 +4108,15 @@ function vVerbHtml(){
   const v=vVerb(VBV.inf), c=vConj(v), r=vRegConj(v), lv=vLevel(v);
   let h=`<div class="vhead"><div class="chips" role="tablist" aria-label="Moods">${V_GROUPS.map(o=>`<button type="button" class="chip" role="tab" data-vbg="${o[0]}" aria-selected="${VBV.g===o[0]}" aria-pressed="${VBV.g===o[0]}">${o[1]}</button>`).join('')}</div><button type="button" class="btn quiet sm" data-vbact="back">Back</button></div>`;
   h+=`<div class="vtop"><div><div class="vit">${esc(v.it)}</div><span class="vlevel l${lv}">${V_LEVEL[lv]} <i aria-hidden="true">${'★'.repeat(lv)}${'☆'.repeat(3-lv)}</i></span></div>${vCanSay()?`<button type="button" class="btn sm" data-vbsay="${esc(v.inf)}" aria-label="Listen to ${esc(v.inf)}">${V_ICON.say}</button>`:''}</div>`;
-  const ab=V_ABOUT[v.inf]; if(ab) h+=`<div class="vabout"><p>${esc(ab[0])}</p>${ab[1]?`<p><b>Conjugated the same way:</b> ${esc(ab[1])}</p>`:''}</div>`;
-  h+=`<label class="vtoggle"><span>Active for training</span><input type="checkbox" data-vbon="${v.inf}" ${vActive(v)?'checked':''}></label>`;
+  const ab=({es:V_ABOUT,fr:V_ABOUT_FR,ca:V_ABOUT_CA})[VL][v.inf]; if(ab) h+=`<div class="vabout"><p>${esc(ab[0])}</p>${ab[1]?`<p><b>Conjugated the same way:</b> ${esc(ab[1])}</p>`:''}</div>`;
+  h+=`<label class="vtoggle"><span>Active for training</span><input type="checkbox" data-vbon="${vVKey(v)}" ${vActive(v)?'checked':''}></label>`;
   h+=`<div class="hint">Tap a form to see how it’s built. <mark class="v-irr">Red</mark>: irregular · <mark class="v-stem">fuchsia</mark>: stem change · <mark class="v-spell">blue</mark>: spelling change.</div>`;
   if(VBV.g==='other') h+=`<section class="vsec"><h3>Forms of the verb</h3><div class="vrow static"><span class="vp">Infinitivo</span><b>${esc(v.inf)}</b></div><div class="vrow static"><span class="vp">Gerundio</span><b>${vMark(c.ger,r.ger)}</b></div><div class="vrow static"><span class="vp">Participio</span><b>${vMark(c.part,r.part)}</b></div></section>`;
-  V_TENSES.filter(t=>t.g===VBV.g).forEach(t=>{ h+=vTenseRows(v,t.id); });
+  V_TENSES.filter(t=>t.g===VBV.g&&vPersonsOf(t.id).some(p=>vForm(v,t.id,p)!=null)).forEach(t=>{ h+=vTenseRows(v,t.id); });
   return h;
 }
 const vDayRes=d=>Object.values(VB.days[d]||{});
-const vDayDone=d=>vDayRes(d).length>=VB.set.goal;
+const vDayDone=d=>vDayRes(d).length>0;   // any answer, in any language, keeps the streak
 function vStreak(){ let n=0, t=Date.now(); if(!vDayDone(romeDay(t))) t-=DAY; while(vDayDone(romeDay(t))){ n++; t-=DAY; } return n; }
 // review stars: none (comes back soon) to three (three months), half stars in between
 const V_STARS=[0,.5,1,2,2.5,3];
@@ -3887,10 +4126,10 @@ function vHistHtml(){
   const today=romeDay(), d0=new Date(today+'T12:00:00Z'), dow=(d0.getUTCDay()+6)%7;
   const week=Array.from({length:7},(_,i)=>new Date(d0.getTime()+(i-dow)*DAY).toISOString().slice(0,10));
   const res=vDayRes(today), hard=res.filter(x=>!x).length, easy=res.length-hard, streak=vStreak();
-  h+=`<div class="vweekcard"><div class="vweek">${week.map((d,i)=>`<div class="vday${vDayDone(d)?' done':''}${d===today?' now':''}"><span>${vDayDone(d)?V_CAT:''}</span><small>${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]}</small></div>`).join('')}</div>`
-    +`<div class="vstreak">${streak?`${streak}-day streak`:'Reach the daily goal to start a streak'}</div>`
+  h+=`<div class="vweekcard"><div class="vweek">${week.map((d,i)=>`<div class="vday${vDayDone(d)?' done':''}${d===today?' now':''}"><span>${vDayDone(d)?V_CAT:''}</span><small><span class="dshort">${V_L.days[i][0]}</span><span class="dlong">${V_L.days[i][1]}</span></small></div>`).join('')}</div>`
+    +`<div class="vstreak">${streak?`${streak}-day streak`:'Train today to start a streak'}</div>`
     +`<div class="vtoday"><div class="vhard"><b>${hard}</b><span>Hard</span></div><div class="veasy"><b>${easy}</b><span>Easy</span></div></div></div>`;
-  const list=VB.hist.slice(-60).reverse(); if(!list.length) return h+'<div class="hint">Nothing yet: your answers appear here as you train.</div>';
+  const list=VB.hist.filter(x=>vParse(x.k).lang===VL).slice(-60).reverse(); if(!list.length) return h+'<div class="hint">Nothing yet: your answers appear here as you train.</div>';
   const latest=new Set(); let lastDay='';
   h+=list.map(x=>{ const {v,tid,p}=vParse(x.k); if(!v) return ''; const d=romeDay(x.t), head=d!==lastDay?`<h3 class="vhday">${dayLabel(d)}</h3>`:''; lastDay=d;
     const isLast=!latest.has(x.k); latest.add(x.k);
@@ -3902,27 +4141,27 @@ function vHistHtml(){
 }
 function verbsHtml(){
   const eb=$('vjeyebrow'), pr=$('vjprompt'), sc=$('vjscore'); sc.textContent='';
-  eb.textContent='Conjugate · Español';
+  eb.textContent='Conjugate · '+V_L.name;
   if(VBV.tab==='verb'){ pr.textContent=VBV.inf; return vVerbHtml(); }
   if(VBV.tab==='verbs'){ pr.textContent='Verbs'; return vListHtml(); }
   if(VBV.tab==='hist'){ pr.textContent='History'; return vHistHtml(); }
-  pr.innerHTML=`${V_CAT} Conjugate ${V_FLAG}`; if(!VT) vNew(); return vTrainHtml();
+  pr.innerHTML=`${V_CAT} Conjugate ${V_FLAGS[VL]}`; if(!VT||VT.lang!==VL) vNew(); return vTrainHtml();
 }
 function verbsAfterRender(){
   if(VBV.tab==='train'){ const c=document.querySelector('[data-vbtap]'); if(c) c.focus({preventScroll:true}); }
   if(VBV.tab==='verb'&&VBV.scroll){ const s=$('vsec-'+VBV.scroll); VBV.scroll=null; if(s) s.scrollIntoView({block:'start'}); }
 }
 function vSettingsHtml(){
-  const s=VB.set, all=V_TENSES.every(t=>s.tenses.indexOf(t.id)>=0), def=s.tenses.length===V_SET_DEF.tenses.length&&V_SET_DEF.tenses.every(t=>s.tenses.indexOf(t)>=0); let h='';
+  const s=VB.set, ten=vTen(), all=V_TENSES.every(t=>ten.indexOf(t.id)>=0), def=ten.length===V_L.def.length&&V_L.def.every(t=>ten.indexOf(t)>=0); let h='';
   h+=`<div class="field"><span class="fl">Tenses to practise</span><div class="chips"><button type="button" class="chip" data-vbtall="all" aria-pressed="${all}">All tenses</button><button type="button" class="chip" data-vbtall="def" aria-pressed="${def}">The usual six</button></div></div>`;
-  V_GROUPS.forEach(([g,name])=>{ h+=`<div class="field"><span class="fl">${name}</span><div class="chips">${V_TENSES.filter(t=>t.g===g).map(t=>`<button type="button" class="chip" data-vbtense="${t.id}" aria-pressed="${s.tenses.indexOf(t.id)>=0}">${esc(t.name)}</button>`).join('')}</div></div>`; });
+  V_GROUPS.forEach(([g,name])=>{ h+=`<div class="field"><span class="fl">${name}</span><div class="chips">${V_TENSES.filter(t=>t.g===g).map(t=>`<button type="button" class="chip" data-vbtense="${t.id}" aria-pressed="${ten.indexOf(t.id)>=0}">${esc(t.name)}</button>`).join('')}</div></div>`; });
   h+=``;
   h+=`<div class="field"><span class="fl">Daily goal: forms a day</span><div class="chips">${[10,20,30,50].map(n=>`<button type="button" class="chip mono" data-vbgoal="${n}" aria-pressed="${s.goal===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="200" inputmode="numeric" data-vbgoalin value="${[10,20,30,50].indexOf(s.goal)<0?s.goal:''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">Tenses chosen here are the ones Train asks; the tables always show them all.</div></div>`;
   return h;
 }
 function vStatsHtml(){
   const items=vItems(), seen=items.filter(k=>VB.p[k]).length, mastered=items.filter(k=>VB.p[k]&&VB.p[k].b>=5).length;
-  return `<h2>Spanish verbs</h2><div class="totals">${VERBS.filter(vActive).length} verbs active · ${items.length} forms in training · ${seen} practised · ${mastered} mastered · ${vDueCount()} due now</div><div class="hint" style="margin-top:6px">${verbsDoc?'Progress saved to your account':'Progress saved in this browser'}.</div>`;
+  return `<h2>${V_L.en} verbs</h2><div class="totals">${VERBS.filter(vActive).length} verbs active · ${items.length} forms in training · ${seen} practised · ${mastered} mastered · ${vDueCount()} due now</div><div class="hint" style="margin-top:6px">${verbsDoc?'Progress saved to your account':'Progress saved in this browser'}.</div>`;
 }
 
 function vClick(e){
@@ -3943,7 +4182,7 @@ function vClick(e){
     else if(a==='more'){ VBV.more=true; if(!VT) vNew(); renderConj(); }
     else if(a==='hist'){ VBV={tab:'hist'}; renderConj(); }
     else if(a==='book'&&VT){ const {v,tid,p}=vParse(VT.k); openVerb(v.inf,VT.phase==='shown'?tid:null,VT.phase==='shown'?p:null,'train'); }
-    else if(a==='say'&&VT){ const {v,tid,p}=vParse(VT.k); vSay(VT.phase==='ask'?v.inf:(VT.pron||V_SAY[p])+' '+vForm(v,tid,p)); }
+    else if(a==='say'&&VT){ const {v,tid,p}=vParse(VT.k); vSay(VT.phase==='ask'?v.inf:vSayForm(VT.pron||V_SAY[p],vForm(v,tid,p))); }
     else if(a==='back') navBack(vbBack);
     else if(a==='close') navBack(vbBack);
     return true;
@@ -3974,10 +4213,12 @@ function openConj(){
   if(window.innerWidth<920) $('vjSettingsPanel').open=false;
   VBV=null; renderConj(); scrollTo(0,0);
 }
+function vLangStats(id){ const keep=VL; vUseLang(id); const x={due:vDueCount(),n:VERBS.length}; vUseLang(keep); return x; }
 function vLangsHtml(){
-  const due=vDueCount(), n=vToday();
-  return `<div class="vlangs"><button type="button" class="vlang" data-vblang="es"><span class="vlflag">${V_FLAGS.es}</span><span class="vltext"><b>Español</b><small>Spanish · ${VERBS.length} verbs${due?` · ${due} forms due`:''} · ${n} of ${VB.set.goal} today</small></span><span class="vlgo">›</span></button>`
-    +[['fr','Français','French'],['ca','Català','Catalan']].map(([id,name,en])=>`<div class="vlang soon" aria-disabled="true"><span class="vlflag">${V_FLAGS[id]}</span><span class="vltext"><b>${name}</b><small>${en} · coming soon</small></span></div>`).join('')+`</div>`;
+  const n=vToday();
+  return `<div class="vlangs">${Object.values(V_LANGS).map(L=>{ const st=vLangStats(L.id);
+    return `<button type="button" class="vlang" data-vblang="${L.id}"><span class="vlflag">${V_FLAGS[L.id]}</span><span class="vltext"><b>${L.name}</b><small>${L.en} · ${st.n} verbs${st.due?` · ${st.due} forms due`:''}</small></span><span class="vlgo">›</span></button>`; }).join('')}</div>`
+    +`<div class="hint">${n} of ${VB.set.goal} forms today, in any language: the goal and the streak are shared.</div>`;
 }
 function renderConj(){
   if(view!=='conj') return;
@@ -3990,12 +4231,12 @@ function renderConj(){
   $('vjSettingsPanel').hidden=false; $('vjbody').innerHTML=verbsHtml(); verbsAfterRender();
   $('vjsettings').innerHTML=vSettingsHtml(); $('vjstats').innerHTML=vStatsHtml();
 }
-$('vjbody').addEventListener('click',e=>{ if(e.target.closest('[data-vblang="es"]')){ openVerbs(); return; } if(VBV) vClick(e); });
+$('vjbody').addEventListener('click',e=>{ const l=e.target.closest('[data-vblang]'); if(l){ openVerbs(l.dataset.vblang); return; } if(VBV) vClick(e); });
 $('vjsettings').addEventListener('change',e=>{ if(!VBV||!e.target.matches('[data-vbgoalin]')||!+e.target.value) return; VB.set.goal=Math.max(1,Math.min(200,Math.round(+e.target.value))); VB.set.t=Date.now(); vSave(); renderConj(); });
 $('vjsettings').addEventListener('click',e=>{
   const t=e.target.closest('[data-vbtense],[data-vbgoal],[data-vbtall]'); if(!t||!VBV) return; const st=VB.set;
-  if(t.dataset.vbtall) st.tenses=t.dataset.vbtall==='all'?V_TENSES.map(x=>x.id):V_SET_DEF.tenses.slice();
-  else if(t.dataset.vbtense){ const i=st.tenses.indexOf(t.dataset.vbtense); if(i>=0) st.tenses.splice(i,1); else st.tenses.push(t.dataset.vbtense); }
+  if(t.dataset.vbtall) vSetTen(t.dataset.vbtall==='all'?V_TENSES.map(x=>x.id):V_L.def.slice());
+  else if(t.dataset.vbtense){ const ten=vTen().slice(), i=ten.indexOf(t.dataset.vbtense); if(i>=0) ten.splice(i,1); else ten.push(t.dataset.vbtense); vSetTen(ten); }
   else st.goal=+t.dataset.vbgoal;
   st.t=Date.now(); vSave(); vRecheck(); renderConj();
 });
