@@ -11,6 +11,7 @@
   --mark:#f2a43a; --on-mark:#2a1906;
   --good:#2d8c59; --on-good:#ffffff; --bad:#cc4357; --on-bad:#ffffff; --warn:#cf8a1e;
   --open-zone:#e2e7ec;
+  --no-bg:#ffe17a; --no-ink:#c47800; --yes-bg:#d7f59e; --yes-ink:#3e9a17;
   /* the neck itself keeps one look in both themes: rosewood, nickel frets, bone nut */
   --wood-1:#4d2f1f; --wood-2:#33201a; --fret:#c9ced4; --nut:#ece3cf; --pearl:#efe8d8; --binding:#d9ceb8;
   --string-wound:#cbb487; --string-plain:#e4e7eb; --string-nylon:#efe6cf;
@@ -27,6 +28,7 @@
     --mark:#f6b552; --on-mark:#2a1906;
     --good:#4bc283; --on-good:#06170e; --bad:#f06e80; --on-bad:#22060b; --warn:#eaa53f;
     --open-zone:#1c242e; color-scheme:dark;
+    --no-bg:#4a3a12; --no-ink:#f5c451; --yes-bg:#26401a; --yes-ink:#9be070;
   }
 }
 :root[data-theme="dark"]{
@@ -34,7 +36,7 @@
   --accent:#86b6e7; --accent-ink:#0b1622; --accent-soft:#1d3146;
   --mark:#f6b552; --on-mark:#2a1906;
   --good:#4bc283; --on-good:#06170e; --bad:#f06e80; --on-bad:#22060b; --warn:#eaa53f;
-  --open-zone:#1c242e; color-scheme:dark;
+  --open-zone:#1c242e; --no-bg:#4a3a12; --no-ink:#f5c451; --yes-bg:#26401a; --yes-ink:#9be070; color-scheme:dark;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -476,6 +478,12 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .vtap{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;min-height:300px;justify-content:center}
 .vtap:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .vtap:active{transform:scale(.99)}
+.vtap{overflow:hidden}
+.vjudge{display:grid;grid-template-columns:1fr 1fr;align-self:stretch;margin:10px -22px -18px}
+.vjudge button{height:68px;border:0;display:grid;place-items:center;cursor:pointer;font:inherit}
+.vno{background:var(--no-bg);color:var(--no-ink)}
+.vyes{background:var(--yes-bg);color:var(--yes-ink)}
+.vjudge button:hover{filter:brightness(.96)}
 .vblank{display:flex;align-items:baseline;justify-content:center;gap:8px;width:100%;min-height:2.6rem}
 .vblank span{font-size:1.3rem;color:var(--muted)}
 .vblank i{display:block;width:min(240px,60%);border-bottom:3px solid var(--ink);align-self:flex-end}
@@ -3523,6 +3531,8 @@ function vSay(text){
 const V_ICON={
   hist:'<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   book:'<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M12 6c-2-1.5-5-2-8-1.5v14c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-14c-3-.5-6 0-8 1.5zM12 6v14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+  up:'<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M7 10v11H3V10zM7 10l4-8a3 3 0 0 1 3 3v4h5.5a2 2 0 0 1 2 2.3l-1.4 8a2 2 0 0 1-2 1.7H7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+  down:'<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" style="transform:rotate(180deg)"><path d="M7 10v11H3V10zM7 10l4-8a3 3 0 0 1 3 3v4h5.5a2 2 0 0 1 2 2.3l-1.4 8a2 2 0 0 1-2 1.7H7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
   say:'<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 };
 const V_GROUPS=[['ind','Indicative'],['sub','Subjunctive'],['other','Other forms']];
@@ -3541,11 +3551,10 @@ function vTrainHtml(){
   if(!VT) return h+`<div class="hint">Nothing to practise: turn on at least one verb and one tense (Verbs tab and Settings).</div>`;
   const {v,tid,p}=vParse(VT.k), t=V_T[tid], shown=VT.phase==='shown';
   h+=`<div class="wcard vcard vtap" role="button" tabindex="0" data-vbtap aria-label="${shown?'Next form':'Show the answer'}"><div class="vit">${esc(v.it)}</div><div class="vinf">${esc(v.inf)}</div><div class="vtense">${esc(t.name)}</div><div class="vperson">${esc(V_PERSONS[p])}</div>`
-    +(shown?`<div class="vans">${vFormHtml(v,tid,p)}</div><div class="hint">Tap again for the next one</div>`:`<div class="vblank">${tid==='impn'?'<span>no</span>':''}<i></i></div><div class="hint">Say it out loud, then tap to show the answer</div>`)+`</div>`;
-  if(shown) h+=`<div class="actions"><button type="button" class="btn quiet" data-vbact="missed">I didn’t know it</button><span class="spacer"></span></div>`;
+    +(shown?`<div class="vans">${vFormHtml(v,tid,p)}</div><div class="vjudge"><button type="button" class="vno" data-vbact="missed" aria-label="I didn’t know it" title="I didn’t know it">${V_ICON.down}</button><button type="button" class="vyes" data-vbact="knew" aria-label="I knew it" title="I knew it">${V_ICON.up}</button></div>`:`<div class="vblank">${tid==='impn'?'<span>no</span>':''}<i></i></div><div class="hint">Say it out loud, then tap to show the answer</div>`)+`</div>`;
   h+=`<div class="vtools"><button type="button" class="btn" data-vbact="hist" aria-label="History" title="History">${V_ICON.hist}</button><button type="button" class="btn" data-vbact="book" aria-label="Conjugation of ${esc(v.inf)}" title="Conjugation table">${V_ICON.book}</button>${vCanSay()?`<button type="button" class="btn" data-vbact="say" aria-label="Listen" title="${shown?'Listen to the answer':'Listen to the verb'}">${V_ICON.say}</button>`:''}</div>`;
   if(VT.practice) h+=`<div class="hint">Nothing due right now, so this is practice: it doesn’t change your review schedule.</div>`;
-  h+=`<div class="hint">Each form has its own review: it comes back after 1, 3, 7, 30 and 90 days. “I didn’t know it” brings it back in a few cards. New forms come one verb at a time.</div>`;
+  h+=`<div class="hint">Each form has its own review: it comes back after 1, 3, 7, 30 and 90 days. 👎 brings it back in a few cards; 👍, or tapping the card again, counts it as known. New forms come one verb at a time.</div>`;
   return h;
 }
 function vListHtml(){
@@ -3617,10 +3626,10 @@ function vClick(e){
   if((b=g('[data-vbg]'))){ VBV.g=b.dataset.vbg; VBV.open=null; renderWords(); return true; }
   if((b=g('[data-vbrow]'))){ VBV.open=VBV.open===b.dataset.vbrow?null:b.dataset.vbrow; renderWords(); return true; }
   if((b=g('[data-vbsay]'))){ vSay(b.dataset.vbsay); return true; }
-  if(g('[data-vbtap]')){ vTap(); return true; }
   if((b=g('[data-vbact]'))){
     const a=b.dataset.vbact;
     if(a==='missed') vAdvance(false);
+    else if(a==='knew') vAdvance(true);
     else if(a==='more'){ VBV.more=true; if(!VT) vNew(); renderWords(); }
     else if(a==='hist'){ VBV={tab:'hist'}; renderWords(); }
     else if(a==='book'&&VT){ const {v,tid,p}=vParse(VT.k); openVerb(v.inf,VT.phase==='shown'?tid:null,VT.phase==='shown'?p:null,'train'); }
@@ -3629,6 +3638,7 @@ function vClick(e){
     else if(a==='close') navBack(vbBack);
     return true;
   }
+  if(g('[data-vbtap]')){ vTap(); return true; }
   return false;
 }
 $('wbody').addEventListener('input',e=>{
