@@ -325,7 +325,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .wsync .linkbtn{margin-top:0}
 .wempty{display:flex;flex-direction:column;gap:12px;align-items:flex-start;max-width:60ch}
 .wempty p{margin:0;color:var(--muted)}
-.wcard{background:var(--surface-2);border:1px solid var(--line);border-radius:16px;padding:22px 22px 18px;display:flex;flex-direction:column;gap:12px;min-height:200px}
+.wcard{position:relative;background:var(--surface-2);border:1px solid var(--line);border-radius:16px;padding:22px 22px 18px;display:flex;flex-direction:column;gap:12px;min-height:200px}
 .wcard.q{min-height:0}
 .ww{font-family:var(--font-display);font-weight:800;font-size:clamp(1.9rem,6vw,2.8rem);letter-spacing:-.02em;line-height:1.05;overflow-wrap:anywhere}
 .wd{font-size:1.08rem;line-height:1.5;max-width:65ch}
@@ -452,7 +452,16 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .lightbox[hidden]{display:none}
 .lightbox img{max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 10px 40px rgba(0,0,0,.5)}
 .lightbox .lbhint{position:absolute;left:0;right:0;bottom:max(10px,env(safe-area-inset-bottom));text-align:center;color:#cfcfcf;font-size:.8rem;pointer-events:none}
-.pcap{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
+.pcap{position:relative;display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
+.star{flex:none;border:0;background:none;color:var(--muted);font-size:1.3rem;line-height:1;padding:6px 8px;border-radius:8px;cursor:pointer}
+.star[aria-pressed="true"]{color:var(--warn)}
+.star:hover{background:var(--accent-soft)}
+.wcard>.star,.pcap>.star{position:absolute;top:6px;right:6px}
+.wcard:has(>.star),.pcap:has(>.star){padding-right:50px}
+.wlist li .star{align-self:center;margin-right:2px}
+.pthumb{position:relative}
+.pthumb .favmark{position:absolute;top:10px;right:10px;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;background:rgba(0,0,0,.6);color:#f6c453;font-size:.85rem}
+.pthumb.na{border-bottom-color:var(--line)}
 .pcap b{font-family:var(--font-display);font-size:1.15rem}
 .pcap span{color:var(--muted);font-size:.9rem}
 .pcap a{color:var(--accent)}
@@ -2922,7 +2931,13 @@ const WS={lang:'es', order:'new', dir:'mix'};
 // the web app reads the words from the owner's private store; inside Claude they come from Notion directly
 const WSRC=window.fretwiseWordsSource||null;
 // WP.days: Rome day -> language -> word id -> {ok, m (learn, review or practice), t}
-let WD={}, WP={p:{it:{},en:{},es:{},ca:{}},days:{},upd:0}, WSN=null, wLoading=null, wError=null;
+let WD={}, WP={p:{it:{},en:{},es:{},ca:{}},fav:{},days:{},upd:0}, WSN=null, wLoading=null, wError=null;
+// favourites: id -> {on, t}. Un-starring keeps the entry, so when two devices merge the latest change wins
+const favOn=(f,id)=>!!(f&&f[id]&&f[id].on);
+const favSet=(f,id,on)=>{ f[id]={on:on?1:0,t:Date.now()}; };
+const favMerge=(mine,theirs)=>Object.entries(theirs||{}).forEach(([id,e])=>{ if(!mine[id]||(e.t||0)>(mine[id].t||0)) mine[id]=e; });
+const favIds=f=>Object.entries(f||{}).filter(([,e])=>e.on).sort((a,b)=>b[1].t-a[1].t).map(([id])=>id);
+const starBtn=(attr,val,on)=>`<button type="button" class="star" ${attr}="${val}" aria-pressed="${on}" aria-label="${on?'Remove from favorites':'Add to favorites'}" title="${on?'Remove from favorites':'Add to favorites'}">${on?'★':'☆'}</button>`;
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rich=s=>esc(s).replace(/&lt;br\s*\/?&gt;/gi,'<br>');
 const plain=s=>String(s||'').replace(/<br\s*\/?>/gi,' ').replace(/\s+/g,' ').trim();
@@ -2931,7 +2946,7 @@ function wLoad(){
   if(WSRC){ try{ LOCAL.removeItem(W_DATA_KEY); localStorage.removeItem(W_DATA_KEY); }catch(e){} }
   else try{ WD=JSON.parse(LOCAL.getItem(W_DATA_KEY)||'{}')||{}; }catch(e){ WD={}; }
   try{ const p=JSON.parse(LOCAL.getItem(W_PROG_KEY)||'null'); if(p&&p.p) WP=p; }catch(e){}
-  LANGS.forEach(l=>{ WP.p[l.id]=WP.p[l.id]||{}; });
+  WP.fav=WP.fav||{}; LANGS.forEach(l=>{ WP.p[l.id]=WP.p[l.id]||{}; WP.fav[l.id]=WP.fav[l.id]||{}; });
   WP.days=WP.days||{}; wBackfill(); if(wClean()){ WP.upd=Date.now(); try{ LOCAL.setItem(W_PROG_KEY,JSON.stringify(WP)); }catch(e){} }
   // a session in progress, or finished today, comes back until midnight in Italy
   try{ const x=JSON.parse(LOCAL.getItem(W_SESSION_KEY)||'null'); if(x&&x.day===romeDay()&&x.wsn&&!(x.day===CLEAR_DAY&&!(x.t>CLEAR_TO))) wPending=x.wsn; }catch(e){}
@@ -2973,14 +2988,15 @@ function wSaveProgress(){ WP.upd=Date.now(); pruneDays(WP.days); try{ LOCAL.setI
 let wordsDoc=null, wordsSynced=false, wWriting=false, wAgain=false;
 async function pushWords(){
   if(!wordsDoc) return; if(wWriting){ wAgain=true; return; } wWriting=true;
-  try{ await wordsDoc.set({p:WP.p,days:WP.days,upd:WP.upd,v:1}); }
+  try{ await wordsDoc.set({p:WP.p,fav:WP.fav,days:WP.days,upd:WP.upd,v:1}); }
   catch(e){ if(e&&(e.code==='invalid_argument'||e.code==='revoked'||e.code==='not_granted')){ wordsDoc=null; wordsSynced=false; } }
   wWriting=false; if(wAgain){ wAgain=false; pushWords(); }
 }
 function mergeWords(x){
   if(!x||!x.p) return;
   LANGS.forEach(l=>{ const mine=WP.p[l.id]||(WP.p[l.id]={}), theirs=x.p[l.id]||{};
-    Object.entries(theirs).forEach(([id,v])=>{ const m=mine[id]; if(!m||(v.last||0)>(m.last||0)) mine[id]=v; }); });
+    Object.entries(theirs).forEach(([id,v])=>{ const m=mine[id]; if(!m||(v.last||0)>(m.last||0)) mine[id]=v; });
+    favMerge(WP.fav[l.id]||(WP.fav[l.id]={}),(x.fav||{})[l.id]); });
   Object.entries(x.days||{}).forEach(([d,byLang])=>{ const md=WP.days[d]||(WP.days[d]={});
     Object.entries(byLang||{}).forEach(([lang,ws])=>{ const ml=md[lang]||(md[lang]={});
       Object.entries(ws||{}).forEach(([id,e])=>{ if(!ml[id]||(e.t||0)>(ml[id].t||0)) ml[id]=e; }); }); });
@@ -3170,7 +3186,8 @@ function tapMatch(side,id){
 // WV: null, or {src: 'session' | a list filter, ids, i: index of the open word or null for the list}
 let WV=null;
 // Missed, Right and Mastered don't overlap: a word moves from one to the next as you answer it
-const W_FILTERS=[['all','All'],['missed','Missed'],['right','Right, still learning'],['mastered','Mastered']];
+const W_FILTERS=[['all','All'],['missed','Missed'],['right','Right, still learning'],['mastered','Mastered'],['fav','★ Favorites']];
+const wStar=(lang,id)=>starBtn('data-wfav',lang+':'+id,favOn(WP.fav[lang],id));
 // was the last answer right? Older saves don't say, so read it from the box when it is unambiguous
 const wLast=v=>v.r!=null?!!v.r:v.b===0?false:v.b>=2?true:v.n<=1;
 const wFilter=(v,f)=>f==='all'||(f==='mastered'?v.b>=5&&wLast(v):f==='right'?wLast(v)&&v.b<5:!wLast(v));
@@ -3180,6 +3197,7 @@ const wDays=lang=>Object.keys(WP.days).filter(d=>wDayLog(lang,d).length).sort().
 function wListIds(lang,f){
   if(f.indexOf('day:')===0) return wDayLog(lang,f.slice(4)).map(([id])=>id);
   const p=WP.p[lang]||{}, have=byId(lang);
+  if(f==='fav') return favIds(WP.fav[lang]).filter(id=>have.has(id)&&have.get(id).d);
   return Object.entries(p).filter(([id,v])=>have.has(id)&&have.get(id).d&&wFilter(v,f)).sort((a,b)=>(b[1].last||0)-(a[1].last||0)).map(([id])=>id);
 }
 function openWordList(f){ if(!WV) subPush(); WV={src:f,ids:wListIds(WS.lang,f),i:null}; wFeedback('',''); renderWords(); scrollTo(0,0); }
@@ -3196,7 +3214,7 @@ function wordViewHtml(L,map){
     if(!r){ WV.i=null; return wordViewHtml(L,map); }
     eb.textContent=`${ses&&ses.mix?LANGS.find(l=>l.id===sesLang(ses,id)).name:L.name} · ${WV.i+1} of ${WV.ids.length}`;
     pr.textContent=ses?'Words from this session':'Your words'; sc.textContent='';
-    h+=`<article class="wcard"><div class="ww">${esc(r.w)}</div><div class="wd">${rich(r.d)}</div>${r.e?`<div class="we">${rich(r.e)}</div>`:''}${r.s?`<div class="wsrc">Source: ${esc(r.s)}</div>`:''}</article>`;
+    h+=`<article class="wcard">${wStar(ses?sesLang(ses,id):WS.lang,id)}<div class="ww">${esc(r.w)}</div><div class="wd">${rich(r.d)}</div>${r.e?`<div class="we">${rich(r.e)}</div>`:''}${r.s?`<div class="wsrc">Source: ${esc(r.s)}</div>`:''}</article>`;
     const res=ses?(ses.results[id]?'<span class="ok">Right first time this session</span>':'<span class="no">Missed this session</span>')
       :de?(de.ok?`<span class="ok">Right ${dayLabel(day).toLowerCase()==='today'?'today':'on '+dayLabel(day)}</span>`:`<span class="no">Missed ${dayLabel(day).toLowerCase()==='today'?'today':'on '+dayLabel(day)}</span>`)
       :v?(wLast(v)?'<span class="ok">Right last time</span>':'<span class="no">Missed last time</span>'):'';
@@ -3206,14 +3224,14 @@ function wordViewHtml(L,map){
   }
   eb.textContent=`Your words · ${L.name}`;
   const day=WV.src.indexOf('day:')===0?WV.src.slice(4):null;
-  pr.textContent=day?`${dayLabel(day)}: the words you saw`:WV.src==='all'?'Words you’re learning':WV.src==='right'?'Right last time':WV.src==='missed'?'Missed last time':'Mastered words';
+  pr.textContent=day?`${dayLabel(day)}: the words you saw`:WV.src==='fav'?'Your favorite words':WV.src==='all'?'Words you’re learning':WV.src==='right'?'Right last time':WV.src==='missed'?'Missed last time':'Mastered words';
   sc.textContent=`${WV.ids.length} ${WV.ids.length===1?'word':'words'}`;
   h+=`<div class="langs" role="group" aria-label="Dictionary">${LANGS.map(l=>`<button type="button" class="lang" data-wlang="${l.id}" aria-pressed="${l.id===WS.lang}"><b>${l.name}</b><small>${WD[l.id]?`${wListIds(l.id,'all').length} learning`:'not loaded'}</small></button>`).join('')}</div>`;
   h+=`<div class="chips" role="group" aria-label="Show">${W_FILTERS.map(o=>`<button type="button" class="chip" data-wlist="${o[0]}" aria-pressed="${WV.src===o[0]}">${o[1]} · ${wListIds(WS.lang,o[0]).length}</button>`).join('')}</div>`;
   const days=wDays(WS.lang); if(days.length) h+=`<div class="chips" role="group" aria-label="By day">${days.map(d=>`<button type="button" class="chip" data-wlist="day:${d}" aria-pressed="${day===d}">${dayLabel(d)} · ${wDayLog(WS.lang,d).length}</button>`).join('')}</div>`;
   const p=WP.p[WS.lang]||{}, dl=day?((WP.days[day]||{})[WS.lang]||{}):null;
-  if(WV.ids.length) h+=`<ul class="wlist">${WV.ids.map((id,k)=>{ const r=map.get(id); return `<li class="tap ${(dl?dl[id].ok:p[id]&&wLast(p[id]))?'ok':'no'}"><button type="button" class="wopen" data-wview="${k}"><b>${esc(r.w)}</b><span>${esc(plain(r.d))}</span></button></li>`; }).join('')}</ul>`;
-  else h+=`<div class="hint">${!WD[WS.lang]?'This dictionary isn’t loaded yet.':WV.src==='all'?`You haven’t started any ${L.name} words yet.`:WV.src==='missed'?'Nothing missed: you got every word right last time.':'No words here yet.'}</div>`;
+  if(WV.ids.length) h+=`<ul class="wlist">${WV.ids.map((id,k)=>{ const r=map.get(id); return `<li class="tap ${!dl&&!p[id]?'na':(dl?dl[id].ok:wLast(p[id]))?'ok':'no'}"><button type="button" class="wopen" data-wview="${k}"><b>${esc(r.w)}</b><span>${esc(plain(r.d))}</span></button>${wStar(WS.lang,id)}</li>`; }).join('')}</ul>`;
+  else h+=`<div class="hint">${!WD[WS.lang]?'This dictionary isn’t loaded yet.':WV.src==='all'?`You haven’t started any ${L.name} words yet.`:WV.src==='missed'?'Nothing missed: you got every word right last time.':WV.src==='fav'?`No favorite ${L.name} words yet: tap ☆ on a word to add it here.`:'No words here yet.'}</div>`;
   h+=`<div class="actions"><button type="button" class="btn quiet" data-wact="vback">Back</button><span class="spacer"></span>${WV.ids.length&&usable(WS.lang).length>=5?`<button type="button" class="btn primary" data-wact="vpractise">Practise ${Math.min(goalFor('words'),WV.ids.length)} of these</button>`:''}</div>`;
   h+=`<div class="hint">${day?'Green: right first time that day. Red: missed.':'Green: right the last time it came up. Red: missed.'} Practising doesn’t change your review schedule.</div>`;
   return h;
@@ -3237,7 +3255,7 @@ function renderWords(){
     if(done){
       const right=done.ids.filter(id=>done.results[id]).length;
       h+=`<div class="wsum"><b>${right}/${done.ids.length}</b> right first time${done.mistakes?` · ${done.mistakes} ${done.mistakes===1?'mistake':'mistakes'} in total`:''}${done.mode==='learn'?'. They come back for review tomorrow.':done.mode==='review'?'. Correct words wait longer before coming back.':'. Practice doesn’t change your review schedule.'}</div>`;
-      h+=`<ul class="wlist">${done.ids.map((id,k)=>{ const r=map.get(id); return r?`<li class="tap ${done.results[id]?'ok':'no'}"><button type="button" class="wopen" data-wsession="${k}"><b>${esc(r.w)}</b><span>${esc(plain(r.d))}</span></button></li>`:''; }).join('')}</ul><div class="hint">Tap a word to see it again.</div>`;
+      h+=`<ul class="wlist">${done.ids.map((id,k)=>{ const r=map.get(id); return r?`<li class="tap ${done.results[id]?'ok':'no'}"><button type="button" class="wopen" data-wsession="${k}"><b>${esc(r.w)}</b><span>${esc(plain(r.d))}</span></button>${wStar(sesLang(done,id),id)}</li>`:''; }).join('')}</ul><div class="hint">Tap a word to see it again.</div>`;
     }
     if(!WD[WS.lang]&&!wLoading){
       if(WSRC) h+=`<div class="wempty"><p>Your Notion dictionaries are copied to your private Fretwise account by a scheduled sync. Only you can read them, after signing in with Google; nothing about them is in the public code.</p>${WSRC.signedIn()?'<button type="button" class="btn primary big" data-wact="load">Load my words</button>':'<button type="button" class="btn primary big" data-wact="signin">Sign in with Google</button>'}</div>`;
@@ -3250,7 +3268,7 @@ function renderWords(){
         <div class="pcard new"><div class="pct"><b>Learn new</b><span>${st.fresh?`${st.fresh} new ${st.fresh===1?'word':'words'} · ${Math.min(left,st.fresh)} left today`:'You’ve started every word'}</span></div><button type="button" class="btn big${st.due?'':' primary'}" data-wact="learn" ${nLearn?'':'disabled'}>${st.fresh&&!left?'Daily limit reached':nLearn?`Learn ${nLearn}`:'Nothing new'}</button></div>
         <div class="pcard done"><div class="pct"><b>Known</b><span>${st.mastered} mastered of ${st.learning} started</span></div><button type="button" class="btn quiet" data-wlist="mastered" ${st.mastered?'':'disabled'}>See them</button></div>
       </div>`;
-      h+=`<div class="wactions"><button type="button" class="btn quiet" data-wact="practice" ${st.total>=5?'':'disabled'}>Practise ${goalFor('words')} random</button>${LANGS.filter(l=>usable(l.id).length>=5).length>=2?'<button type="button" class="btn quiet" data-wact="mix">Mix dictionaries</button>':''}${st.learning?'<button type="button" class="btn quiet" data-wlist="all">Your words</button>':''}${wDayLog(WS.lang,romeDay()).length?`<button type="button" class="btn quiet" data-wlist="day:${romeDay()}">Today · ${wDayLog(WS.lang,romeDay()).length}</button>`:''}</div>`;
+      h+=`<div class="wactions"><button type="button" class="btn quiet" data-wact="practice" ${st.total>=5?'':'disabled'}>Practise ${goalFor('words')} random</button>${LANGS.filter(l=>usable(l.id).length>=5).length>=2?'<button type="button" class="btn quiet" data-wact="mix">Mix dictionaries</button>':''}${st.learning?'<button type="button" class="btn quiet" data-wlist="all">Your words</button>':''}<button type="button" class="btn quiet" data-wlist="fav">★ Favorites · ${wListIds(WS.lang,'fav').length}</button>${wDayLog(WS.lang,romeDay()).length?`<button type="button" class="btn quiet" data-wlist="day:${romeDay()}">Today · ${wDayLog(WS.lang,romeDay()).length}</button>`:''}</div>`;
       if(st.fresh&&!left) h+=`<div class="hint">You’ve learned your ${goalFor('words')} new ${L.name} words for today. They come back for review tomorrow; new words open up again then. You can change the daily goal in Settings.</div>`;
       if(!st.total) h+=`<div class="hint">No words with a definition in ${L.name} yet.</div>`;
       else if(st.noDef) h+=`<div class="hint">${st.noDef} ${st.noDef===1?'word has':'words have'} no definition yet, so ${st.noDef===1?'it is':'they are'} left out until your bot or you fill ${st.noDef===1?'it':'them'} in.</div>`;
@@ -3260,7 +3278,7 @@ function renderWords(){
   }else if(WSN.phase==='study'){
     const r=map.get(WSN.ids[WSN.i]);
     eb.textContent=`Learn · ${L.name} · word ${WSN.i+1} of ${WSN.ids.length}`; pr.textContent='Memorise these words'; sc.textContent='';
-    h+=`<article class="wcard"><div class="ww">${esc(r.w)}</div><div class="wd">${rich(r.d)}</div>${r.e?`<div class="we">${rich(r.e)}</div>`:''}${r.s?`<div class="wsrc">Source: ${esc(r.s)}</div>`:''}</article>`;
+    h+=`<article class="wcard">${wStar(WSN.lang,r.id)}<div class="ww">${esc(r.w)}</div><div class="wd">${rich(r.d)}</div>${r.e?`<div class="we">${rich(r.e)}</div>`:''}${r.s?`<div class="wsrc">Source: ${esc(r.s)}</div>`:''}</article>`;
     h+=`<div class="pips">${WSN.ids.map((x,k)=>`<i class="${k===WSN.i?'on':k<WSN.i?'past':''}"></i>`).join('')}</div>`;
     h+=`<div class="actions"><button type="button" class="btn quiet" data-wact="quit">Stop</button><span class="spacer"></span><button type="button" class="btn" data-wact="prev" ${WSN.i?'':'disabled'}>Previous</button>${WSN.i<WSN.ids.length-1?'<button type="button" class="btn primary" data-wact="next">Next word</button>':`<button type="button" class="btn primary" data-wact="match">${WSN.ids.length<3?'I’m ready: check them':'I’m ready: match them'}</button>`}</div>`;
   }else if(WSN.phase==='match'){
@@ -3275,7 +3293,7 @@ function renderWords(){
     eb.textContent=`${label} · ${WSN.mix?'mixed dictionaries':L.name} · ${Math.min(WSN.qi+1,total)} of ${total}`;
     pr.textContent=q.dir==='w2d'?'What does this word mean?':'Which word has this meaning?';
     sc.textContent='';
-    h+=`<article class="wcard q">${WSN.mix?`<div class="wsrc">${LANGS.find(l=>l.id===sesLang(WSN,q.id)).name}</div>`:''}${q.dir==='w2d'?`<div class="ww">${esc(r.w)}</div>`:`<div class="wd big">${rich(r.d)}</div>`}${q.pick&&r.e?`<div class="we">${rich(r.e)}</div>`:''}</article>`;
+    h+=`<article class="wcard q">${q.pick?wStar(sesLang(WSN,q.id),q.id):''}${WSN.mix?`<div class="wsrc">${LANGS.find(l=>l.id===sesLang(WSN,q.id)).name}</div>`:''}${q.dir==='w2d'?`<div class="ww">${esc(r.w)}</div>`:`<div class="wd big">${rich(r.d)}</div>`}${q.pick&&r.e?`<div class="we">${rich(r.e)}</div>`:''}</article>`;
     h+=`<ol class="opts">${q.opts.map((id,k)=>{ const o=map.get(id); let c='opt'; if(q.pick){ if(id===q.id) c+=' ok'; else if(id===q.pick) c+=' bad'; else c+=' dim'; }
       return `<li><button type="button" class="${c}" data-opt="${id}" ${q.pick?'disabled':''}><kbd>${k+1}</kbd><span>${q.dir==='w2d'?esc(plain(o.d)):esc(o.w)}</span></button></li>`; }).join('')}</ol>`;
     if(q.pick) h+=`<div class="actions"><span class="feedback ${q.pick===q.id?'good':'bad'}">${q.pick===q.id?'Correct.':`Not quite: it’s “${esc(q.dir==='w2d'?plain(r.d):r.w)}”.`}</span><span class="spacer"></span><button type="button" class="btn primary" data-wact="nextq">${WSN.qi+1>=WSN.queue.length?'Finish':'Next'}</button></div>`;
@@ -3311,6 +3329,7 @@ function openWords(){
 }
 $('wbody').addEventListener('click',e=>{
   const lb=e.target.closest('[data-wlang]'); if(lb){ WS.lang=lb.dataset.wlang; wSaveSettings(); WSN=null; if(WV){ const f=WV.src==='session'?'all':WV.src; WV={src:f,ids:wListIds(WS.lang,f),i:null}; } wFeedback('',''); renderWords(); return; }
+  const wf=e.target.closest('[data-wfav]'); if(wf){ const k=wf.dataset.wfav.indexOf(':'), lang=wf.dataset.wfav.slice(0,k), id=wf.dataset.wfav.slice(k+1), f=WP.fav[lang]||(WP.fav[lang]={}); favSet(f,id,!favOn(f,id)); wSaveProgress(); renderWords(); return; }
   const wl=e.target.closest('[data-wlist]'); if(wl){ openWordList(wl.dataset.wlist); return; }
   const wv=e.target.closest('[data-wview]'); if(wv){ subPush(); WV.i=+wv.dataset.wview; renderWords(); scrollTo(0,0); return; }
   const ws=e.target.closest('[data-wsession]'); if(ws){ openSessionWord(+ws.dataset.wsession); return; }
@@ -3443,11 +3462,11 @@ function renderToday(){
 const PAINT_ON=!!window.FW_WEB;
 const P_KEY='fretwise.paintings', P_SESSION_KEY='fretwise.paintings.session';
 // p: work id -> {n, ok, last, b (review box), due, r (last answer right), lk (last question asked)}; days: Rome day -> [{id, kind, ok, t}]
-const PS={kinds:['artist','title','movement'], fame:'all', p:{}, hist:[], days:{}, upd:0};
+const PS={kinds:['artist','title','movement'], fame:'all', p:{}, fav:{}, hist:[], days:{}, upd:0};
 let PDATA=null, pLoading=null, PSN=null, paintDoc=null, pWriting=false, pAgain=false, pRestore=null;
 function pLoad(){
   try{ const x=JSON.parse(LOCAL.getItem(P_KEY)||'null'); if(x) Object.assign(PS,x); }catch(e){}
-  PS.days=PS.days||{}; Object.values(PS.p).forEach(pNorm);
+  PS.days=PS.days||{}; PS.fav=PS.fav||{}; Object.values(PS.p).forEach(pNorm);
   // the single "ask" setting became a set of questions; the date question became the art movement
   if(PS.ask){ PS.kinds=PS.ask==='mix'?['artist','title','movement']:[PS.ask==='year'?'movement':PS.ask]; delete PS.ask; }
   PS.kinds=(PS.kinds||[]).filter(k=>P_ALL.indexOf(k)>=0); if(!PS.kinds.length) PS.kinds=['artist','title','movement']; pBackfill(); if(pClean()){ PS.upd=Date.now(); pStore(); }
@@ -3464,12 +3483,13 @@ function pStoreSession(){
 }
 async function pushPaint(){
   if(!paintDoc) return; if(pWriting){ pAgain=true; return; } pWriting=true;
-  try{ await paintDoc.set({p:PS.p,hist:PS.hist.slice(-200),days:PS.days,upd:PS.upd,v:2}); }catch(e){}
+  try{ await paintDoc.set({p:PS.p,fav:PS.fav,hist:PS.hist.slice(-200),days:PS.days,upd:PS.upd,v:2}); }catch(e){}
   pWriting=false; if(pAgain){ pAgain=false; pushPaint(); }
 }
 function mergePaint(x){
   if(!x) return;
   Object.entries(x.p||{}).forEach(([id,v])=>{ const m=PS.p[id]; if(!m||(v.last||0)>(m.last||0)) PS.p[id]=v; });
+  favMerge(PS.fav,x.fav);
   const have=new Set(PS.hist.map(h=>h.t)); (x.hist||[]).forEach(h=>{ if(!have.has(h.t)) PS.hist.push(h); });
   PS.hist.sort((a,b)=>a.t-b.t); PS.hist=PS.hist.slice(-200); PS.upd=Math.max(PS.upd,x.upd||0);
   Object.entries(x.days||{}).forEach(([d,list])=>{ const mine=PS.days[d]||(PS.days[d]=[]), seen=new Set(mine.map(e=>e.t+e.id));
@@ -3647,7 +3667,8 @@ function restorePaint(){
 let PG=null, PMAP=null;
 const pWork=id=>{ if(!PMAP){ PMAP=new Map(); PDATA.forEach(x=>PMAP.set(x.id,x)); } return PMAP.get(id); };
 // To revisit, Right last time and Known don't overlap: a work moves from one to the next as you answer it
-const P_FILTERS=[['all','All seen'],['missed','To revisit'],['right','Right last time'],['known','Known']];
+const P_FILTERS=[['all','All seen'],['missed','To revisit'],['right','Right last time'],['known','Known'],['fav','★ Favorites']];
+const pStar=id=>starBtn('data-pfav',id,favOn(PS.fav,id));
 const pFilter=(v,f)=>!!v&&(f==='all'||(f==='right'?pRightLast(v)&&!pKnown(v):f==='known'?pKnown(v)&&pRightLast(v):pMissed(v)));
 // a day's works, most recent first, each with how that day went
 function pDayResults(d){
@@ -3656,6 +3677,7 @@ function pDayResults(d){
 }
 function pGalleryIds(f){
   if(f.indexOf('day:')===0) return pDayResults(f.slice(4)).map(r=>r.id);
+  if(f==='fav') return favIds(PS.fav).filter(id=>pWork(id));   // every group, not only the one chosen in settings
   return pPool().filter(x=>pFilter(PS.p[x.id],f)).sort((a,b)=>(PS.p[b.id].last||0)-(PS.p[a.id].last||0)).map(x=>x.id);
 }
 const pDays=()=>Object.keys(PS.days).filter(d=>pDayResults(d).length).sort().reverse().slice(0,14);
@@ -3689,21 +3711,22 @@ function galleryHtml(){
     h+=`<div class="pcredit">Image: <a href="${commonsPage(x.image)}" target="_blank" rel="noopener">Wikimedia Commons</a></div>`;
     return h;
   }
-  eb.textContent='Your gallery'+(!day&&PS.fame!=='all'?' · '+FAME.find(o=>o[0]===PS.fame)[1]:'');
-  pr.textContent=day?`${dayLabel(day)}: the works you saw`:PG.src==='all'?'Works you’ve seen':PG.src==='right'?'Right last time, not known yet':PG.src==='known'?'Works you know':'Works to revisit';
+  eb.textContent='Your gallery'+(!day&&PG.src!=='fav'&&PS.fame!=='all'?' · '+FAME.find(o=>o[0]===PS.fame)[1]:'');
+  pr.textContent=day?`${dayLabel(day)}: the works you saw`:PG.src==='fav'?'Your favorite works':PG.src==='all'?'Works you’ve seen':PG.src==='right'?'Right last time, not known yet':PG.src==='known'?'Works you know':'Works to revisit';
   sc.textContent=`${PG.ids.length} ${PG.ids.length===1?'work':'works'}`;
   h+=`<div class="chips" role="group" aria-label="Show">${P_FILTERS.map(o=>`<button type="button" class="chip" data-pgal="${o[0]}" aria-pressed="${PG.src===o[0]}">${o[1]} · ${pGalleryIds(o[0]).length}</button>`).join('')}</div>`;
   const days=pDays(); if(days.length) h+=`<div class="chips" role="group" aria-label="By day">${days.map(d=>`<button type="button" class="chip" data-pgal="day:${d}" aria-pressed="${day===d}">${dayLabel(d)} · ${pDayResults(d).length}</button>`).join('')}</div>`;
   const dres=day?new Map(pDayResults(day).map(r=>[r.id,r])):null;
-  if(PG.ids.length) h+=`<div class="pgrid">${PG.ids.map((id,k)=>{ const x=pWork(id), ok=dres?dres.get(id).ok:pRightLast(PS.p[id]); return `<button type="button" class="pthumb ${ok?'ok':'no'}" data-pview="${k}"><img src="${esc(pSmall(x))}" alt="" loading="lazy" decoding="async"><span>${esc(x.title)}</span></button>`; }).join('')}</div>`;
-  else h+=`<div class="hint">${PG.src==='missed'?'Nothing to revisit: every work you’ve seen, you got right last time.':PG.src==='known'?'No work is known yet: a work needs to be right on three review days in a row.':`No works here yet${PS.fame!=='all'?' in this group':''}.`}</div>`;
+  if(PG.ids.length) h+=`<div class="pgrid">${PG.ids.map((id,k)=>{ const x=pWork(id), ok=dres?dres.get(id).ok:pRightLast(PS.p[id]); return `<button type="button" class="pthumb ${!dres&&!PS.p[id]?'na':ok?'ok':'no'}" data-pview="${k}"><img src="${esc(pSmall(x))}" alt="" loading="lazy" decoding="async"><span>${esc(x.title)}</span>${favOn(PS.fav,id)?'<i class="favmark" aria-label="Favorite">★</i>':''}</button>`; }).join('')}</div>`;
+  else h+=`<div class="hint">${PG.src==='missed'?'Nothing to revisit: every work you’ve seen, you got right last time.':PG.src==='known'?'No work is known yet: a work needs to be right on three review days in a row.':PG.src==='fav'?'No favorite works yet: tap ☆ next to a painting’s title to add it here.':`No works here yet${PS.fame!=='all'?' in this group':''}.`}</div>`;
   h+=`<div class="actions"><button type="button" class="btn quiet" data-pact="back">Back</button><span class="spacer"></span>${PG.ids.length?`<button type="button" class="btn primary" data-pact="practise">Practise ${Math.min(goalFor('paintings'),PG.ids.length)} of these</button>`:''}</div>`;
   h+=`<div class="hint">${day?'A green edge: every question about it was right that day. Red: at least one was missed.':'A green edge: right the last time you saw it. Red: missed.'}</div>`;
   return h;
 }
 const commonsPage=img=>'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(String(img||'').replace(/ /g,'_'));
 function pCaption(x){
-  return `<div class="pcap"><b>${esc(x.title)}</b><span>${esc(x.artist)}${x.year?`, ${x.year}`:''}${x.museum?` · ${esc(x.museum)}`:''}</span><span>${x.movement?esc(mvOf(x))+(x.movementOf==='painter'?' (the painter’s)':'')+' · ':''}<span class="tier">${esc(x.fame)}</span>${x.wiki?` · <a href="${esc(x.wiki)}" target="_blank" rel="noopener">Read about it</a>`:''}</span></div>`;
+  const where=x.museum?esc(x.museum)+(x.country?` (${esc(x.country)})`:''):'', mv=x.movement?esc(mvOf(x))+(x.movementOf==='painter'?' (the painter’s)':''):'';
+  return `<div class="pcap">${pStar(x.id)}<b>${esc(x.title)}</b><span>${esc(x.artist)}${x.year?`, ${x.year}`:''}</span>${where||mv?`<span>${[where,mv].filter(Boolean).join(' · ')}</span>`:''}<span><span class="tier">${esc(x.fame)}</span>${x.wiki?` · <a href="${esc(x.wiki)}" target="_blank" rel="noopener">Read about it</a>`:''}</span></div>`;
 }
 function renderPaint(){
   if(view!=='paint') return;
@@ -3724,7 +3747,7 @@ function renderPaint(){
     const d=PSN&&PSN.phase==='done'?PSN:null, pool=pPool(), today=pDayResults(romeDay());
     eb.textContent='Paintings'; sc.textContent='';
     pr.textContent=d?`${d.right} of ${d.items.filter(o=>o.pick>=0).length} right`:'Name the painter, the painting or its movement';
-    if(d) h+=`<ul class="wlist">${d.items.map((it,k)=>`<li class="tap ${it.pick<0?'na':pRight(it)?'ok':'no'}"><button type="button" class="wopen" data-pround="${k}"><b>${esc(it.x.title)}</b><span>${esc(it.x.artist)}${it.x.year?', '+it.x.year:''}</span></button></li>`).join('')}</ul>`;
+    if(d) h+=`<ul class="wlist">${d.items.map((it,k)=>`<li class="tap ${it.pick<0?'na':pRight(it)?'ok':'no'}"><button type="button" class="wopen" data-pround="${k}"><b>${esc(it.x.title)}</b><span>${esc(it.x.artist)}${it.x.year?', '+it.x.year:''}</span></button>${pStar(it.x.id)}</li>`).join('')}</ul>`;
     const n=goalFor('paintings'), due=pool.filter(x=>pDue(PS.p[x.id])).length, fresh=pool.filter(x=>!PS.p[x.id]).length, missed=pGalleryIds('missed').length, known=pGalleryIds('known').length, seen=pGalleryIds('all').length;
     // what to do today, in order: review what's due (yellow), then new works (neutral); what you know is green
     h+=`<div class="plan">
@@ -3732,7 +3755,7 @@ function renderPaint(){
       <div class="pcard new"><div class="pct"><b>Learn new</b><span>${fresh?`${fresh} works you haven’t seen`:'You’ve seen every work in this group'}</span></div><button type="button" class="btn big${due?'':' primary'}" data-pact="new" ${fresh?'':'disabled'}>${fresh?`See ${Math.min(n,fresh)} new`:'Nothing new'}</button></div>
       <div class="pcard done"><div class="pct"><b>Known</b><span>${known} known of ${seen} seen</span></div><button type="button" class="btn quiet" data-pgal="known" ${known?'':'disabled'}>See them</button></div>
     </div>`;
-    h+=`<div class="wactions">${seen?'<button type="button" class="btn quiet" data-pgal="all">Your gallery</button>':''}${pDayResults(romeDay()).length?`<button type="button" class="btn quiet" data-pgal="day:${romeDay()}">Today · ${pDayResults(romeDay()).length}</button>`:''}</div>`;
+    h+=`<div class="wactions">${seen?'<button type="button" class="btn quiet" data-pgal="all">Your gallery</button>':''}<button type="button" class="btn quiet" data-pgal="fav">★ Favorites · ${pGalleryIds('fav').length}</button>${pDayResults(romeDay()).length?`<button type="button" class="btn quiet" data-pgal="day:${romeDay()}">Today · ${pDayResults(romeDay()).length}</button>`:''}</div>`;
     if(d) h+=`<div class="hint">Tap a work to look at it again. This round stays here until midnight.</div>`;
     h+=`<div class="hint">Review brings back the works due today, missed ones first; Learn new shows works you haven’t seen. Each time a work comes back it asks the next of your questions about it. A work is known once it’s been right on three review days in a row. Pictures from Wikimedia Commons (public domain); facts from Wikidata.</div>`;
   }else{
@@ -3782,6 +3805,7 @@ function openPaintings(){
 $('pbody').addEventListener('click',e=>{
   const o=e.target.closest('[data-popt]'); if(o){ answerPaint(+o.dataset.popt); return; }
   const g=e.target.closest('[data-pgal]'); if(g){ openGallery(g.dataset.pgal); return; }
+  const pf=e.target.closest('[data-pfav]'); if(pf){ const id=pf.dataset.pfav; favSet(PS.fav,id,!favOn(PS.fav,id)); pSave(); renderPaint(); return; }
   const pv=e.target.closest('[data-pview]'); if(pv){ subPush(); PG.i=+pv.dataset.pview; renderPaint(); scrollTo(0,0); return; }
   const im=e.target.closest('.pframe img[data-big]'); if(im){ openLightbox(im.src,im.dataset.big,im.alt); return; }
   const pr=e.target.closest('[data-pround]'); if(pr){ openRoundWork(+pr.dataset.pround); return; }

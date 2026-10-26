@@ -74,6 +74,31 @@ for (const group of chunks(picked, 140)) {
   }
 }
 
+// 4b) where each work hangs now: Wikidata keeps former owners as collections with an end date, so the
+//     museum is a collection without one (the one already named when it qualifies), and the country is that
+//     museum's present-day country. None of either rather than a former collection or a guess.
+const COUNTRY_NAME = { 'Kingdom of the Netherlands': 'Netherlands', "People's Republic of China": 'China', 'Kingdom of Denmark': 'Denmark' };
+async function museumPlaces(list, museumOf) {
+  const out = new Map();
+  for (const group of chunks(list, 150)) {
+    const rows = await sparql(`SELECT ?p ?cl ?ended ?col WHERE { VALUES ?p { ${group.map(o => 'wd:' + o.id).join(' ')} }
+      ?p p:P195 ?st. ?st ps:P195 ?c. ?c rdfs:label ?cl. FILTER(LANG(?cl) = "en") BIND(EXISTS { ?st pq:P582 [] } AS ?ended)
+      OPTIONAL { ?c wdt:P17 ?co. FILTER NOT EXISTS { ?co wdt:P576 [] } ?co rdfs:label ?col. FILTER(LANG(?col) = "en") } }`);
+    const cands = new Map();
+    for (const b of rows) {
+      if (b.ended.value === 'true' || /^concept of unknown value/.test(b.cl.value)) continue;
+      const id = qid(b.p.value); if (!cands.has(id)) cands.set(id, []);
+      cands.get(id).push({ museum: b.cl.value.replace(/^Department of Paintings of the /, ''), country: b.col ? COUNTRY_NAME[b.col.value] || b.col.value : '' });
+    }
+    for (const o of group) {
+      const c = cands.get(o.id) || [], named = museumOf(o.id);
+      const pick = c.find(x => x.museum === named && x.country) || c.find(x => x.country) || c.find(x => x.museum === named) || c[0];
+      out.set(o.id, pick || { museum: '', country: '' });
+    }
+  }
+  return out;
+}
+
 // 5) a painter's own movement, for works that have none of their own (often the less-covered ones);
 //    only when Wikidata gives the painter exactly one, so the answer isn't a guess between several
 const painterMv = new Map();
@@ -83,6 +108,7 @@ for (const group of chunks([...new Set(picked.map(o => o.a))], 150)) {
   for (const b of rows) { const a = qid(b.a.value); if (!painterMv.has(a)) painterMv.set(a, new Set()); painterMv.get(a).add(b.ml.value); }
 }
 const onlyMv = a => { const m = painterMv.get(a); return m && m.size === 1 ? [...m][0] : ''; };
+const placeOf = await museumPlaces(picked, id => (info.get(id) || {}).cl || '');
 
 const paintings = [];
 for (const o of picked) {
@@ -91,7 +117,7 @@ for (const o of picked) {
   if (!title || !x.al) continue;                       // nothing to ask about without both names
   const movement = x.ml || onlyMv(o.a);
   paintings.push({
-    id: o.id, title, artist: x.al, year: x.year ?? null, movement, ...(movement && !x.ml ? { movementOf: 'painter' } : {}), museum: x.cl || '', image: o.image,
+    id: o.id, title, artist: x.al, year: x.year ?? null, movement, ...(movement && !x.ml ? { movementOf: 'painter' } : {}), museum: placeOf.get(o.id).museum, ...(placeOf.get(o.id).country ? { country: placeOf.get(o.id).country } : {}), image: o.image,
     wiki: x.t ? 'https://en.wikipedia.org/wiki/' + encodeURIComponent(x.t.replace(/ /g, '_')) : null,
     // Commons serves a resized copy of any file through Special:FilePath
     thumb: 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(o.image) + '?width=900',
