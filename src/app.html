@@ -473,12 +473,12 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .vinf{font-family:var(--font-display);font-weight:800;font-size:clamp(2rem,7vw,2.8rem);line-height:1.05}
 .vtense{padding:4px 14px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-weight:700}
 .vperson{font-family:var(--font-display);font-weight:800;font-size:clamp(1.7rem,6vw,2.3rem)}
-.vin{display:flex;align-items:baseline;justify-content:center;gap:8px;width:100%}
-.vin span{font-size:1.3rem;color:var(--muted)}
-.vin input{width:min(320px,80%);font:inherit;font-size:1.45rem;text-align:center;padding:6px 4px;border:0;border-bottom:3px solid var(--ink);background:transparent;color:var(--ink);border-radius:0}
-.vin input:focus{outline:none;border-bottom-color:var(--accent)}
-.vacc{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
-.vacc .chip{min-width:38px}
+.vtap{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;min-height:300px;justify-content:center}
+.vtap:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.vtap:active{transform:scale(.99)}
+.vblank{display:flex;align-items:baseline;justify-content:center;gap:8px;width:100%;min-height:2.6rem}
+.vblank span{font-size:1.3rem;color:var(--muted)}
+.vblank i{display:block;width:min(240px,60%);border-bottom:3px solid var(--ink);align-self:flex-end}
 .vans{font-family:var(--font-display);font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem)}
 .vcard .feedback{margin:0}
 .vtools{display:flex;justify-content:center;gap:14px}
@@ -3503,20 +3503,13 @@ function vGrade(ok){
   v.n++; v.last=now; v.r=ok?1:0;
   if(ok){ v.ok++; if(!had||v.due<=now){ v.b=Math.min(SRS_DAYS.length-1,v.b+1); v.due=startOfDay(now)+SRS_DAYS[v.b]*DAY; } }
   else{ v.b=0; v.due=now; }
-  VB.p[k]=v; VB.hist.push({k,a:VT.typed||'',ok:ok?1:0,t:now}); VB.hist=VB.hist.slice(-200);
+  VB.p[k]=v; VB.hist.push({k,ok:ok?1:0,t:now}); VB.hist=VB.hist.slice(-200);
   const d=romeDay(now); (VB.days[d]||(VB.days[d]={}))[now]=ok?1:0; vSave();
 }
 const vNorm=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
 const vLoose=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-function vCheck(){
-  if(!VT||VT.phase!=='ask') return;
-  const typed=vNorm(VT.typed); if(!typed){ VT.phase='shown'; renderWords(); return; }
-  const {v,tid,p}=vParse(VT.k), ans=vNorm(vForm(v,tid,p)), alts=[ans];
-  if(tid==='impn') alts.push(ans.replace(/^no /,''));
-  VT.ok=alts.indexOf(typed)>=0; VT.near=!VT.ok&&alts.some(a=>vLoose(a)===vLoose(typed));
-  VT.phase='done'; vGrade(VT.ok); renderWords();
-}
-function vSelf(ok){ if(!VT||VT.phase!=='shown') return; VT.ok=ok; VT.self=true; VT.phase='done'; vGrade(ok); renderWords(); }
+function vTap(){ if(!VT) return; if(VT.phase==='ask'){ VT.phase='shown'; renderWords(); } else vAdvance(true); }
+function vAdvance(ok){ if(!VT||VT.phase!=='shown') return; vGrade(ok); vNew(); renderWords(); }
 // Spanish speech, where the browser has a voice for it
 const vCanSay=()=>typeof window.speechSynthesis!=='undefined'&&typeof window.SpeechSynthesisUtterance!=='undefined';
 function vSay(text){
@@ -3539,23 +3532,20 @@ function vbBack(){ if(VBV&&VBV.tab==='verb') VBV={tab:VBV.back}; else VBV=null; 
 function vTabsHtml(){
   return `<div class="vhead"><div class="chips" role="tablist" aria-label="Verbs">${[['train','Train'],['verbs','Verbs'],['hist','History']].map(o=>`<button type="button" class="chip" role="tab" data-vbtab="${o[0]}" aria-selected="${VBV.tab===o[0]}" aria-pressed="${VBV.tab===o[0]}">${o[1]}</button>`).join('')}</div><button type="button" class="btn quiet sm" data-vbact="close">Back to words</button></div>`;
 }
+// a covered card: say the form out loud, tap to see it, tap again for the next one, up to the daily goal
 function vTrainHtml(){
   const goal=VB.set.goal, n=vToday(); let h=vTabsHtml();
   h+=`<div class="vgoal"><div class="vbar"><i style="width:${Math.min(100,Math.round(n/goal*100))}%"></i></div><div class="vgl"><span>Daily goal</span><span class="mono">${n} / ${goal}</span></div></div>`;
+  if(n>=goal&&!VBV.more&&!(VT&&VT.phase==='shown'))
+    return h+`<div class="wcard vcard"><div class="vinf">¡Hecho!</div><div>Today’s goal is done: ${n} ${n===1?'form':'forms'}.</div></div><div class="actions"><span class="spacer"></span><button type="button" class="btn" data-vbact="more">Keep going</button></div><div class="hint">To do more another day, raise the goal in Settings: the forms you’ve already done today count towards it.</div>`;
   if(!VT) return h+`<div class="hint">Nothing to practise: turn on at least one verb and one tense (Verbs tab and Settings).</div>`;
-  const {v,tid,p}=vParse(VT.k), t=V_T[tid];
-  h+=`<article class="wcard vcard"><div class="vit">${esc(v.it)}</div><div class="vinf">${esc(v.inf)}</div><div class="vtense">${esc(t.name)}</div><div class="vperson">${esc(V_PERSONS[p])}</div>`;
-  if(VT.phase==='ask') h+=`<div class="vin">${tid==='impn'?'<span>no</span>':''}<input id="vbIn" type="text" value="${esc(VT.typed)}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-label="Your answer" placeholder="type the form"></div>`
-    +`<div class="vacc" aria-label="Accented letters">${'áéíóúñü'.split('').map(c=>`<button type="button" class="chip mono" data-vbacc="${c}">${c}</button>`).join('')}</div>`;
-  else h+=`<div class="vans">${vFormHtml(v,tid,p)}</div>`;
-  if(VT.phase==='done') h+=`<div class="feedback ${VT.ok?'good':'bad'}">${VT.ok?'Correct.':VT.self?'Not known yet: it comes back in a few questions.':VT.near?`Almost: mind the accents. You wrote “${esc(VT.typed)}”.`:`You wrote “${esc(VT.typed)}”. It comes back in a few questions.`}</div>`;
-  h+=`</article>`;
-  if(VT.phase==='ask') h+=`<div class="actions"><button type="button" class="btn quiet" data-vbact="show">Show answer</button><span class="spacer"></span><button type="button" class="btn primary" data-vbact="check">Check</button></div>`;
-  else if(VT.phase==='shown') h+=`<div class="actions"><span class="hint">Did you know it?</span><span class="spacer"></span><button type="button" class="btn" data-vbact="didnt">Not yet</button><button type="button" class="btn primary" data-vbact="knew">I knew it</button></div>`;
-  else h+=`<div class="actions"><span class="spacer"></span><button type="button" class="btn primary" id="vbNext" data-vbact="next">Next</button></div>`;
-  h+=`<div class="vtools"><button type="button" class="btn" data-vbact="hist" aria-label="History" title="History">${V_ICON.hist}</button><button type="button" class="btn" data-vbact="book" aria-label="Conjugation of ${esc(v.inf)}" title="Conjugation table">${V_ICON.book}</button>${vCanSay()?`<button type="button" class="btn" data-vbact="say" aria-label="Listen" title="${VT.phase==='ask'?'Listen to the verb':'Listen to the answer'}">${V_ICON.say}</button>`:''}</div>`;
+  const {v,tid,p}=vParse(VT.k), t=V_T[tid], shown=VT.phase==='shown';
+  h+=`<div class="wcard vcard vtap" role="button" tabindex="0" data-vbtap aria-label="${shown?'Next form':'Show the answer'}"><div class="vit">${esc(v.it)}</div><div class="vinf">${esc(v.inf)}</div><div class="vtense">${esc(t.name)}</div><div class="vperson">${esc(V_PERSONS[p])}</div>`
+    +(shown?`<div class="vans">${vFormHtml(v,tid,p)}</div><div class="hint">Tap again for the next one</div>`:`<div class="vblank">${tid==='impn'?'<span>no</span>':''}<i></i></div><div class="hint">Say it out loud, then tap to show the answer</div>`)+`</div>`;
+  if(shown) h+=`<div class="actions"><button type="button" class="btn quiet" data-vbact="missed">I didn’t know it</button><span class="spacer"></span></div>`;
+  h+=`<div class="vtools"><button type="button" class="btn" data-vbact="hist" aria-label="History" title="History">${V_ICON.hist}</button><button type="button" class="btn" data-vbact="book" aria-label="Conjugation of ${esc(v.inf)}" title="Conjugation table">${V_ICON.book}</button>${vCanSay()?`<button type="button" class="btn" data-vbact="say" aria-label="Listen" title="${shown?'Listen to the answer':'Listen to the verb'}">${V_ICON.say}</button>`:''}</div>`;
   if(VT.practice) h+=`<div class="hint">Nothing due right now, so this is practice: it doesn’t change your review schedule.</div>`;
-  h+=`<div class="hint">Each form has its own review: right answers come back after 1, 3, 7, 30 and 90 days, a wrong one in a few questions. New forms come one verb at a time.</div>`;
+  h+=`<div class="hint">Each form has its own review: it comes back after 1, 3, 7, 30 and 90 days. “I didn’t know it” brings it back in a few cards. New forms come one verb at a time.</div>`;
   return h;
 }
 function vListHtml(){
@@ -3602,14 +3592,14 @@ function verbsHtml(){
   pr.textContent='Conjugate'; if(!VT) vNew(); return vTrainHtml();
 }
 function verbsAfterRender(){
-  if(VBV.tab==='train'&&VT){ if(VT.phase==='ask'){ const i=$('vbIn'); if(i) i.focus({preventScroll:true}); } else if(VT.phase==='done'){ const b=$('vbNext'); if(b) b.focus({preventScroll:true}); } }
+  if(VBV.tab==='train'){ const c=document.querySelector('[data-vbtap]'); if(c) c.focus({preventScroll:true}); }
   if(VBV.tab==='verb'&&VBV.scroll){ const s=$('vsec-'+VBV.scroll); VBV.scroll=null; if(s) s.scrollIntoView({block:'start'}); }
 }
 function vSettingsHtml(){
   const s=VB.set; let h='';
   V_GROUPS.forEach(([g,name])=>{ h+=`<div class="field"><span class="fl">${name}</span><div class="chips">${V_TENSES.filter(t=>t.g===g).map(t=>`<button type="button" class="chip" data-vbtense="${t.id}" aria-pressed="${s.tenses.indexOf(t.id)>=0}">${esc(t.name)}</button>`).join('')}</div></div>`; });
   h+=`<div class="field"><span class="fl">Vosotros</span><div class="chips"><button type="button" class="chip" data-vbvos="1" aria-pressed="${s.vos}">Include</button><button type="button" class="chip" data-vbvos="0" aria-pressed="${!s.vos}">Leave out</button></div></div>`;
-  h+=`<div class="field"><span class="fl">Daily goal: forms a day</span><div class="chips">${[10,20,30,50].map(n=>`<button type="button" class="chip mono" data-vbgoal="${n}" aria-pressed="${s.goal===n}">${n}</button>`).join('')}</div><div class="hint">Tenses chosen here are the ones Train asks; the tables always show them all.</div></div>`;
+  h+=`<div class="field"><span class="fl">Daily goal: forms a day</span><div class="chips">${[10,20,30,50].map(n=>`<button type="button" class="chip mono" data-vbgoal="${n}" aria-pressed="${s.goal===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="200" inputmode="numeric" data-vbgoalin value="${[10,20,30,50].indexOf(s.goal)<0?s.goal:''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">Tenses chosen here are the ones Train asks; the tables always show them all.</div></div>`;
   return h;
 }
 function vStatsHtml(){
@@ -3621,22 +3611,19 @@ function vClick(e){
   const g=(sel)=>e.target.closest(sel);
   let b;
   if((b=g('[data-vbtab]'))){ VBV={tab:b.dataset.vbtab}; if(VBV.tab==='train'&&!VT) vNew(); renderWords(); return true; }
-  if((b=g('[data-vbacc]'))){ const i=$('vbIn'); if(i){ const a=i.selectionStart??i.value.length, z=i.selectionEnd??a; i.value=i.value.slice(0,a)+b.dataset.vbacc+i.value.slice(z); VT.typed=i.value; i.focus(); i.setSelectionRange(a+1,a+1); } return true; }
   if((b=g('[data-vbf]'))){ VBV.f=b.dataset.vbf; renderWords(); return true; }
   if((b=g('[data-vbverb]'))){ openVerb(b.dataset.vbverb,null,null,'verbs'); scrollTo(0,0); return true; }
   if((b=g('[data-vbhist]'))){ const {v,tid,p}=vParse(b.dataset.vbhist); openVerb(v.inf,tid,p,'hist'); return true; }
   if((b=g('[data-vbg]'))){ VBV.g=b.dataset.vbg; VBV.open=null; renderWords(); return true; }
   if((b=g('[data-vbrow]'))){ VBV.open=VBV.open===b.dataset.vbrow?null:b.dataset.vbrow; renderWords(); return true; }
   if((b=g('[data-vbsay]'))){ vSay(b.dataset.vbsay); return true; }
+  if(g('[data-vbtap]')){ vTap(); return true; }
   if((b=g('[data-vbact]'))){
     const a=b.dataset.vbact;
-    if(a==='check') vCheck();
-    else if(a==='show'){ if(VT){ VT.phase='shown'; renderWords(); } }
-    else if(a==='knew') vSelf(true);
-    else if(a==='didnt') vSelf(false);
-    else if(a==='next'){ vNew(); renderWords(); }
+    if(a==='missed') vAdvance(false);
+    else if(a==='more'){ VBV.more=true; if(!VT) vNew(); renderWords(); }
     else if(a==='hist'){ VBV={tab:'hist'}; renderWords(); }
-    else if(a==='book'&&VT){ const {v,tid,p}=vParse(VT.k); openVerb(v.inf,VT.phase==='ask'?null:tid,VT.phase==='ask'?null:p,'train'); }
+    else if(a==='book'&&VT){ const {v,tid,p}=vParse(VT.k); openVerb(v.inf,VT.phase==='shown'?tid:null,VT.phase==='shown'?p:null,'train'); }
     else if(a==='say'&&VT){ const {v,tid,p}=vParse(VT.k); vSay(VT.phase==='ask'?v.inf:V_SAY[p]+' '+vForm(v,tid,p)); }
     else if(a==='back') navBack(vbBack);
     else if(a==='close') navBack(vbBack);
@@ -3645,10 +3632,9 @@ function vClick(e){
   return false;
 }
 $('wbody').addEventListener('input',e=>{
-  if(e.target.id==='vbIn'&&VT) VT.typed=e.target.value;
-  else if(e.target.id==='vbSearch'&&VBV){ VBV.q=e.target.value; const at=e.target.selectionStart; renderWords(); const i=$('vbSearch'); if(i){ i.focus(); try{ i.setSelectionRange(at,at); }catch(x){} } }
+  if(e.target.id==='vbSearch'&&VBV){ VBV.q=e.target.value; const at=e.target.selectionStart; renderWords(); const i=$('vbSearch'); if(i){ i.focus(); try{ i.setSelectionRange(at,at); }catch(x){} } }
 });
-$('wbody').addEventListener('keydown',e=>{ if(e.target.id==='vbIn'&&e.key==='Enter'){ e.preventDefault(); vCheck(); } });
+$('wbody').addEventListener('keydown',e=>{ if(e.target.matches&&e.target.matches('[data-vbtap]')&&(e.key===' '||e.key==='Enter')){ e.preventDefault(); vTap(); } });
 $('wbody').addEventListener('change',e=>{ const c=e.target.closest('[data-vbon]'); if(!c) return; favSet(VB.off,c.dataset.vbon,!c.checked); vSave(); vRecheck(); renderWords(); });
 // the card on screen goes if its verb or tense was just taken out of training (unless already answered)
 function vRecheck(){ if(VT&&VT.phase!=='done'&&vItems().indexOf(VT.k)<0) VT=null; }
@@ -3778,6 +3764,7 @@ $('wbody').addEventListener('click',e=>{
   else if(a==='vpractise') startPractice(WV.ids);
 });
 $('wsettings').addEventListener('change',e=>{ if(!e.target.matches('[data-wgoalin]')) return; const n=Math.max(1,Math.min(50,Math.round(+e.target.value||0))); if(!+e.target.value) return; setGoal('words',n); renderWordsSide(); if(!WSN||WSN.phase==='done') renderWords(); });
+$('wsettings').addEventListener('change',e=>{ if(!VBV||!e.target.matches('[data-vbgoalin]')||!+e.target.value) return; VB.set.goal=Math.max(1,Math.min(200,Math.round(+e.target.value))); VB.set.t=Date.now(); vSave(); renderWords(); });
 $('wsettings').addEventListener('click',e=>{
   if(VBV){ const t=e.target.closest('[data-vbtense],[data-vbvos],[data-vbgoal]'); if(!t) return; const st=VB.set;
     if(t.dataset.vbtense){ const i=st.tenses.indexOf(t.dataset.vbtense); if(i>=0) st.tenses.splice(i,1); else st.tenses.push(t.dataset.vbtense); }
