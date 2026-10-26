@@ -510,6 +510,27 @@ mark.v-irr{color:var(--bad)} mark.v-stem{color:#cf2a9b} mark.v-spell{color:#2a86
 .vrow[aria-expanded="true"]{background:var(--accent-soft)}
 .vexp{display:flex;flex-direction:column;gap:8px;padding:10px 6px 14px;border-bottom:1px solid var(--line);font-size:.95rem}
 .vexp .btn svg{width:18px;height:18px;vertical-align:-4px}
+.vexptop{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.vexptop .vlevel{margin:0}
+.vlevel.k-irr{background:color-mix(in srgb,var(--bad) 16%,var(--surface));color:var(--bad);border-color:transparent}
+.vlevel.k-stem{background:color-mix(in srgb,#cf2a9b 14%,var(--surface));color:#cf2a9b;border-color:transparent}
+.vlevel.k-spell{background:color-mix(in srgb,#2a86d1 14%,var(--surface));color:#2a86d1;border-color:transparent}
+.vstars{color:var(--warn);font-size:1.15rem;letter-spacing:2px}
+.vchips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;padding:6px 0}
+.vchip{padding:4px 10px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line);font-weight:700;font-size:1.02rem}
+.vchip.irr{background:color-mix(in srgb,var(--bad) 14%,var(--surface));border-color:color-mix(in srgb,var(--bad) 45%,var(--line));color:var(--bad)}
+.vchip.stem{background:color-mix(in srgb,#cf2a9b 12%,var(--surface));border-color:color-mix(in srgb,#cf2a9b 45%,var(--line));color:#cf2a9b}
+.vchip.spell{background:color-mix(in srgb,#2a86d1 12%,var(--surface));border-color:color-mix(in srgb,#2a86d1 45%,var(--line));color:#2a86d1}
+.vchip.cut{text-decoration:line-through;color:var(--muted);font-weight:500}
+.vchip.aux{font-weight:500;font-style:italic}
+.vop{color:var(--muted);font-weight:700}
+.vrules{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;line-height:1.45}
+.vrules .vsame{list-style:none;margin-left:-18px;color:var(--muted)}
+.vexpfoot{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.vformon{display:flex;align-items:center;gap:8px;font-size:.92rem}
+.vformon input{width:20px;height:20px;accent-color:var(--accent)}
+.vabout{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);font-size:.95rem;line-height:1.45}
+.vabout p{margin:0}
 .pcap b{font-family:var(--font-display);font-size:1.15rem}
 .pcap span{color:var(--muted);font-size:.9rem}
 .pcap a{color:var(--accent)}
@@ -3431,44 +3452,207 @@ function vFormHtml(v,tid,p){
   if(tid==='impn') return 'no '+vMark(c.spres[p],r.spres[p]);
   return vMark(c[tid][p],r[tid][p]);
 }
-// a sentence on how the form is built
-function vExplain(v,tid,p){
-  const c=vConj(v), r=vRegConj(v), t=V_T[tid], cls='-'+v.inf.slice(-2);
-  const one=(f,g,what)=>{ const d=vInfo(f,g), k=d.k;
-    if(!k) return `${what?what+': ':''}regular, like any ${cls} verb.`;
-    if(k==='stem') return `${what?what+': ':''}stem change, <b>${esc(d.from)}</b> → <b>${esc(d.to)}</b> (the regular pattern gives <s>${esc(g)}</s>).`;
-    if(k==='spell') return `${what?what+': ':''}spelling change${d.from&&d.to?`, <b>${esc(d.from)}</b> → <b>${esc(d.to)}</b>`:''}${vBare(f)===vBare(g)?': one-syllable forms take no written accent':''} (the regular pattern gives <s>${esc(g)}</s>).`;
-    return `${what?what+': ':''}irregular; the regular pattern would give <s>${esc(g)}</s>.`; };
-  const cap=x=>x.charAt(0).toUpperCase()+x.slice(1);
-  if(t.aux) return `<i>haber</i> in the ${esc(V_T[t.aux].name.toLowerCase())} + the participle. `+one(c.part,r.part,'Participle');
-  if(tid==='prog') return '<i>estar</i> in the present + the gerund. '+one(c.ger,r.ger,'Gerund');
-  if(tid==='impn') return '<i>no</i> + the present subjunctive. '+cap(one(c.spres[p],r.spres[p],''));
-  return cap(one(c[tid][p],r[tid][p],''));
+/* ---------- how each form is built ---------- */
+// The form as building blocks, the way a learner would assemble it: the stem, minus the infinitive ending,
+// plus the ending (s − er + o + y, t e→ie n − er + es, ten e→d r + é). Tokens: {t, c: '' | 'irr' |
+// 'stem' | 'spell' | 'cut'} or {op: '+' | '−'}.
+function vStemTokens(T,B,B2,k){
+  let a=0; while(a<B.length&&a<B2.length&&B[a]===B2[a]) a++;
+  let z=0; while(z<B.length-a&&z<B2.length-a&&B[B.length-1-z]===B2[B2.length-1-z]) z++;
+  if(a+z>=B.length&&z) z--;   // a vowel that only grew (t·en → t·ien) reads better as e → ie
+  const Y=B.slice(a,B.length-z), X=B2.slice(a,B2.length-z);
+  if(a) T.push({t:B.slice(0,a)});
+  T.push({t:X&&Y?Y+'→'+X:X||Y,c:X?k:'cut'});
+  if(z) T.push({t:B.slice(B.length-z)});
 }
+function vEndTokens(T,R,E,k){
+  if(!R) return;
+  let a=0; while(a<R.length&&a<E.length&&R[a]===E[a]) a++;
+  let z=0; while(z<R.length-a&&z<E.length-a&&R[R.length-1-z]===E[E.length-1-z]) z++;
+  const X=R.slice(a,R.length-z), Y=E.slice(a,E.length-z), parts=[];
+  if(a) parts.push({t:R.slice(0,a)});
+  if(X||Y) parts.push({t:X&&Y?Y+'→'+X:X||Y,c:X?k:'cut'});
+  if(z) parts.push({t:R.slice(R.length-z)});
+  parts.forEach(x=>{ T.push({op:x.c==='cut'?'−':'+'}); T.push(x); });
+}
+function vTokens(form,B,cut,E,k){
+  const T=[], tail=()=>{ if(cut){ T.push({op:'−'}); T.push({t:cut,c:'cut'}); } };
+  if(!B){ T.push({t:form,c:k}); return T; }
+  if(form.endsWith(E)&&form.length>E.length){
+    const B2=form.slice(0,form.length-E.length);
+    if(B2===B){ T.push({t:B}); tail(); T.push({op:'+'}); T.push({t:E}); return T; }
+    let a=0; while(a<B.length&&a<B2.length&&B[a]===B2[a]) a++;
+    const z0=B[B.length-1]===B2[B2.length-1];
+    if(!a&&!z0){ T.push({t:B2,c:'irr'}); T.push({op:'+'}); T.push({t:E}); return T; }       // another stem: er + es
+    if(a===B.length){ T.push({t:B}); tail(); T.push({op:'+'}); T.push({t:B2.slice(a),c:k}); T.push({op:'+'}); T.push({t:E}); return T; }  // ten − er + g + o
+    vStemTokens(T,B,B2,k); tail(); T.push({op:'+'}); T.push({t:E}); return T;
+  }
+  let K=0; while(K<B.length&&K<form.length&&B[K]===form[K]) K++;
+  if(K===B.length){ T.push({t:B}); tail(); vEndTokens(T,form.slice(K),E,k); return T; }
+  if(K){ T.push({t:B.slice(0,K)}); T.push({op:'−'}); T.push({t:B.slice(K)+(cut||''),c:'cut'}); if(form.length>K){ T.push({op:'+'}); T.push({t:form.slice(K),c:k}); } return T; }
+  T.push({t:form,c:k}); return T;
+}
+// the verb's own part of a form, and its regular counterpart
+function vOwn(v,tid,p){
+  const c=vConj(v), r=vRegConj(v), t=V_T[tid];
+  if(t.aux) return {f:c.part,g:r.part,tt:'part'};
+  if(tid==='prog') return {f:c.ger,g:r.ger,tt:'ger'};
+  if(tid==='impn') return {f:c.spres[p],g:r.spres[p],tt:'spres'};
+  return {f:c[tid][p],g:r[tid][p],tt:tid};
+}
+function vFormTokens(v,tid,p){
+  const cls=v.inf.slice(-2), st=v.inf.slice(0,-2), t=V_T[tid], o=vOwn(v,tid,p), k=vKind(o.f,o.g)||'irr';
+  const own=o.tt==='fut'||o.tt==='cond'?vTokens(o.f,v.inf,'',(o.tt==='fut'?V_FUT:V_COND)[p],k)
+    :o.tt==='part'||o.tt==='ger'?vTokens(o.f,st,cls,V_END[cls][o.tt],k):vTokens(o.f,st,cls,o.g.slice(st.length),k);
+  // a new stem shown as such: the strong preterite (tuv + e) and the imperfect subjunctive (tuvie + ra)
+  const ps=V_PRETSTEM[v.inf], s3=c3=>c3.slice(0,-3);
+  if(o.tt==='pret'&&ps&&o.f.startsWith(ps)) own.splice(0,own.length,{t:ps,c:'irr'},{op:'+'},{t:o.f.slice(ps.length)});
+  else if(o.tt==='pret'&&ps&&o.f.startsWith(ps.slice(0,-1))) own.splice(0,own.length,{t:ps.slice(0,-1),c:'irr'},{t:ps.slice(-1)+'→'+o.f[ps.length-1],c:'spell'},{op:'+'},{t:o.f.slice(ps.length)});   // hic → hiz-o
+  if((o.tt==='sira'||o.tt==='sise')&&vKind(o.f,o.g)){ const b3=s3(vConj(v).pret[5]); if(vBare(o.f).startsWith(b3)) own.splice(0,own.length,{t:o.f.slice(0,b3.length),c:'irr'},{op:'+'},{t:o.f.slice(b3.length)}); }
+  const pre=x=>[{t:x,c:'aux'},{op:'+'}];
+  if(t.aux) return pre(vConj(vVerb('haber'))[t.aux][p]).concat(own);
+  if(tid==='prog') return pre(vConj(vVerb('estar')).pres[p]).concat(own);
+  if(tid==='impn') return pre('no').concat(own);
+  return own;
+}
+const vTokHtml=T=>`<div class="vchips">${T.map(x=>x.op?`<span class="vop">${x.op}</span>`:`<span class="vchip ${x.c||''}">${esc(x.t)}</span>`).join('')}</div>`;
+// how irregular this one form is: label and 0 to 3 stars
+function vFormLevel(v,tid,p){
+  const o=vOwn(v,tid,p), d=vInfo(o.f,o.g);
+  if(d.k==='irr'){ const big=(d.e-d.s)/o.f.length>=.5||vFormTokens(v,tid,p).some(x=>x.c==='irr'&&x.t===o.f); return big?{n:3,label:'Strongly irregular',k:'irr'}:{n:2,label:'Irregular',k:'irr'}; }
+  if(d.k==='stem') return {n:2,label:'Stem change',k:'stem'};
+  if(d.k==='spell') return {n:1,label:'Spelling change',k:'spell'};
+  return {n:0,label:'Regular',k:''};
+}
+// forms built the same way, also from verbs beyond these ten
+const V_SAME={
+  oy:'soy, estoy, doy, voy', go:'tengo, hago, digo, pongo, salgo, vengo, traigo, caigo, oigo',
+  ie:'tienes, quieres, piensas, entiendes, empiezas, cierras, sientes', ue:'puedes, vuelves, duermes, cuentas, encuentras, mueves',
+  ei:'dices, pides, sirves, repites, sigues', strong:'tuve, estuve, pude, hice, dije, hube, puse, supe, quise, vine, anduve',
+  jeron:'dijeron, trajeron, condujeron, produjeron', futd:'tendré, pondré, vendré, saldré, valdré', futdrop:'podré, habré, sabré, cabré, querré',
+  futshort:'haré, diré', part:'hecho, dicho, visto, puesto, escrito, abierto, vuelto, roto, muerto, cubierto',
+  timp:'ten, haz, di, ve, sé, pon, sal, ven', subjyo:'tenga, haga, diga, ponga, salga, venga, vea, conozca',
+  subjown:'sea, esté, vaya, haya, dé, sepa', mono:'di, dio, vi, vio, fui, fue, dais, veis', geru:'pudiendo, durmiendo, muriendo',
+  geri:'diciendo, pidiendo, sirviendo, viniendo', eadd:'sea, vea, prevea, entrevea', impf3:'era (ser), iba (ir), veía (ver)', sirase:'fuera, tuviera, hiciera, dijera, pudiera, estuviera'
+};
+const V_STRONG={tener:'tuv',estar:'estuv',poder:'pud',hacer:'hic',decir:'dij',haber:'hub'};
+const V_PRETSTEM=Object.assign({ser:'fu',ir:'fu'},V_STRONG);
+const V_FUTWHY={tener:['futd','The «e» of the infinitive drops and a «d» is added: tendr-.'],poder:['futdrop','The «e» of the infinitive drops: podr-.'],
+  haber:['futdrop','The «e» of the infinitive drops: habr-.'],hacer:['futshort','A short stem: har- (only hacer and its compounds, like deshacer).'],
+  decir:['futshort','A short stem: dir- (also predecir, contradecir).']};
+// what is worth knowing about this form: [{text, same}]
+function vRules(v,tid,p){
+  const c=vConj(v), r=vRegConj(v), t=V_T[tid], inf=v.inf, cls=inf.slice(-2), out=[];
+  const add=(text,same)=>out.push({text,same:same||''});
+  if(t.aux){
+    add(`<i>haber</i> in the ${esc(V_T[t.aux].name.toLowerCase())} (<b>${esc(vConj(vVerb('haber'))[t.aux][p])}</b>) + the participle, which never changes.`);
+    if(vKind(c.part,r.part)) add(`Irregular participle: <b>${esc(c.part)}</b>, not <s>${esc(r.part)}</s>.`,'part');
+    else add(`Regular participle: the stem + «-${cls==='ar'?'ado':'ido'}».`);
+    return out;
+  }
+  if(tid==='prog'){
+    add('<i>estar</i> in the present + the gerund: what is going on right now.');
+    const d=vInfo(c.ger,r.ger);
+    if(d.k==='stem') add(`In the gerund the «${esc(d.from)}» of the stem becomes «${esc(d.to)}».`,d.to==='u'?'geru':'geri');
+    else if(d.k) add(`Irregular gerund: <b>${esc(c.ger)}</b>, not <s>${esc(r.ger)}</s>.`);
+    else add(`Regular gerund: the stem + «-${cls==='ar'?'ando':'iendo'}».`);
+    return out;
+  }
+  const T=tid==='impn'?'spres':tid, f=c[T][p], g=r[T][p], d=vInfo(f,g);
+  if(tid==='impn') add('<i>no</i> + the present subjunctive, for every person.');
+  const stemPres=c.pres.some((x,i)=>vKind(x,r.pres[i])==='stem');
+  if(d.k==='spell'&&vBare(f)===vBare(g)) add('One-syllable forms take no written accent.','mono');
+  if(T==='pres'){
+    if(p===0&&/oy$/.test(f)) add('The yo form ends in «-oy»: only ser, estar, ir and dar.','oy');
+    if(p===0&&/go$/.test(f)&&!/go$/.test(g)) add('The yo form adds a «g» before the ending «-o», and the present subjunctive is built on it (tengo → tenga).','go');
+    if(inf==='ver'&&p===0) add('The «e» of the infinitive stays: veo, not <s>vo</s> (also prever: preveo).');
+    if(inf==='haber') add('As an auxiliary with a participle: he visto, has dicho. On its own, «hay» means there is / there are.');
+    if(inf==='ir') add('ir has almost no stem, so its present is built on «v-»: voy, vas, va, vamos, vais, van. «vamos» also means let’s go.');
+    if(inf==='ser'&&p>=3) add('The «e» of the ending becomes «o»: only in ser (somos, sois, son).');
+    if(inf==='ser'&&(p===1||p===2)) add('ser changes its stem in the present (s-, er-, e-): these forms don’t follow a rule, learn them as they are.');
+    if(inf==='estar'&&d.k==='irr'&&p>0) add('The stress falls on the ending, so it takes a written accent: estás, está, están.');
+    if(d.k==='stem') add(`The stressed «${esc(d.from)}» of the stem becomes «${esc(d.to)}». Not in nosotros and vosotros, where the stress moves to the ending.`,d.to==='ie'?'ie':d.to==='ue'?'ue':'ei');
+    if(!d.k&&stemPres&&(p===3||p===4)) add('No stem change here: in nosotros and vosotros the stress falls on the ending.');
+  }
+  if(T==='pret'){
+    if(V_STRONG[inf]) add(`Strong preterite: a new stem, <b>${V_STRONG[inf]}-</b>, with endings -e, -iste, -o, -imos, -isteis, -ieron and no accent on yo and él.`,'strong');
+    if(inf==='hacer'&&p===2) add('«c» becomes «z» before «o» to keep its sound: hizo.');
+    if(inf==='decir'&&p===5) add('After «j» the ending is «-eron», not «-ieron».','jeron');
+    if(inf==='ser'||inf==='ir') add('ser and ir share the same preterite (fui, fuiste, fue…): the context says which one it is.');
+    if(inf==='dar') add('dar takes the endings of -er and -ir verbs in the preterite: di, diste, dio, like vi, viste, vio.');
+  }
+  if(T==='impf'){
+    if(inf==='ser'||inf==='ir'||inf==='ver') add('One of only three verbs irregular in the imperfect.','impf3');
+    else add(`Regular, as nearly every verb in the imperfect: the stem + «-${cls==='ar'?'aba':'ía'}» endings.`);
+  }
+  if(T==='fut'||T==='cond'){
+    const ends=T==='fut'?'-é, -ás, -á, -emos, -éis, -án':'-ía, -ías, -ía, -íamos, -íais, -ían';
+    if(V_FUTWHY[inf]){ add(V_FUTWHY[inf][1]+` The ${T==='fut'?'conditional':'future'} uses the same stem.`,V_FUTWHY[inf][0]); add(`Endings as for every verb: ${ends}.`); }
+    else add(`Regular: the whole infinitive + ${ends}.`);
+  }
+  if(T==='spres'){
+    if(['ser','estar','ir','haber','dar'].indexOf(inf)>=0) add('One of the six present subjunctives not built on the yo form of the present.','subjown');
+    else{ const yo=c.pres[0]; add(`Built on the yo form of the present: <b>${esc(yo)}</b> → <b>${esc(yo.slice(0,-1))}${cls==='ar'?'e':'a'}</b>, with the endings of the ${cls==='ar'?'-er':'-ar'} verbs.`,/go$/.test(yo)||inf==='ver'?'subjyo':''); }
+    if(d.k==='stem') add(`Like the present: the stressed «${esc(d.from)}» becomes «${esc(d.to)}».`,d.to==='ie'?'ie':d.to==='ue'?'ue':'ei');
+    if(!d.k&&stemPres&&(p===3||p===4)) add('nosotros and vosotros keep the stem of the infinitive, as in the present.');
+    if(inf==='estar'&&d.k) add('The stress falls on the ending, so it takes a written accent: esté, estés, estén.');
+    if(inf==='ser') add('The yo form soy loses «-oy» and the stem becomes «se-»: an «e» is added, as in ver (vea) and prever (prevea).','eadd');
+    if(inf==='dar'&&(p===0||p===2)) add('dé takes an accent to tell it apart from the preposition «de».');
+  }
+  if(T==='sira'||T==='sise'){
+    const st3=c.pret[5].slice(0,-3);
+    add(`Built on the ellos form of the preterite: <b>${esc(c.pret[5])}</b> → <b>${esc(st3)}${T==='sira'?'ra':'se'}</b>. Every verb works this way, irregular ones too.`,'sirase');
+    if(p===3) add('nosotros takes a written accent on the vowel before the ending.');
+    if(T==='sise') add('The -se forms mean the same as the -ra ones; -ra is more common in speech.');
+  }
+  if(T==='imp'){
+    if(p===1){ if(f===c.pres[2]) add('tú: the same as the él form of the present.'); else add('A short tú imperative, one of a handful to learn by heart.','timp'); }
+    else if(p===4) add('vosotros: the infinitive with «-d» instead of «-r».');
+    else if(f===c.spres[p]) add('Ud., nosotros and Uds. take the present subjunctive.');
+    else if(inf==='ir'&&p===3) add('«vamos» is used rather than «vayamos» (no vayamos in the negative).');
+    if(inf==='haber') add('Hardly ever used.');
+  }
+  if((p===0||p===2)&&['impf','cond','spres','sira','sise'].indexOf(T)>=0&&c[T][0]===c[T][2]) add('yo and él/ella/Ud. share this form: the pronoun or the context tells them apart.');
+  if(!out.length) add(d.k==='irr'?'One of the least predictable forms: it doesn’t follow a simple rule.':d.k?'':`Regular: the stem + the ending, like any -${cls} verb.`);
+  return out;
+}
+// about each verb, and verbs conjugated the same way
+const V_ABOUT={
+  ser:['Unique, and the most irregular verb: three stems (s-, er-, fu-). It shares its preterite and imperfect subjunctive with ir.',''],
+  estar:['Irregular in the present (estoy, and accents on the ending), in the strong preterite estuv- and in the subjunctive (esté); regular elsewhere.','dar has the same «-oy» and the accents in the subjunctive (dé)'],
+  haber:['Mostly an auxiliary: with the participle it builds every compound tense (he hablado). «hay» is its impersonal form: there is / there are.',''],
+  tener:['yo adds a «g» (tengo), the stem changes e → ie, a strong preterite in tuv- and a future in tendr-.','mantener, obtener, contener, detener, sostener, retener, entretener; venir works nearly the same (vengo, vienes, vine, vendré)'],
+  hacer:['yo hago, preterite hic- (hizo), future har-, participle hecho, tú imperative haz.','deshacer, rehacer; satisfacer (satisfago, satisfice, satisfaré)'],
+  poder:['The stem changes o → ue in the present, a strong preterite in pud-, future podr- and gerund pudiendo.','o → ue in the present like volver, mover, dormir, contar; a future without the «e» like saber (sabré) and querer (querré)'],
+  decir:['yo digo, the stem changes e → i, preterite dij-, future dir-, participle dicho, tú imperative di.','predecir, contradecir, desdecir; bendecir and maldecir only in part'],
+  ir:['Three stems: v- (voy, vaya), i- (iba, iré) and fu- (fui, fuera, shared with ser).',''],
+  ver:['Nearly regular: veo, the imperfect veía, the participle visto, and one-syllable forms without an accent (vi, vio).','prever, entrever'],
+  dar:['Present doy, a preterite with -er endings (di, dio) and a subjunctive with an accent (dé).','estar has the same «-oy» in the present']
+};
 
 /* ---------- progress ---------- */
 // VB.p: "verb|tense|person" -> {b, due, n, ok, r, last}, the same review boxes as words;
 // VB.off: verbs left out of training ({on, t}, like favourites); VB.days: Rome day -> {time: right or not}
 const V_KEY='fretwise.verbs';
 const V_SET_DEF={tenses:['pres','pret','impf','cond','fut','spres'],vos:true,goal:20,t:0};
-let VB={p:{},off:{},hist:[],days:{},set:Object.assign({},V_SET_DEF),upd:0}, verbsDoc=null, vWriting=false, vAgain=false;
+let VB={p:{},off:{},foff:{},hist:[],days:{},set:Object.assign({},V_SET_DEF),upd:0}, verbsDoc=null, vWriting=false, vAgain=false;
 // VBV: null (Words), or the open verbs screen: {tab:'train'|'verbs'|'hist'} or {tab:'verb', inf, g, open, back}
 let VBV=null, VT=null;
 function vLoad(){
   try{ const x=JSON.parse(LOCAL.getItem(V_KEY)||'null'); if(x&&x.p) VB=Object.assign(VB,x); }catch(e){}
-  VB.off=VB.off||{}; VB.hist=VB.hist||[]; VB.days=VB.days||{}; VB.set=Object.assign({},V_SET_DEF,VB.set||{});
+  VB.off=VB.off||{}; VB.foff=VB.foff||{}; VB.hist=VB.hist||[]; VB.days=VB.days||{}; VB.set=Object.assign({},V_SET_DEF,VB.set||{});
 }
 function vStore(){ try{ LOCAL.setItem(V_KEY,JSON.stringify(VB)); }catch(e){} }
 function vSave(){ VB.upd=Date.now(); pruneDays(VB.days); vStore(); pushVerbs(); }
 async function pushVerbs(){
   if(!verbsDoc) return; if(vWriting){ vAgain=true; return; } vWriting=true;
-  try{ await verbsDoc.set({p:VB.p,off:VB.off,hist:VB.hist.slice(-200),days:VB.days,set:VB.set,upd:VB.upd,v:1}); }catch(e){}
+  try{ await verbsDoc.set({p:VB.p,off:VB.off,foff:VB.foff,hist:VB.hist.slice(-200),days:VB.days,set:VB.set,upd:VB.upd,v:1}); }catch(e){}
   vWriting=false; if(vAgain){ vAgain=false; pushVerbs(); }
 }
 function mergeVerbs(x){
   if(!x) return;
   Object.entries(x.p||{}).forEach(([k,v])=>{ const m=VB.p[k]; if(!m||(v.last||0)>(m.last||0)) VB.p[k]=v; });
-  favMerge(VB.off,x.off);
+  favMerge(VB.off,x.off); favMerge(VB.foff,x.foff);
   const have=new Set(VB.hist.map(h=>h.t+h.k)); (x.hist||[]).forEach(h=>{ if(!have.has(h.t+h.k)) VB.hist.push(h); });
   VB.hist.sort((a,b)=>a.t-b.t); VB.hist=VB.hist.slice(-200);
   Object.entries(x.days||{}).forEach(([d,m])=>{ Object.assign(VB.days[d]||(VB.days[d]={}),m); });
@@ -3488,7 +3672,7 @@ const vToday=()=>Object.keys(VB.days[romeDay()]||{}).length;
 function vItems(){
   const out=[];
   VERBS.filter(vActive).forEach(v=>V_TENSES.forEach(t=>{ if(VB.set.tenses.indexOf(t.id)<0) return;
-    vPersonsOf(t.id).forEach(p=>{ if(p===4&&!VB.set.vos) return; out.push(v.inf+'|'+t.id+'|'+p); }); }));
+    vPersonsOf(t.id).forEach(p=>{ const k=v.inf+'|'+t.id+'|'+p; if(p===4&&!VB.set.vos||favOn(VB.foff,k)) return; out.push(k); }); }));
   return out;
 }
 const vDueCount=()=>{ const now=Date.now(); return vItems().filter(k=>VB.p[k]&&VB.p[k].due<=now).length; };
@@ -3567,17 +3751,30 @@ function vListHtml(){
   h+=`<div class="hint">The ${VERBS.length} most common verbs to start with; more can be added.</div>`;
   return h;
 }
+// the card under an open form: how irregular, how it's built, the rules, forms built alike, training
+function vFormCard(v,tid,p,st){
+  const lv=vFormLevel(v,tid,p), key=v.inf+'|'+tid+'|'+p, full=vForm(v,tid,p), own=vOwn(v,tid,p).f;
+  const rules=vRules(v,tid,p).map(x=>{ const same=x.same?V_SAME[x.same].split(', ').filter(y=>y.split(' ')[0]!==own&&y!==full):[];
+    return `<li>${x.text}</li>`+(same.length?`<li class="vsame">Built the same way: <i>${same.map(esc).join(', ')}</i></li>`:''); }).join('');
+  const why=!vActive(v)?'The whole verb is turned off for training.':VB.set.tenses.indexOf(tid)<0?'This tense isn’t in your training: add it in Settings.':tid!=='imp'&&tid!=='impn'&&p===4&&!VB.set.vos?'vosotros is left out in Settings.':'';
+  return `<div class="vexp"><div class="vexptop"><span class="vlevel k-${lv.k||'reg'}">${lv.label}</span><span class="vstars" aria-label="${lv.n} of 3 stars">${'★'.repeat(lv.n)}${'☆'.repeat(3-lv.n)}</span></div>`
+    +vTokHtml(vFormTokens(v,tid,p))+`<ul class="vrules">${rules}</ul>`
+    +(st?`<div class="hint">Practised ${st.n} ${st.n===1?'time':'times'}, right ${st.ok} · ${nextReviewText(st)}</div>`:'')
+    +`<div class="vexpfoot"><label class="vformon"><input type="checkbox" data-vbfon="${key}" ${favOn(VB.foff,key)?'':'checked'}><span>Active for training</span></label>${vCanSay()?`<button type="button" class="btn sm" data-vbsay="${esc(V_SAY[p]+' '+full)}" aria-label="Listen">${V_ICON.say}</button>`:''}</div>`
+    +(why?`<div class="hint">${why}</div>`:'')+`</div>`;
+}
 function vTenseRows(v,tid){
   const r=VB.p;
   return `<section class="vsec" id="vsec-${tid}"><h3>${esc(V_T[tid].name)}</h3>${vPersonsOf(tid).map(p=>{ const key=tid+'|'+p, open=VBV.open===key, st=r[v.inf+'|'+tid+'|'+p];
     return `<button type="button" class="vrow" data-vbrow="${key}" aria-expanded="${open}"><span class="vp">${esc(V_PERSONS[p])}</span><b>${vFormHtml(v,tid,p)}</b></button>`
-      +(open?`<div class="vexp"><div>${vExplain(v,tid,p)}</div>${st?`<div class="hint">Practised ${st.n} ${st.n===1?'time':'times'}, right ${st.ok} · ${nextReviewText(st)}</div>`:''}${vCanSay()?`<div><button type="button" class="btn sm" data-vbsay="${esc(V_SAY[p]+' '+vForm(v,tid,p))}">${V_ICON.say} Listen</button></div>`:''}</div>`:'');
+      +(open?vFormCard(v,tid,p,st):'');
   }).join('')}</section>`;
 }
 function vVerbHtml(){
   const v=vVerb(VBV.inf), c=vConj(v), r=vRegConj(v), lv=vLevel(v);
   let h=`<div class="vhead"><div class="chips" role="tablist" aria-label="Moods">${V_GROUPS.map(o=>`<button type="button" class="chip" role="tab" data-vbg="${o[0]}" aria-selected="${VBV.g===o[0]}" aria-pressed="${VBV.g===o[0]}">${o[1]}</button>`).join('')}</div><button type="button" class="btn quiet sm" data-vbact="back">Back</button></div>`;
   h+=`<div class="vtop"><div><div class="vit">${esc(v.it)}</div><span class="vlevel l${lv}">${V_LEVEL[lv]} <i aria-hidden="true">${'★'.repeat(lv)}${'☆'.repeat(3-lv)}</i></span></div>${vCanSay()?`<button type="button" class="btn sm" data-vbsay="${esc(v.inf)}" aria-label="Listen to ${esc(v.inf)}">${V_ICON.say}</button>`:''}</div>`;
+  const ab=V_ABOUT[v.inf]; if(ab) h+=`<div class="vabout"><p>${esc(ab[0])}</p>${ab[1]?`<p><b>Conjugated the same way:</b> ${esc(ab[1])}</p>`:''}</div>`;
   h+=`<label class="vtoggle"><span>Active for training</span><input type="checkbox" data-vbon="${v.inf}" ${vActive(v)?'checked':''}></label>`;
   h+=`<div class="hint">Tap a form to see how it’s built. <mark class="v-irr">Red</mark>: irregular · <mark class="v-stem">fuchsia</mark>: stem change · <mark class="v-spell">blue</mark>: spelling change.</div>`;
   if(VBV.g==='other') h+=`<section class="vsec"><h3>Forms of the verb</h3><div class="vrow static"><span class="vp">Infinitivo</span><b>${esc(v.inf)}</b></div><div class="vrow static"><span class="vp">Gerundio</span><b>${vMark(c.ger,r.ger)}</b></div><div class="vrow static"><span class="vp">Participio</span><b>${vMark(c.part,r.part)}</b></div></section>`;
@@ -3645,7 +3842,9 @@ $('wbody').addEventListener('input',e=>{
   if(e.target.id==='vbSearch'&&VBV){ VBV.q=e.target.value; const at=e.target.selectionStart; renderWords(); const i=$('vbSearch'); if(i){ i.focus(); try{ i.setSelectionRange(at,at); }catch(x){} } }
 });
 $('wbody').addEventListener('keydown',e=>{ if(e.target.matches&&e.target.matches('[data-vbtap]')&&(e.key===' '||e.key==='Enter')){ e.preventDefault(); vTap(); } });
-$('wbody').addEventListener('change',e=>{ const c=e.target.closest('[data-vbon]'); if(!c) return; favSet(VB.off,c.dataset.vbon,!c.checked); vSave(); vRecheck(); renderWords(); });
+$('wbody').addEventListener('change',e=>{
+  const fo=e.target.closest('[data-vbfon]'); if(fo){ favSet(VB.foff,fo.dataset.vbfon,!fo.checked); vSave(); vRecheck(); renderWords(); return; }
+  const c=e.target.closest('[data-vbon]'); if(!c) return; favSet(VB.off,c.dataset.vbon,!c.checked); vSave(); vRecheck(); renderWords(); });
 // the card on screen goes if its verb or tense was just taken out of training (unless already answered)
 function vRecheck(){ if(VT&&VT.phase!=='done'&&vItems().indexOf(VT.k)<0) VT=null; }
 
