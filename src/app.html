@@ -550,7 +550,7 @@ mark.v-irr{color:var(--bad)} mark.v-stem{color:#cf2a9b} mark.v-spell{color:#2a86
 .vhopen{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:9px 2px;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer}
 .vhopen b{font-size:1.08rem}
 .vhopen span{font-size:.8rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.vflip{border:0;background:none;color:var(--mark);font-size:1.35rem;cursor:pointer;padding:4px 6px;border-radius:8px}
+.vflip{border:0;background:none;color:var(--mark);cursor:pointer;padding:4px;border-radius:50%;display:grid;place-items:center}
 .vflip:hover{background:var(--accent-soft)}
 .varrow{font-size:.85rem;width:14px;text-align:center}
 .vhrow.ok .varrow{color:var(--good)} .vhrow.no .varrow{color:var(--bad)}
@@ -561,6 +561,21 @@ mark.v-irr{color:var(--bad)} mark.v-stem{color:#cf2a9b} mark.v-spell{color:#2a86
 .vst i.half{background:linear-gradient(90deg,var(--warn) 50%,var(--line) 50%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .vlegend{display:flex;flex-direction:column;gap:4px;padding:12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);font-size:.9rem}
 .vlegend div{display:flex;align-items:center;gap:10px}
+.conjart{display:flex;align-items:flex-end;gap:10px;height:72px}
+.conjart .vcat{width:66px;height:66px;vertical-align:0}
+.conjart span{display:flex;gap:5px;padding-bottom:8px}
+.conjart .vflag{width:26px;height:17px}
+.vlangs{display:flex;flex-direction:column;gap:10px}
+.vlang{display:flex;align-items:center;gap:14px;width:100%;padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:var(--surface-2);font:inherit;color:inherit;text-align:left;cursor:pointer}
+.vlang:not(.soon):hover{border-color:var(--accent)}
+.vlang.soon{opacity:.55;cursor:default}
+.vlflag .vflag{width:46px;height:31px;vertical-align:0;box-shadow:0 0 0 1px var(--line)}
+.vltext{flex:1;display:flex;flex-direction:column;gap:2px}
+.vltext b{font-family:var(--font-display);font-size:1.25rem}
+.vltext small{color:var(--muted)}
+.vlgo{font-size:1.6rem;color:var(--muted)}
+#vjprompt .vcat{width:1.3em;height:1.3em;vertical-align:-.25em}
+#instName .vcat{width:1.4em;height:1.4em;vertical-align:-.35em}
 .vreg{text-align:center;font-size:.92rem;color:var(--muted)}
 .vabout{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);font-size:.95rem;line-height:1.45}
 .vabout p{margin:0}
@@ -666,6 +681,13 @@ mark.v-irr{color:var(--bad)} mark.v-stem{color:#cf2a9b} mark.v-spell{color:#2a86
         <span class="meta" id="metaPaintings"></span>
         <span class="today" id="todayPaintings"></span>
       </button>
+      <button class="pick" type="button" data-inst="conj">
+        <div class="conjart" id="conjArt" aria-hidden="true"></div>
+        <b>Conjugate</b>
+        <span class="sub">Verb conjugations to say out loud: Spanish now, French and Catalan coming</span>
+        <span class="meta" id="metaConj"></span>
+        <span class="today" id="todayConj"></span>
+      </button>
     </div>
     <div id="platformPanel"></div>
   </section>
@@ -737,6 +759,20 @@ mark.v-irr{color:var(--bad)} mark.v-stem{color:#cf2a9b} mark.v-spell{color:#2a86
     <aside class="side">
       <details class="panel" id="pSettingsPanel" open><summary>Settings</summary><div class="settings" id="psettings"></div></details>
       <section class="panel" id="pstats"></section>
+    </aside>
+  </main>
+
+  <main class="layout" id="conjMain" hidden>
+    <section class="stage" aria-label="Conjugate">
+      <div class="prompt-row">
+        <div class="prompt"><div class="eyebrow" id="vjeyebrow"></div><h1 id="vjprompt"></h1></div>
+        <div class="round"><div class="score" id="vjscore"></div></div>
+      </div>
+      <div class="answer" id="vjbody"></div>
+    </section>
+    <aside class="side">
+      <details class="panel" id="vjSettingsPanel" open><summary>Settings</summary><div class="settings" id="vjsettings"></div></details>
+      <section class="panel" id="vjstats"></section>
     </aside>
   </main>
 
@@ -2119,12 +2155,14 @@ function renderHome(){
   drawChessPreview();
   $('metaWords').textContent=wordsHomeMeta();
   if(PAINT_ON){ $('pickPaintings').hidden=false; $('metaPaintings').textContent=paintHomeMeta(); }
+  $('conjArt').innerHTML=`${V_CAT}<span>${V_FLAGS.es}${V_FLAGS.fr}${V_FLAGS.ca}</span>`;
+  { const due=vDueCount(); $('metaConj').textContent=`Español · ${VERBS.length} verbs${due?` · ${due} forms due`:''}`; }
   renderToday();
 }
 function showHome(){
   if(view==='app') storeRound();
   view='home'; stopClock(); clearTimeout(advTimer); clearTimeout(cTimer);
-  $('home').hidden=false; $('main').hidden=true; $('modes').hidden=true; $('instBtn').hidden=true; $('chessMain').hidden=true; $('chessModes').hidden=true; $('wordsMain').hidden=true; $('paintMain').hidden=true;
+  $('home').hidden=false; $('main').hidden=true; $('modes').hidden=true; $('instBtn').hidden=true; $('chessMain').hidden=true; $('chessModes').hidden=true; $('wordsMain').hidden=true; $('paintMain').hidden=true; $('conjMain').hidden=true;
   renderHome();
   const last=document.querySelector(`.pick[data-inst="${S.lastView||S.inst}"]`); if(last) last.focus({preventScroll:true});
 }
@@ -2143,7 +2181,7 @@ window.addEventListener('popstate',()=>{
   if(view==='home') return;
   if(closeLightbox()) return;
   if(view==='paint'&&PG){ pgBack(); return; }
-  if(view==='words'&&VBV){ vbBack(); return; }
+  if(view==='conj'&&VBV){ vbBack(); return; }
   if(view==='words'&&WV){ wvBack(); return; }
   if(view==='chess'&&CS.tab==='openings'&&OP.view!=='list'){ openingsList(); return; }
   showHome();
@@ -2168,8 +2206,9 @@ function openApp(id){
   if(id==='chess'){ save(); openChess(); return; }
   if(id==='words'){ save(); openWords(); return; }
   if(id==='paintings'){ save(); openPaintings(); return; }
+  if(id==='conj'){ save(); openConj(); return; }
   setInst(id); save();
-  view='app'; $('home').hidden=true; $('main').hidden=false; $('modes').hidden=false; $('instBtn').hidden=false; $('chessMain').hidden=true; $('chessModes').hidden=true; $('wordsMain').hidden=true; $('paintMain').hidden=true;
+  view='app'; $('home').hidden=true; $('main').hidden=false; $('modes').hidden=false; $('instBtn').hidden=false; $('chessMain').hidden=true; $('chessModes').hidden=true; $('wordsMain').hidden=true; $('paintMain').hidden=true; $('conjMain').hidden=true;
   $('instName').textContent=INST.name;
   renderSettings(); newRound();
 }
@@ -2945,7 +2984,7 @@ function setChessTab(t){
 }
 function openChess(){
   view='chess'; stopClock(); clearTimeout(advTimer);
-  $('home').hidden=true; $('main').hidden=true; $('modes').hidden=true; $('wordsMain').hidden=true; $('paintMain').hidden=true; $('chessMain').hidden=false; $('chessModes').hidden=false; $('instBtn').hidden=false;
+  $('home').hidden=true; $('main').hidden=true; $('modes').hidden=true; $('wordsMain').hidden=true; $('paintMain').hidden=true; $('conjMain').hidden=true; $('chessMain').hidden=false; $('chessModes').hidden=false; $('instBtn').hidden=false;
   $('instName').textContent='Chess';
   if(window.innerWidth<920) $('cSettingsPanel').open=false;
   setChessTab(CS.tab);
@@ -3698,7 +3737,7 @@ async function connectVerbs(db,uid){
   try{
     const ref=db.doc('data/users/'+uid+'/verbs'); const s=await ref.get(), d=s.exists?s.data():null, lu=VB.upd;
     mergeVerbs(d); verbsDoc=ref; vStore(); if(!d||lu>(d.upd||0)) await pushVerbs();
-    ref.onSnapshot(sn=>{ const x=sn.exists?sn.data():null; if(!x||x.upd===VB.upd) return; mergeVerbs(x); vStore(); if(view==='words'&&VBV&&!(VBV.tab==='train'&&VT&&VT.phase==='ask')) renderWords(); },()=>{});
+    ref.onSnapshot(sn=>{ const x=sn.exists?sn.data():null; if(!x||x.upd===VB.upd) return; mergeVerbs(x); vStore(); if(view==='conj'&&!(VBV&&VBV.tab==='train'&&VT&&VT.phase==='ask')) renderConj(); else if(view==='home') renderToday(); },()=>{});
   }catch(e){}
 }
 const vActive=v=>!favOn(VB.off,v.inf);
@@ -3707,7 +3746,7 @@ const vToday=()=>Object.keys(VB.days[romeDay()]||{}).length;
 function vItems(){
   const out=[];
   VERBS.filter(vActive).forEach(v=>V_TENSES.forEach(t=>{ if(VB.set.tenses.indexOf(t.id)<0) return;
-    vPersonsOf(t.id).forEach(p=>{ const k=v.inf+'|'+t.id+'|'+p; if(p===4&&!VB.set.vos||favOn(VB.foff,k)) return; out.push(k); }); }));
+    vPersonsOf(t.id).forEach(p=>{ const k=v.inf+'|'+t.id+'|'+p; if(favOn(VB.foff,k)) return; out.push(k); }); }));
   return out;
 }
 const vDueCount=()=>{ const now=Date.now(); return vItems().filter(k=>VB.p[k]&&VB.p[k].due<=now).length; };
@@ -3740,15 +3779,19 @@ function vGrade(ok){
   const d=romeDay(now); (VB.days[d]||(VB.days[d]={}))[now]=ok?1:0; vSave();
 }
 function vFlip(t){
-  const i=VB.hist.findIndex(h=>h.t===t), h=VB.hist[i]; if(!h||!('prev' in h)||VB.hist.slice(i+1).some(x=>x.k===h.k)) return;
-  h.ok=h.ok?0:1; VB.p[h.k]=vApply(h.prev,!!h.ok,h.t);
+  const i=VB.hist.findIndex(h=>h.t===t), h=VB.hist[i]; if(!h) return;
+  h.ok=h.ok?0:1;
   const d=VB.days[romeDay(h.t)]; if(d&&String(h.t) in d) d[h.t]=h.ok;
-  vSave(); renderWords();
+  if(!VB.hist.slice(i+1).some(x=>x.k===h.k)){                       // the form's latest answer sets its review
+    if('prev' in h) VB.p[h.k]=vApply(h.prev,!!h.ok,h.t);
+    else{ const v=VB.p[h.k]; if(v){ v.r=h.ok; if(h.ok){ v.ok=(v.ok||0)+1; v.b=Math.max(1,v.b||0); v.due=startOfDay(h.t)+SRS_DAYS[v.b]*DAY; } else { v.ok=Math.max(0,(v.ok||0)-1); v.b=0; v.due=h.t; } } }
+  }
+  vSave(); renderConj();
 }
 const vNorm=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
 const vLoose=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-function vTap(){ if(!VT) return; if(VT.phase==='ask'){ VT.phase='shown'; renderWords(); } else vAdvance(true); }
-function vAdvance(ok){ if(!VT||VT.phase!=='shown') return; vGrade(ok); vNew(); renderWords(); }
+function vTap(){ if(!VT) return; if(VT.phase==='ask'){ VT.phase='shown'; renderConj(); } else vAdvance(true); }
+function vAdvance(ok){ if(!VT||VT.phase!=='shown') return; vGrade(ok); vNew(); renderConj(); }
 // Spanish speech, where the browser has a voice for it
 const vCanSay=()=>typeof window.speechSynthesis!=='undefined'&&typeof window.SpeechSynthesisUtterance!=='undefined';
 function vSay(text){
@@ -3764,17 +3807,18 @@ const V_ICON={
   book:'<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M12 6c-2-1.5-5-2-8-1.5v14c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-14c-3-.5-6 0-8 1.5zM12 6v14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
   up:'<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M7 10v11H3V10zM7 10l4-8a3 3 0 0 1 3 3v4h5.5a2 2 0 0 1 2 2.3l-1.4 8a2 2 0 0 1-2 1.7H7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
   down:'<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" style="transform:rotate(180deg)"><path d="M7 10v11H3V10zM7 10l4-8a3 3 0 0 1 3 3v4h5.5a2 2 0 0 1 2 2.3l-1.4 8a2 2 0 0 1-2 1.7H7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+  flip:'<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><circle cx="12" cy="12" r="10.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7.2 10.5a5 5 0 0 1 8.9-1.7M16.8 13.5a5 5 0 0 1-8.9 1.7M16.4 6.4v2.6h-2.6M7.6 17.6V15h2.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   say:'<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 };
 // a little black cat and the Spanish flag (drawn here, so they look the same everywhere)
 const V_CAT='<svg class="vcat" viewBox="0 0 64 64" aria-hidden="true"><path d="M15 52c-9-1-11-12-4-15" fill="none" stroke="#26262d" stroke-width="4.5" stroke-linecap="round"/><ellipse cx="32" cy="50" rx="13" ry="11.5" fill="#2c2c34"/><ellipse cx="26" cy="60.5" rx="4.2" ry="2.5" fill="#f2a6ae"/><ellipse cx="38" cy="60.5" rx="4.2" ry="2.5" fill="#f2a6ae"/><path d="M12.5 24 15.5 3.5 29 14z M51.5 24 48.5 3.5 35 14z" fill="#2c2c34"/><path d="M16 19 17.3 8.5 25.5 14.5z M48 19 46.7 8.5 38.5 14.5z" fill="#f2a6ae"/><ellipse cx="32" cy="27" rx="20.5" ry="16.5" fill="#2c2c34"/><circle cx="23.5" cy="27.5" r="6.4" fill="#f0892a"/><circle cx="40.5" cy="27.5" r="6.4" fill="#f0892a"/><circle cx="23.5" cy="28" r="3.9" fill="#141418"/><circle cx="40.5" cy="28" r="3.9" fill="#141418"/><circle cx="21.6" cy="25.6" r="1.7" fill="#fff"/><circle cx="38.6" cy="25.6" r="1.7" fill="#fff"/><path d="M30.5 33.6h3l-1.5 1.7z" fill="#f2a6ae"/><path d="M29 36.2q1.5 1.4 3 0q1.5 1.4 3 0" fill="none" stroke="#111" stroke-width=".9" stroke-linecap="round"/></svg>';
 const V_FLAG='<svg class="vflag" viewBox="0 0 30 20" aria-label="Spanish"><rect width="30" height="20" rx="2" fill="#c60b1e"/><rect y="5" width="30" height="10" fill="#ffc400"/></svg>';
 const V_GROUPS=[['ind','Indicative'],['sub','Subjunctive'],['other','Other forms']];
-function openVerbs(){ if(!VBV) subPush(); VBV={tab:'train'}; if(!VT||VT.phase==='done') vNew(); wFeedback('',''); renderWords(); scrollTo(0,0); }
-function openVerb(inf,tid,p,back){ subPush(); VBV={tab:'verb',inf,g:tid?V_T[tid].g:'ind',open:tid!=null&&p!=null?tid+'|'+p:null,back:back||'verbs',scroll:tid||null}; renderWords(); }
-function vbBack(){ if(VBV&&VBV.tab==='verb') VBV={tab:VBV.back}; else VBV=null; renderWords(); scrollTo(0,0); }
+function openVerbs(){ if(!VBV) subPush(); VBV={tab:'train'}; if(!VT||VT.phase==='done') vNew(); renderConj(); scrollTo(0,0); }
+function openVerb(inf,tid,p,back){ subPush(); VBV={tab:'verb',inf,g:tid?V_T[tid].g:'ind',open:tid!=null&&p!=null?tid+'|'+p:null,back:back||'verbs',scroll:tid||null}; renderConj(); }
+function vbBack(){ if(VBV&&VBV.tab==='verb') VBV={tab:VBV.back}; else VBV=null; renderConj(); scrollTo(0,0); }
 function vTabsHtml(){
-  return `<div class="vhead"><div class="chips" role="tablist" aria-label="Verbs">${[['train','Train'],['verbs','Verbs'],['hist','History']].map(o=>`<button type="button" class="chip" role="tab" data-vbtab="${o[0]}" aria-selected="${VBV.tab===o[0]}" aria-pressed="${VBV.tab===o[0]}">${o[1]}</button>`).join('')}</div><button type="button" class="btn quiet sm" data-vbact="close">Back to words</button></div>`;
+  return `<div class="vhead"><div class="chips" role="tablist" aria-label="Verbs">${[['train','Train'],['verbs','Verbs'],['hist','History']].map(o=>`<button type="button" class="chip" role="tab" data-vbtab="${o[0]}" aria-selected="${VBV.tab===o[0]}" aria-pressed="${VBV.tab===o[0]}">${o[1]}</button>`).join('')}</div><button type="button" class="btn quiet sm" data-vbact="close">Languages</button></div>`;
 }
 // a covered card: say the form out loud, tap to see it, tap again for the next one, up to the daily goal
 function vTrainHtml(){
@@ -3807,7 +3851,7 @@ function vFormCard(v,tid,p,st){
   const sameOf=k=>k.indexOf('part:')===0?V_PARTSAME[k.slice(5)]:V_SAME[k];
   const lines=b.notes.map(x=>`<li>${x}</li>`).concat(vRules(v,tid,p).map(x=>{ const same=x.same?sameOf(x.same).split(', ').filter(y=>y.split(' ')[0]!==b.own&&y!==full):[];
     return `<li>${x.text}</li>`+(same.length?`<li class="vsame">Built the same way: <i>${same.map(esc).join(', ')}</i></li>`:''); })).join('');
-  const why=!vActive(v)?'The whole verb is turned off for training.':VB.set.tenses.indexOf(tid)<0?'Active, but this tense isn’t in your training: add it in Settings.':tid!=='imp'&&tid!=='impn'&&p===4&&!VB.set.vos?'Active, but vosotros is left out in Settings.':'';
+  const why=!vActive(v)?'The whole verb is turned off for training.':VB.set.tenses.indexOf(tid)<0?'Active, but this tense isn’t in your training: add it in Settings.':'';
   return `<div class="vexp"><div class="vexptop"><span class="vlevel k-${lv.k||'reg'}">${lv.label}</span><span class="vstars" aria-label="${lv.n} of 3 stars">${'★'.repeat(lv.n)}${'☆'.repeat(3-lv.n)}</span></div>`
     +vTokHtml(b.T)+(b.reg?`<div class="vreg">A regular verb would give <s>${esc(b.reg)}</s>, not <b>${esc(b.own)}</b>.</div>`:'')+`<ul class="vrules">${lines}</ul>`
     +(st?`<div class="hint">Practised ${st.n} ${st.n===1?'time':'times'}, right ${st.ok} · ${nextReviewText(st)}</div>`:'')
@@ -3849,16 +3893,16 @@ function vHistHtml(){
   const list=VB.hist.slice(-60).reverse(); if(!list.length) return h+'<div class="hint">Nothing yet: your answers appear here as you train.</div>';
   const latest=new Set(); let lastDay='';
   h+=list.map(x=>{ const {v,tid,p}=vParse(x.k); if(!v) return ''; const d=romeDay(x.t), head=d!==lastDay?`<h3 class="vhday">${dayLabel(d)}</h3>`:''; lastDay=d;
-    const canFlip='prev' in x&&!latest.has(x.k); latest.add(x.k);
+    const isLast=!latest.has(x.k); latest.add(x.k);
     return head+`<div class="vhrow ${x.ok?'ok':'no'}"><button type="button" class="vhopen" data-vbhist="${esc(x.k)}"><b>${esc(vForm(v,tid,p))}</b><span>${esc(x.pr||V_PERSONS[p])} · ${esc(V_T[tid].name)} · ${esc(v.inf)}</span></button>`
-      +`${canFlip?`<button type="button" class="vflip" data-vbflip="${x.t}" aria-label="Flip to ${x.ok?'hard':'easy'}" title="Rated by mistake? Flip it">⟲</button>`:''}<span class="varrow" aria-label="${x.ok?'Easy':'Hard'}">${x.ok?'▲':'▼'}</span>${canFlip&&VB.p[x.k]?vStarsHtml(VB.p[x.k].b):'<span class="vst"></span>'}</div>`; }).join('');
-  h+=`<div class="hint">Rated a form Easy instead of Hard, or the other way round? Tap ⟲ to flip it (on its latest answer). Tap a form for its table.</div>`;
+      +`<button type="button" class="vflip" data-vbflip="${x.t}" aria-label="Change to ${x.ok?'hard':'easy'}" title="Change to ${x.ok?'hard':'easy'}">${V_ICON.flip}</button><span class="varrow" aria-label="${x.ok?'Easy':'Hard'}">${x.ok?'▲':'▼'}</span>${isLast&&VB.p[x.k]?vStarsHtml(VB.p[x.k].b):'<span class="vst"></span>'}</div>`; }).join('');
+  h+=`<div class="hint">Rated a form Easy instead of Hard, or the other way round? Tap the circled arrows to change it; on a form’s latest answer this also fixes when it comes back. Tap a form for its table.</div>`;
   h+=`<div class="vlegend"><b>Stars show how far each form is from mastered, and when it comes back:</b>${[[0,'in a few cards'],[1,'tomorrow'],[2,'in 3 days'],[3,'in a week'],[4,'in a month'],[5,'in three months: mastered']].map(([b,t])=>`<div>${vStarsHtml(b)} <span>${t}</span></div>`).join('')}</div>`;
   return h;
 }
 function verbsHtml(){
-  const eb=$('weyebrow'), pr=$('wprompt'), sc=$('wscore'); sc.textContent='';
-  eb.textContent='Words · Spanish verbs';
+  const eb=$('vjeyebrow'), pr=$('vjprompt'), sc=$('vjscore'); sc.textContent='';
+  eb.textContent='Conjugate · Español';
   if(VBV.tab==='verb'){ pr.textContent=VBV.inf; return vVerbHtml(); }
   if(VBV.tab==='verbs'){ pr.textContent='Verbs'; return vListHtml(); }
   if(VBV.tab==='hist'){ pr.textContent='History'; return vHistHtml(); }
@@ -3872,7 +3916,7 @@ function vSettingsHtml(){
   const s=VB.set, all=V_TENSES.every(t=>s.tenses.indexOf(t.id)>=0), def=s.tenses.length===V_SET_DEF.tenses.length&&V_SET_DEF.tenses.every(t=>s.tenses.indexOf(t)>=0); let h='';
   h+=`<div class="field"><span class="fl">Tenses to practise</span><div class="chips"><button type="button" class="chip" data-vbtall="all" aria-pressed="${all}">All tenses</button><button type="button" class="chip" data-vbtall="def" aria-pressed="${def}">The usual six</button></div></div>`;
   V_GROUPS.forEach(([g,name])=>{ h+=`<div class="field"><span class="fl">${name}</span><div class="chips">${V_TENSES.filter(t=>t.g===g).map(t=>`<button type="button" class="chip" data-vbtense="${t.id}" aria-pressed="${s.tenses.indexOf(t.id)>=0}">${esc(t.name)}</button>`).join('')}</div></div>`; });
-  h+=`<div class="field"><span class="fl">vosotros</span><div class="chips"><button type="button" class="chip" data-vbvos="1" aria-pressed="${s.vos}">Include (Spain)</button><button type="button" class="chip" data-vbvos="0" aria-pressed="${!s.vos}">Leave out (Latin America)</button></div><div class="hint">vosotros, the plural “you”, is used only in Spain; in Latin America ustedes is used for everyone. Leave it out if you’re learning Latin American Spanish.</div></div>`;
+  h+=``;
   h+=`<div class="field"><span class="fl">Daily goal: forms a day</span><div class="chips">${[10,20,30,50].map(n=>`<button type="button" class="chip mono" data-vbgoal="${n}" aria-pressed="${s.goal===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="200" inputmode="numeric" data-vbgoalin value="${[10,20,30,50].indexOf(s.goal)<0?s.goal:''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">Tenses chosen here are the ones Train asks; the tables always show them all.</div></div>`;
   return h;
 }
@@ -3884,20 +3928,20 @@ function vStatsHtml(){
 function vClick(e){
   const g=(sel)=>e.target.closest(sel);
   let b;
-  if((b=g('[data-vbtab]'))){ VBV={tab:b.dataset.vbtab}; if(VBV.tab==='train'&&!VT) vNew(); renderWords(); return true; }
-  if((b=g('[data-vbf]'))){ VBV.f=b.dataset.vbf; renderWords(); return true; }
+  if((b=g('[data-vbtab]'))){ VBV={tab:b.dataset.vbtab}; if(VBV.tab==='train'&&!VT) vNew(); renderConj(); return true; }
+  if((b=g('[data-vbf]'))){ VBV.f=b.dataset.vbf; renderConj(); return true; }
   if((b=g('[data-vbverb]'))){ openVerb(b.dataset.vbverb,null,null,'verbs'); scrollTo(0,0); return true; }
   if((b=g('[data-vbflip]'))){ vFlip(+b.dataset.vbflip); return true; }
   if((b=g('[data-vbhist]'))){ const {v,tid,p}=vParse(b.dataset.vbhist); openVerb(v.inf,tid,p,'hist'); return true; }
-  if((b=g('[data-vbg]'))){ VBV.g=b.dataset.vbg; VBV.open=null; renderWords(); return true; }
-  if((b=g('[data-vbrow]'))){ VBV.open=VBV.open===b.dataset.vbrow?null:b.dataset.vbrow; renderWords(); return true; }
+  if((b=g('[data-vbg]'))){ VBV.g=b.dataset.vbg; VBV.open=null; renderConj(); return true; }
+  if((b=g('[data-vbrow]'))){ VBV.open=VBV.open===b.dataset.vbrow?null:b.dataset.vbrow; renderConj(); return true; }
   if((b=g('[data-vbsay]'))){ vSay(b.dataset.vbsay); return true; }
   if((b=g('[data-vbact]'))){
     const a=b.dataset.vbact;
     if(a==='missed') vAdvance(false);
     else if(a==='knew') vAdvance(true);
-    else if(a==='more'){ VBV.more=true; if(!VT) vNew(); renderWords(); }
-    else if(a==='hist'){ VBV={tab:'hist'}; renderWords(); }
+    else if(a==='more'){ VBV.more=true; if(!VT) vNew(); renderConj(); }
+    else if(a==='hist'){ VBV={tab:'hist'}; renderConj(); }
     else if(a==='book'&&VT){ const {v,tid,p}=vParse(VT.k); openVerb(v.inf,VT.phase==='shown'?tid:null,VT.phase==='shown'?p:null,'train'); }
     else if(a==='say'&&VT){ const {v,tid,p}=vParse(VT.k); vSay(VT.phase==='ask'?v.inf:(VT.pron||V_SAY[p])+' '+vForm(v,tid,p)); }
     else if(a==='back') navBack(vbBack);
@@ -3907,15 +3951,55 @@ function vClick(e){
   if(g('[data-vbtap]')){ vTap(); return true; }
   return false;
 }
-$('wbody').addEventListener('input',e=>{
-  if(e.target.id==='vbSearch'&&VBV){ VBV.q=e.target.value; const at=e.target.selectionStart; renderWords(); const i=$('vbSearch'); if(i){ i.focus(); try{ i.setSelectionRange(at,at); }catch(x){} } }
+$('vjbody').addEventListener('input',e=>{
+  if(e.target.id==='vbSearch'&&VBV){ VBV.q=e.target.value; const at=e.target.selectionStart; renderConj(); const i=$('vbSearch'); if(i){ i.focus(); try{ i.setSelectionRange(at,at); }catch(x){} } }
 });
-$('wbody').addEventListener('keydown',e=>{ if(e.target.matches&&e.target.matches('[data-vbtap]')&&(e.key===' '||e.key==='Enter')){ e.preventDefault(); vTap(); } });
-$('wbody').addEventListener('change',e=>{
-  const fo=e.target.closest('[data-vbfon]'); if(fo){ favSet(VB.foff,fo.dataset.vbfon,!fo.checked); vSave(); vRecheck(); renderWords(); return; }
-  const c=e.target.closest('[data-vbon]'); if(!c) return; favSet(VB.off,c.dataset.vbon,!c.checked); vSave(); vRecheck(); renderWords(); });
+$('vjbody').addEventListener('keydown',e=>{ if(e.target.matches&&e.target.matches('[data-vbtap]')&&(e.key===' '||e.key==='Enter')){ e.preventDefault(); vTap(); } });
+$('vjbody').addEventListener('change',e=>{
+  const fo=e.target.closest('[data-vbfon]'); if(fo){ favSet(VB.foff,fo.dataset.vbfon,!fo.checked); vSave(); vRecheck(); renderConj(); return; }
+  const c=e.target.closest('[data-vbon]'); if(!c) return; favSet(VB.off,c.dataset.vbon,!c.checked); vSave(); vRecheck(); renderConj(); });
 // the card on screen goes if its verb or tense was just taken out of training (unless already answered)
 function vRecheck(){ if(VT&&VT.phase!=='done'&&vItems().indexOf(VT.k)<0) VT=null; }
+
+/* ---------- the Conjugate section ---------- */
+const V_FLAGS={
+  es:V_FLAG,
+  fr:'<svg class="vflag" viewBox="0 0 30 20" aria-label="French"><rect width="30" height="20" rx="2" fill="#ed2939"/><rect width="20" height="20" fill="#fff"/><rect width="10" height="20" fill="#002395"/></svg>',
+  ca:'<svg class="vflag" viewBox="0 0 27 18" aria-label="Catalan"><rect width="27" height="18" rx="2" fill="#fcdd09"/><path d="M0 2h27v2H0zM0 6h27v2H0zM0 10h27v2H0zM0 14h27v2H0z" fill="#da121a"/></svg>'
+};
+function openConj(){
+  view='conj'; stopClock(); clearTimeout(advTimer); clearTimeout(cTimer);
+  ['home','main','chessMain','modes','chessModes','wordsMain','paintMain'].forEach(id=>$(id).hidden=true); $('conjMain').hidden=false; $('instBtn').hidden=false;
+  $('instName').innerHTML=V_CAT+' Conjugate';
+  if(window.innerWidth<920) $('vjSettingsPanel').open=false;
+  VBV=null; renderConj(); scrollTo(0,0);
+}
+function vLangsHtml(){
+  const due=vDueCount(), n=vToday();
+  return `<div class="vlangs"><button type="button" class="vlang" data-vblang="es"><span class="vlflag">${V_FLAGS.es}</span><span class="vltext"><b>Español</b><small>Spanish · ${VERBS.length} verbs${due?` · ${due} forms due`:''} · ${n} of ${VB.set.goal} today</small></span><span class="vlgo">›</span></button>`
+    +[['fr','Français','French'],['ca','Català','Catalan']].map(([id,name,en])=>`<div class="vlang soon" aria-disabled="true"><span class="vlflag">${V_FLAGS[id]}</span><span class="vltext"><b>${name}</b><small>${en} · coming soon</small></span></div>`).join('')+`</div>`;
+}
+function renderConj(){
+  if(view!=='conj') return;
+  if(!VBV){
+    $('vjeyebrow').textContent='Conjugate'; $('vjprompt').innerHTML=`${V_CAT} Choose a language`; $('vjscore').textContent='';
+    $('vjbody').innerHTML=vLangsHtml(); $('vjSettingsPanel').hidden=true;
+    $('vjstats').innerHTML=`<h2>How it works</h2><div class="hint">A covered card asks for a verb form: say it out loud, tap to see it, then 👍 or 👎. Every form comes back at growing intervals until you know it.</div>`;
+    return;
+  }
+  $('vjSettingsPanel').hidden=false; $('vjbody').innerHTML=verbsHtml(); verbsAfterRender();
+  $('vjsettings').innerHTML=vSettingsHtml(); $('vjstats').innerHTML=vStatsHtml();
+}
+$('vjbody').addEventListener('click',e=>{ if(e.target.closest('[data-vblang="es"]')){ openVerbs(); return; } if(VBV) vClick(e); });
+$('vjsettings').addEventListener('change',e=>{ if(!VBV||!e.target.matches('[data-vbgoalin]')||!+e.target.value) return; VB.set.goal=Math.max(1,Math.min(200,Math.round(+e.target.value))); VB.set.t=Date.now(); vSave(); renderConj(); });
+$('vjsettings').addEventListener('click',e=>{
+  const t=e.target.closest('[data-vbtense],[data-vbgoal],[data-vbtall]'); if(!t||!VBV) return; const st=VB.set;
+  if(t.dataset.vbtall) st.tenses=t.dataset.vbtall==='all'?V_TENSES.map(x=>x.id):V_SET_DEF.tenses.slice();
+  else if(t.dataset.vbtense){ const i=st.tenses.indexOf(t.dataset.vbtense); if(i>=0) st.tenses.splice(i,1); else st.tenses.push(t.dataset.vbtense); }
+  else st.goal=+t.dataset.vbgoal;
+  st.t=Date.now(); vSave(); vRecheck(); renderConj();
+});
+document.addEventListener('keydown',e=>{ if(view!=='conj'||e.key!=='Escape'||review) return; const tg=e.target&&e.target.tagName; if(tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT') return; if(VBV) navBack(vbBack); });
 
 /* ---------- rendering ---------- */
 function wFeedback(cls,txt){ const el=$('wfeedback'); if(!el) return; el.className='feedback'+(cls?' '+cls:''); el.textContent=txt; }
@@ -3923,7 +4007,6 @@ function ago(t){ if(!t) return 'never'; const m=Math.round((Date.now()-t)/60000)
 function renderWords(){
   if(view!=='words') return;
   updateReviewButtons();
-  if(VBV){ $('wbody').innerHTML=verbsHtml(); verbsAfterRender(); renderWordsSide(); return; }
   const L=LANGS.find(l=>l.id===WS.lang), st=langStats(WS.lang), map=WSN&&WSN.mix?sesMap(WSN):byId(WS.lang);
   const eb=$('weyebrow'), pr=$('wprompt'), sc=$('wscore'), el=$('wbody'); let h='';
   if(WV) h=wordViewHtml(L,map);
@@ -3954,8 +4037,6 @@ function renderWords(){
       if(!st.total) h+=`<div class="hint">No words with a definition in ${L.name} yet.</div>`;
       else if(st.noDef) h+=`<div class="hint">${st.noDef} ${st.noDef===1?'word has':'words have'} no definition yet, so ${st.noDef===1?'it is':'they are'} left out until your bot or you fill ${st.noDef===1?'it':'them'} in.</div>`;
     }
-    { const due=vDueCount(), n=vToday();
-      h+=`<div class="pcard verbs"><div class="pct"><b class="vtitle">${V_CAT} Conjugate ${V_FLAG}</b><span>Spanish verbs: ${VERBS.length} to conjugate${due?` · ${due} forms due`:''} · ${n} of ${VB.set.goal} today</span></div><button type="button" class="btn big" data-vbopen>Conjugate</button></div>`; }
     h+=`<div class="wsync"><span class="hint">${wLoading?(WSRC?'Loading your words…':'Loading from Notion…'):WD[WS.lang]?`${WSRC?'Synced':'Updated'} from Notion ${ago(st.t)}`:''}</span>${WD[WS.lang]&&!wLoading?`<button type="button" class="linkbtn" data-wact="load">${WSRC?'Reload':'Refresh from Notion'}</button>`:''}</div>`;
     if(wError) h+=`<div class="feedback bad">${esc(errorCopy(wError))}</div>${!wLoading?(wError.code==='signed_out'?'<div class="actions"><button type="button" class="btn primary" data-wact="signin">Sign in with Google</button></div>':'<div class="actions"><button type="button" class="btn" data-wact="load">Try again</button></div>'):''}`;
   }else if(WSN.phase==='study'){
@@ -3987,7 +4068,6 @@ function renderWords(){
   renderWordsSide();
 }
 function renderWordsSide(){
-  if(VBV){ $('wsettings').innerHTML=vSettingsHtml(); $('wstatsSide').innerHTML=vStatsHtml(); return; }
   let h='';
   h+=`<div class="field"><span class="fl">Which new words first</span><div class="chips">${[['new','Newest'],['old','Oldest'],['rnd','Random']].map(o=>`<button type="button" class="chip" data-wset="order" data-v="${o[0]}" aria-pressed="${WS.order===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
   h+=`<div class="field"><span class="fl">Review questions</span><div class="chips">${[['mix','Mixed'],['w2d','Word → meaning'],['d2w','Meaning → word']].map(o=>`<button type="button" class="chip" data-wset="dir" data-v="${o[0]}" aria-pressed="${WS.dir===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
@@ -3998,13 +4078,13 @@ function renderWordsSide(){
 }
 function openWords(){
   view='words'; stopClock(); clearTimeout(advTimer); clearTimeout(cTimer);
-  ['home','main','chessMain','modes','chessModes','paintMain'].forEach(id=>$(id).hidden=true); $('wordsMain').hidden=false; $('instBtn').hidden=false;
+  ['home','main','chessMain','modes','chessModes','paintMain','conjMain'].forEach(id=>$(id).hidden=true); $('wordsMain').hidden=false; $('instBtn').hidden=false;
   $('instName').textContent='Words';
   if(window.innerWidth<920) $('wSettingsPanel').open=false;
   // today's session, finished or not, is still here; after midnight it starts afresh
   if(WSN&&WSN.day!==romeDay()) WSN=null;
   if(WSN) WS.lang=WSN.lang;
-  WV=null; VBV=null; wFeedback('',''); renderWords();
+  WV=null; wFeedback('',''); renderWords();
   // refresh in the background once the viewer has allowed Notion for this page
   if(WSRC){ if(WSRC.signedIn()&&!wLoading) refreshWords(); }
   else if(Object.keys(WD).length&&!wLoading){
@@ -4013,8 +4093,6 @@ function openWords(){
 }
 $('wbody').addEventListener('click',e=>{
   const lb=e.target.closest('[data-wlang]'); if(lb){ WS.lang=lb.dataset.wlang; wSaveSettings(); WSN=null; if(WV){ const f=WV.src==='session'?'all':WV.src; WV={src:f,ids:wListIds(WS.lang,f),i:null}; } wFeedback('',''); renderWords(); return; }
-  if(e.target.closest('[data-vbopen]')){ openVerbs(); return; }
-  if(VBV&&vClick(e)) return;
   const wf=e.target.closest('[data-wfav]'); if(wf){ const k=wf.dataset.wfav.indexOf(':'), lang=wf.dataset.wfav.slice(0,k), id=wf.dataset.wfav.slice(k+1), f=WP.fav[lang]||(WP.fav[lang]={}); favSet(f,id,!favOn(f,id)); wSaveProgress(); renderWords(); return; }
   const wl=e.target.closest('[data-wlist]'); if(wl){ openWordList(wl.dataset.wlist); return; }
   const wv=e.target.closest('[data-wview]'); if(wv){ subPush(); WV.i=+wv.dataset.wview; renderWords(); scrollTo(0,0); return; }
@@ -4042,14 +4120,7 @@ $('wbody').addEventListener('click',e=>{
   else if(a==='vpractise') startPractice(WV.ids);
 });
 $('wsettings').addEventListener('change',e=>{ if(!e.target.matches('[data-wgoalin]')) return; const n=Math.max(1,Math.min(50,Math.round(+e.target.value||0))); if(!+e.target.value) return; setGoal('words',n); renderWordsSide(); if(!WSN||WSN.phase==='done') renderWords(); });
-$('wsettings').addEventListener('change',e=>{ if(!VBV||!e.target.matches('[data-vbgoalin]')||!+e.target.value) return; VB.set.goal=Math.max(1,Math.min(200,Math.round(+e.target.value))); VB.set.t=Date.now(); vSave(); renderWords(); });
 $('wsettings').addEventListener('click',e=>{
-  if(VBV){ const t=e.target.closest('[data-vbtense],[data-vbvos],[data-vbgoal],[data-vbtall]'); if(!t) return; const st=VB.set;
-    if(t.dataset.vbtall) st.tenses=t.dataset.vbtall==='all'?V_TENSES.map(x=>x.id):V_SET_DEF.tenses.slice();
-    else if(t.dataset.vbtense){ const i=st.tenses.indexOf(t.dataset.vbtense); if(i>=0) st.tenses.splice(i,1); else st.tenses.push(t.dataset.vbtense); }
-    else if(t.dataset.vbvos) st.vos=t.dataset.vbvos==='1';
-    else st.goal=+t.dataset.vbgoal;
-    st.t=Date.now(); vSave(); vRecheck(); renderWords(); return; }
   const gb=e.target.closest('[data-wgoal]'); if(gb){ setGoal('words',+gb.dataset.wgoal); renderWordsSide(); if(!WSN||WSN.phase==='done') renderWords(); return; }
   const b=e.target.closest('[data-wset]'); if(!b) return;
   const k=b.dataset.wset, v=b.dataset.v; WS[k]=v; wSaveSettings(); renderWordsSide(); if(!WSN) renderWords();
@@ -4057,7 +4128,6 @@ $('wsettings').addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(view!=='words') return;
   const tg=e.target&&e.target.tagName; if(tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT') return;
-  if(VBV){ if(e.key==='Escape') navBack(vbBack); return; }
   if(WV){
     if(WV.i!=null&&e.key==='ArrowLeft') wvStep(-1);
     else if(WV.i!=null&&e.key==='ArrowRight') wvStep(1);
@@ -4146,6 +4216,7 @@ function renderToday(){
     el.textContent=done?'Done today':g>1?`Today ${n} / ${g}`:'Not done yet today';
     if(card) card.classList.toggle('done',done);
   });
+  const el=$('todayConj'); if(el){ const n=vToday(), g=VB.set.goal, done=n>=g; el.className='today'+(done?' done':''); el.textContent=done?'Done today':`Today ${n} / ${g}`; el.closest('.pick').classList.toggle('done',done); }
 }
 
 /* =====================================================================
@@ -4489,7 +4560,7 @@ function renderPaintSide(){
 }
 function openPaintings(){
   view='paint'; stopClock(); clearTimeout(advTimer); clearTimeout(cTimer);
-  ['home','main','chessMain','modes','chessModes','wordsMain'].forEach(id=>$(id).hidden=true); $('paintMain').hidden=false; $('instBtn').hidden=false;
+  ['home','main','chessMain','modes','chessModes','wordsMain','conjMain'].forEach(id=>$(id).hidden=true); $('paintMain').hidden=false; $('instBtn').hidden=false;
   $('instName').textContent='Paintings';
   if(window.innerWidth<920) $('pSettingsPanel').open=false;
   // today's round, finished or not, is still here; after midnight it starts afresh
@@ -4946,7 +5017,7 @@ function reviewBusy(section){
 function updateReviewButtons(){
   const all=exerciseHistory();
   document.querySelectorAll('[data-review]').forEach(b=>{
-    b.closest('.review-bar').hidden=b.dataset.review==='music'&&['circle','library','tuner'].includes(S.mode)||b.dataset.review==='words'&&!!VBV;
+    b.closest('.review-bar').hidden=b.dataset.review==='music'&&['circle','library','tuner'].includes(S.mode);
     const n=(all[reviewSection(b.dataset.review)]||[]).length;
     b.textContent='Previous exercises'+(n?' · '+n:''); b.disabled=!!reviewBusy(b.dataset.review);
     b.title=b.disabled?'Available after this timed run or move sequence.':'';
