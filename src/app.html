@@ -96,6 +96,7 @@ h1{font-family:var(--font-display);font-weight:800;font-size:clamp(1.35rem,3.6vw
 .dot.cur{background:transparent;box-shadow:inset 0 0 0 2px var(--accent)}
 .dot.ok{background:var(--good)}
 .dot.no{background:var(--bad)}
+.dot.part{background:var(--warn)}
 .score{font-family:var(--font-mono);font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
 .score.timer{font-family:var(--font-display);font-weight:800;font-size:1.5rem;color:var(--ink);letter-spacing:-.01em;white-space:nowrap}
 /* the timer grows from "9.9 s" to "10.0 s": it must never push the fretboard down mid-question */
@@ -186,6 +187,7 @@ kbd{font-family:var(--font-mono);font-size:.78rem;border:1px solid var(--line);b
 .stat span{font-size:.8rem;color:var(--muted)}
 .missed{margin:0;padding-left:1.1em;font-size:.92rem}
 .missed li{margin:2px 0}
+.missed li.part::marker{color:var(--warn)} .missed li.no::marker{color:var(--bad)}
 
 .side{display:flex;flex-direction:column;gap:14px;min-width:0}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
@@ -1609,6 +1611,10 @@ function checkChord(){
   strum(fr);
   if(!r.ok){
     Q.mist++; Q.checked=r;
+    // how right this try was: wrong and missing notes against the notes it needed
+    const placed=fr.filter(f=>f>=0).length, bad=r.wrong.length+r.missing.length+(r.missingColour?1:0)+(r.bassBad?1:0)+(r.span>4?1:0)+(r.few?Math.max(0,r.need-placed):0);
+    const tryScore=Math.max(0,1-bad/Math.max(placed,r.need||0,1));
+    if(!Q.curFails) Q.curFirst=tryScore; Q.curFails=(Q.curFails||0)+1;
     const msg=[];
     if(r.wrong.length) msg.push(`${[...new Set(r.wrong.map(n=>chordNoteName(Q,n.pc)))].join(', ')} ${r.wrong.length===1?"isn't":"aren't"} in ${chordName(Q)}.`);
     if(r.missing.length) msg.push(`Missing: ${r.missing.map(x=>`${spellTone(Q.rootName,Q.root,x[0],x[1])} (the ${x[1]})`).join(', ')}.`);
@@ -1620,15 +1626,20 @@ function checkChord(){
   }
   if(Q.found.some(f=>sameShape(f,fr))){ setFeedback('info','You already found that shape. Try a different one, for example higher up the neck.'); return; }
   Q.found.push(fr); Q.checked=null;
+  // this shape's score: right first time, or its first try less a little for each further one
+  (Q.shapeScores||(Q.shapeScores=[])).push(Q.curFails?Math.max(0,Q.curFirst-0.1*(Q.curFails-1)):1); Q.curFails=0;
   if(Q.found.length>=questionShapes()){
-    setFeedback(Q.mist?'bad':'good',`${Q.mist?'Done':'Correct'}: ${chordName(Q)} is ${chordSpelling(Q)}.${Q.mist?` ${Q.mist} ${Q.mist===1?'check was':'checks were'} off along the way.`:''}`);
+    const sc=chordScore(), pc=Math.round(sc*100);
+    setFeedback(!Q.mist?'good':sc>=PART_MIN?'info':'bad',`${!Q.mist?'Correct':sc>=PART_MIN?`Nearly: ${pc}%`:`Done: ${pc}%`}. ${chordName(Q)} is ${chordSpelling(Q)}.${Q.mist?` ${Q.mist} ${Q.mist===1?'check was':'checks were'} off along the way.`:''}`);
     Q.show={src:'u',i:Q.found.length-1};
-    finish(Q.mist===0,chordName(Q));
+    finish(Q.mist===0,chordName(Q),sc);
   }else{
     setFeedback('good',`That works. Shape ${Q.found.length} of ${questionShapes()} found. Now find a different one.`);
     Q.sel=new Map(); Q.show=null; render();
   }
 }
+// the whole question: the average of its shapes, a shape not found counting 0
+function chordScore(){ const k=questionShapes(), s=Q.shapeScores||[]; return s.reduce((a,x)=>a+x,0)/k; }
 function shownFrets(){
   if(!Q||Q.type!=='chord') return null;
   if(Q.show) return Q.show.src==='u'?Q.found[Q.show.i]:otherShapes()[Q.show.i];
@@ -1714,12 +1725,17 @@ function recordPos(s,f,ok,ms){
   const pos=ST().pos, k=key(s,f), st=pos[k]||(pos[k]={n:0,c:0,ms:0});
   st.n++; if(ok) st.c++; st.ms+=Math.min(ms,15000);
 }
-function finish(ok,label){
+// sc: how much of the answer was right, 0 to 1 (two of three chord shapes clean and a third with one wrong
+// note is about 0.9); ok means all of it. Accuracy adds up the scores, so a near miss isn't a zero.
+const resScore=r=>r.sc!=null?r.sc:(r.ok?1:0);
+const PART_MIN=0.8;   // from here a not-quite-right answer shows yellow rather than red
+const resClass=r=>{ const x=resScore(r); return x>=1?'ok':x>=PART_MIN?'part':'no'; };
+function finish(ok,label,sc){
   if(phase!=='ask') return;
-  const ms=performance.now()-qStart, st=ST();
+  const ms=performance.now()-qStart, st=ST(), score=sc==null?(ok?1:0):Math.max(0,Math.min(1,sc));
   phase='answered';
-  round.results.push({ok,ms,label}); storeRound();
-  st.total++; if(ok) st.correct++; bump(S.inst);
+  round.results.push({ok,ms,label,sc:score}); storeRound();
+  st.total++; st.correct+=score; bump(S.inst);
   if(Q.type==='name') recordPos(Q.s,Q.f,ok,ms);
   if(Q.type==='findS') Q.frets.forEach(f=>recordPos(Q.s,f,ok,ms));
   rememberMusic(ok,label); save();
@@ -1881,7 +1897,7 @@ function onCell(s,f){
       const ok=!Q.wrong.length, n=Q.targets.length;
       setFeedback(ok?'good':'bad', ok?(Q.iv.id==='P8'?`All ${n} other ${rootNm(Q)}s found.`:`All ${n} found. Every ${ivTarget(Q)} on the neck is the ${Q.iv.name} of ${rootNm(Q)}.`)
         :`All ${n} found, with ${Q.wrong.length} wrong ${Q.wrong.length===1?'tap':'taps'}.`);
-      finish(ok,`every ${Q.iv.name} of ${rootNm(Q)}`); return;
+      finish(ok,`every ${Q.iv.name} of ${rootNm(Q)}`,(n-Q.wrong.length)/n); return;
     }
     render(); return;
   }
@@ -1918,13 +1934,13 @@ function giveUp(){
     Q.targets.forEach(t=>{ if(!Q.found.has(key(t.s,t.f))) recordPos(t.s,t.f,false,ms); });
     save(); finishRun(false,true);
   }
-  else if(Q.type==='ivA'){ setFeedback('bad',`You found ${Q.found.size} of ${Q.targets.length}. The ${Q.iv.name} of ${rootNm(Q)} is ${ivTarget(Q)}; the rest are outlined.`); finish(false,`every ${Q.iv.name} of ${rootNm(Q)}`); }
+  else if(Q.type==='ivA'){ setFeedback('bad',`You found ${Q.found.size} of ${Q.targets.length}. The ${Q.iv.name} of ${rootNm(Q)} is ${ivTarget(Q)}; the rest are outlined.`); finish(false,`every ${Q.iv.name} of ${rootNm(Q)}`,(Q.found.size-Q.wrong.length)/Q.targets.length); }
   else if(Q.type==='iv'){ setFeedback('bad',`The ${Q.iv.name} of ${rootNm(Q)} is ${ivTarget(Q)}.`); play(midiOf(Q.root.s,Q.root.f)); play(midiOf(Q.targets[0].s,Q.targets[0].f),0.45); finish(false,`${Q.iv.name} of ${rootNm(Q)}`); }
   else if(Q.type==='chord'){
     setFeedback('bad',`${chordName(Q)} is ${chordSpelling(Q)}. Here are some shapes to learn.`);
     Q.checked=null; const o=otherShapes(); Q.show=o.length?{src:'g',i:0}:(Q.found.length?{src:'u',i:0}:null);
     if(o.length) strum(o[0]);
-    finish(false,chordName(Q));
+    finish(false,chordName(Q),chordScore());
   }
 }
 function checkScale(){
@@ -1935,7 +1951,7 @@ function checkScale(){
   const sp=`${rootNm(Q)} ${Q.scale.name}: ${scaleSpelling(Q)}.`;
   setFeedback(ok?'good':'bad', ok?`Perfect, all ${total} notes. ${sp}`:`${right} of ${total} notes${extra?`, ${extra} ${extra===1?'note':'notes'} ${Q.pattern?'not in this pattern (three scale notes on each string, no more)':'not in the scale'}`:''}. Missing notes are outlined. ${sp}`);
   playScale();
-  finish(ok,`${rootNm(Q)} ${Q.scale.name}`);
+  finish(ok,`${rootNm(Q)} ${Q.scale.name}`,(right-extra)/total);
 }
 function playScale(){
   const ms=[]; Q.expected.forEach((d,k)=>{ const [s,f]=k.split('-').map(Number); ms.push(midiOf(s,f)); });
@@ -2052,16 +2068,16 @@ function renderPrompt(){
   const total=Math.max(S.roundLen,round.results.length);
   for(let i=0;i<total;i++){
     const r=round.results[i];
-    d+=`<span class="dot ${r?(r.ok?'ok':'no'):(i===round.results.length&&phase==='ask'?'cur':'')}"></span>`;
+    d+=`<span class="dot ${r?resClass(r):(i===round.results.length&&phase==='ask'?'cur':'')}"${r&&resClass(r)==='part'?` title="${Math.round(resScore(r)*100)}% right"`:''}></span>`;
   }
   $('dots').innerHTML=d;
-  const c=round.results.filter(r=>r.ok).length;
-  sc.textContent=`${c} correct · ${Math.min(round.results.length+(phase==='ask'?1:0),total)} of ${total}`;
+  const c=round.results.filter(r=>resScore(r)>=1).length, nearly=round.results.filter(r=>resClass(r)==='part').length;
+  sc.textContent=`${c} correct${nearly?` · ${nearly} nearly`:''} · ${Math.min(round.results.length+(phase==='ask'?1:0),total)} of ${total}`;
 }
 function summaryHeadline(){
-  const n=round.results.length, c=round.results.filter(r=>r.ok).length;
+  const n=round.results.length, c=round.results.filter(r=>resScore(r)>=1).length, acc=round.results.reduce((a,r)=>a+resScore(r),0)/n;
   if(c===n) return `${c} out of ${n}. Clean round.`;
-  if(c/n>=0.7) return `${c} out of ${n}. Nearly there.`;
+  if(acc>=0.7) return `${c} out of ${n}. Nearly there.`;
   return `${c} out of ${n}. Keep at it.`;
 }
 function minis(list,src){
@@ -2074,13 +2090,13 @@ function renderAnswer(){
   storeRound();
   const el=$('answer'); let h='';
   if(phase==='summary'){
-    const rs=round.results, c=rs.filter(r=>r.ok).length;
+    const rs=round.results, c=rs.filter(r=>resScore(r)>=1).length, acc=rs.reduce((a,r)=>a+resScore(r),0)/rs.length;
     const avg=rs.reduce((a,r)=>a+r.ms,0)/rs.length/1000;
-    const missed=rs.filter(r=>!r.ok);
+    const missed=rs.filter(r=>resScore(r)<1);
     h+=`<div class="summary"><div class="stat"><b>${c}/${rs.length}</b><span>correct</span></div>`+
-       `<div class="stat"><b>${Math.round(100*c/rs.length)}%</b><span>accuracy</span></div>`+
+       `<div class="stat"><b>${Math.round(100*acc)}%</b><span>accuracy</span></div>`+
        `<div class="stat"><b>${avg.toFixed(1)}s</b><span>average time</span></div></div>`;
-    if(missed.length) h+=`<div><div class="eyebrow" style="margin-bottom:4px">Missed</div><ul class="missed">${missed.map(r=>`<li>${r.label}</li>`).join('')}</ul></div>`;
+    if(missed.length) h+=`<div><div class="eyebrow" style="margin-bottom:4px">Not quite</div><ul class="missed">${missed.map(r=>`<li class="${resClass(r)}">${r.label}${resScore(r)>0?` · ${Math.round(resScore(r)*100)}%`:''}</li>`).join('')}</ul></div>`;
     h+=`<div class="actions"><button class="btn primary" data-act="next">Next round</button><span class="hint">or press <kbd>Enter</kbd></span></div>`;
     el.innerHTML=h; return;
   }

@@ -34,7 +34,7 @@ getReview(){return review;},getStats(){return statsAll;},getState(){return {Q,ph
 setPuzzle(p){PZ=p;},setChessView(tab){view='chess';CS.tab=tab;},setCoordsPhase(p){CR.phase=p;},
 setWordSession(w,data){WSN=w;WD=data;WS.lang=w.lang;view='words';},answerQuiz,
 setPaintSession(p){PSN=p;view='home';},answerPaint,
-setInst, setQuestion(q){Q=q;phase='ask';view='app';round={results:[]};S.sound=false;},
+setInst, setQuestion(q){Q=q;phase='ask';view='app';round={results:[]};S.sound=false;}, resClass, resScore, getRoundResults(){return round.results;},
 getQuestion(){return Q;}, disableRendering(){render=()=>{};}};
 })();`;
   vm.createContext(context); await vm.runInContext(code,context);
