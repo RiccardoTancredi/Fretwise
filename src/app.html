@@ -1762,7 +1762,7 @@ function recordPos(s,f,ok,ms){
 // sc: how much of the answer was right, 0 to 1 (two of three chord shapes clean and a third with one wrong
 // note is about 0.9); ok means all of it. Accuracy adds up the scores, so a near miss isn't a zero.
 const resScore=r=>r.sc!=null?r.sc:(r.ok?1:0);
-const PART_MIN=0.8;   // from here a not-quite-right answer shows yellow rather than red
+const PART_MIN=0.6;   // from here a not-quite-right answer shows yellow rather than red
 const resClass=r=>{ const x=resScore(r); return x>=1?'ok':x>=PART_MIN?'part':'no'; };
 function finish(ok,label,sc){
   if(phase!=='ask') return;

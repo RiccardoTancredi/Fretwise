@@ -29,3 +29,9 @@ test('every shape right first time is green; giving up after one shape is red',a
   const r=a.getRoundResults()[0]; assert.ok(Math.abs(r.sc-1/3)<1e-9,`score ${r.sc}`); assert.equal(a.resClass(r),'no');
   assert.equal(a.resScore({ok:true}),1); assert.equal(a.resScore({ok:false}),0);   // answers saved before scores
 });
+
+test('yellow starts at 60%: two shapes of three is yellow, one is red',async()=>{
+  const a=await musicApp();
+  assert.equal(a.resClass({ok:false,sc:2/3}),'part'); assert.equal(a.resClass({ok:false,sc:0.6}),'part');
+  assert.equal(a.resClass({ok:false,sc:1/3}),'no'); assert.equal(a.resClass({ok:true,sc:1}),'ok');
+});
