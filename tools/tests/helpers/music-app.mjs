@@ -27,7 +27,7 @@ export async function musicApp({storage}={}){
   const code=source.slice(0,source.indexOf('\nload(); loadLocalRuns();'))+`
 window.musicTest={S,CHORDS,INSTRUMENTS,markers,evalShape,genVoicings,checkChord,onCell,chordRootName,chordNoteName,chordGuide,renderAnswer,renderSettings,sameShape,spellTone,
 libraryData,librarySettings,renderLibrary,rememberMusic,rememberExercise,exerciseHistory,openReview,closeReview,stepReview,renderReview,rememberPuzzle,
-identifyChord,openChordExplorer,closeChordExplorer,editExploredFrets,exploreCell,renderChordExplorer,
+identifyChord,shapeFingers,openChordExplorer,closeChordExplorer,editExploredFrets,exploreCell,renderChordExplorer,
 getExplorer(){return explorer;},load,getCoordState(){return CR;},getPuzzle(){return PZ;},capturePractice,practiceSettingsChanged,storeRound,newRound,nextQuestion,finish,showSummary,startRun,finishRun,questionRange,questionBass,
 setRound(results,p='ask'){round={results,counted:false};phase=p;},setPhase(p){phase=p;},finishSession,commitWordAnswer,
 getReview(){return review;},getStats(){return statsAll;},getState(){return {Q,phase,round,WP,PS,CS,B,WSN,PSN,runs};},

@@ -187,6 +187,15 @@ kbd{font-family:var(--font-mono);font-size:.78rem;border:1px solid var(--line);b
 .stat span{font-size:.8rem;color:var(--muted)}
 .missed{margin:0;padding-left:1.1em;font-size:.92rem}
 .missed li{margin:2px 0}
+.mini.hard{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,var(--surface))}
+.mini.hard small{color:color-mix(in srgb,var(--warn) 80%,var(--ink))}
+.xstrings{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px}
+.xstr{display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 6px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);text-align:center}
+.xstr span{font-size:.75rem;color:var(--muted);font-family:var(--font-mono)}
+.xstr b{font-family:var(--font-display);font-size:1.25rem}
+.xstr small{font-size:.8rem;color:var(--muted)}
+.xstr.root{border-color:var(--mark);box-shadow:inset 0 0 0 1px var(--mark)}
+.xstr.muted{opacity:.55}
 .missed li.part::marker{color:var(--warn)} .missed li.no::marker{color:var(--bad)}
 
 .side{display:flex;flex-direction:column;gap:14px;min-width:0}
@@ -915,10 +924,13 @@ const CHORDS=[
   {id:'13',  sym:'13',   name:'dominant 13th',    grp:'ext',     t:[[0,'1',1],[4,'3',1],[7,'5',0],[10,'♭7',1],[2,'9',0],[9,'13',1]]},
   {id:'maj13',sym:'maj13',name:'major 13th',     grp:'ext',     t:[[0,'1',1],[4,'3',1],[7,'5',0],[11,'7',1],[2,'9',0],[9,'13',1]]},
   {id:'m13', sym:'m13',  name:'minor 13th',       grp:'ext',     t:[[0,'1',1],[3,'♭3',1],[7,'5',0],[10,'♭7',1],[2,'9',0],[5,'11',0],[9,'13',1]]},
+  // one altered colour has its own name: 7♭9, and 7♯9 (the "Hendrix chord")
+  {id:'7b9', sym:'7♭9', name:'dominant 7th flat 9', grp:'altered', t:[[0,'1',1],[4,'3',1],[7,'5',0],[10,'♭7',1],[1,'♭9',1]]},
+  {id:'7s9', sym:'7♯9', name:'dominant 7th sharp 9', grp:'altered', t:[[0,'1',1],[4,'3',1],[7,'5',0],[10,'♭7',1],[3,'♯9',1]]},
   // 7alt is a family: keep 1, 3, ♭7 and choose at least one altered colour, not all four.
   {id:'7alt',sym:'7alt', name:'altered dominant',grp:'altered', oneOf:[1,3,6,8],t:[[0,'1',1],[4,'3',1],[10,'♭7',1],[1,'♭9',0],[3,'♯9',0],[6,'♭5',0],[8,'♯5',0]]}
 ];
-const CHORD_GROUPS=[['triad','Triads'],['seventh','7ths and 6ths'],['ext','9ths, 11ths, 13ths'],['altered','Altered dominants (7alt)']];
+const CHORD_GROUPS=[['triad','Triads'],['seventh','7ths and 6ths'],['ext','9ths, 11ths, 13ths'],['altered','Altered dominants (7♭9, 7♯9, 7alt)']];
 
 const pcOf=(s,f)=>(STRINGS[s].midi+f)%12;
 const midiOf=(s,f)=>STRINGS[s].midi+f;
@@ -1518,18 +1530,41 @@ function chordNoteName(q,pc){
   const t=q.ch.t.find(x=>x[0]===(pc-q.root+12)%12);
   return t?spellTone(q.rootName,q.root,t[0],t[1]):(/♭/.test(q.rootName)?FLAT:/♯/.test(q.rootName)?SHARP:(S.acc==='flat'?FLAT:SHARP))[pc];
 }
+// what a symbol says, where it is easy to misread
+const CHORD_NOTE={
+  dim7:'dim7 (°7) is <i>fully</i> diminished: diminished triad + diminished 7th (♭♭7), a half step below the minor 7th; it sounds like a major 6th. With a minor 7th (♭7) instead it is half-diminished, m7♭5 (ø7). No diminished chord has a major 7th.',
+  m7b5:'Half-diminished (ø7): diminished triad + minor 7th (♭7). Lower the 7th once more (♭♭7) and it becomes the fully diminished dim7 (°7).',
+  '9':'A number alone (7, 9, 11, 13) means a dominant chord: its 7th is minor (♭7). The 9th is major unless written ♭9 or ♯9. The 5th is the first note left out on guitar.',
+  maj9:'“maj” only changes the 7th: maj9 has a major 7th and a major 9th; 9 has a minor 7th and the same 9th.',
+  add9:'“add9” means no 7th at all: a triad with the 9th on top. With a 7th it would be 9, maj9 or m9.',
+  '7b9':'A dominant 7th with a flat 9th, a half step above the root. With more than one altered colour (♭9, ♯9, ♭5, ♯5) it becomes 7alt.',
+  '7s9':'The “Hendrix chord”: a dominant 7th with a sharp 9th, the same pitch as a minor 3rd, so the chord has both a major and a “minor” third.'
+};
 function chordGuide(q,context='In this exercise'){
   const choice=q.ch.oneOf;
   let h=`<table><thead><tr><th>Degree</th><th>Note</th><th>${context}</th></tr></thead><tbody>${q.ch.t.map(t=>`<tr><td>${t[1]}</td><td>${spellTone(q.rootName,q.root,t[0],t[1])}</td><td>${t[2]?'Required':choice?'Choose ≥1 colour':'Optional'}</td></tr>`).join('')}</tbody></table>`;
   if(q.ch.id==='13'||q.ch.id==='maj13') h+='<p>The 3rd, 7th and 13th define this sound. The 5th and 9th are optional. The natural 11th is normally omitted because it clashes with the major 3rd.</p>';
   else if(q.ch.id==='7alt') h+='<p>Keep the root, major 3rd and minor 7th; add at least one altered colour. The natural 5th and 9th are not used in this 7alt exercise. ♯5 and ♭13 sound alike in equal temperament, but describe the note differently.</p>';
+  else if(CHORD_NOTE[q.ch.id]) h+=`<p>${CHORD_NOTE[q.ch.id]}</p>`;
   else if(q.ch.id==='m13') h+='<p>The minor 3rd, minor 7th and natural 13th identify m13. The 5th, 9th and 11th may be omitted in this exercise.</p>';
   h+='<p class="hint">The accidentals in degree names are relative to the root’s major scale. For example, ♭7 means “minor seventh”, not “every note must be written as a flat”. Note names follow the chord.</p>';
   return h;
 }
+const DEG_WORD={'1':'root','♭3':'minor 3rd','3':'major 3rd','4':'perfect 4th','11':'11th','♭5':'diminished 5th','5':'perfect 5th','♯5':'augmented 5th',
+  '♭♭7':'diminished 7th','♭7':'minor 7th','7':'major 7th','6':'6th','13':'13th','2':'2nd','9':'9th','♭9':'flat 9th','♯9':'sharp 9th'};
 function degOf(q,pc){ const iv=(pc-q.root+12)%12; const t=q.ch.t.find(x=>x[0]===iv); return t?t[1]:null; }
 // every playable voicing: one note per string, fretted notes inside a 4-fret box, all required tones,
 // sounding strings next to each other (guitar) or all four strings (ukulele), at most four fingers
+// fingers a shape needs: one per fretted note, but the index can barre every note at the lowest fret
+// (only if no open or muted string sits under the barre). More than four can't really be played.
+function shapeFingers(fr){
+  const fretted=fr.map((f,s)=>({s,f})).filter(x=>x.f>0); if(!fretted.length) return 0;
+  const minF=Math.min(...fretted.map(x=>x.f)), bi=fretted.filter(x=>x.f===minF).map(x=>x.s);
+  let fingers=fretted.length;
+  if(bi.length>=2){ let flat=true; for(let i=bi[0];i<=bi[bi.length-1];i++) if(fr[i]<minF) flat=false; if(flat) fingers-=bi.length-1; }
+  return fingers;
+}
+const shapeHard=fr=>shapeFingers(fr)>4;
 function genVoicings(root,ch,options={}){
   const c=options.range||C(), start=c.fretStart, end=c.fretEnd;
   const tones=new Set(ch.t.map(x=>(root+x[0])%12)), req=ch.t.filter(x=>x[2]).map(x=>(root+x[0])%12);
@@ -1557,9 +1592,7 @@ function genVoicings(root,ch,options={}){
         if(ch.oneOf&&!ch.oneOf.some(x=>have.has((root+x)%12))) return;
         if(options.rootBass??rootBassOn()){ let lo=snd[0]; snd.forEach(i=>{ if(midiOf(i,fr[i])<midiOf(lo,fr[lo])) lo=i; }); if(pcOf(lo,fr[lo])!==root) return; }
         const minF=fretted.length?Math.min(...fretted):0, atMin=fretted.filter(f=>f===minF).length;
-        // a barre counts as one finger only if no open or muted string sits under it
-        let fingers=fretted.length;
-        if(atMin>=2){ const bi=snd.filter(i=>fr[i]===minF); let flat=true; for(let i=bi[0];i<=bi[bi.length-1];i++) if(fr[i]<minF) flat=false; if(flat) fingers-=atMin-1; }
+        const fingers=shapeFingers(fr);
         if(fingers>4) return;
         const k=fr.join(',');
         const opens=snd.filter(i=>fr[i]===0).length; // open strings mixed with high frets are awkward
@@ -1626,15 +1659,16 @@ function checkChord(){
   }
   if(Q.found.some(f=>sameShape(f,fr))){ setFeedback('info','You already found that shape. Try a different one, for example higher up the neck.'); return; }
   Q.found.push(fr); Q.checked=null;
+  const hardNote=shapeHard(fr)?` It is right, but needs ${shapeFingers(fr)} fingers: nearly impossible to play. It counts; marked in yellow below.`:'';
   // this shape's score: right first time, or its first try less a little for each further one
   (Q.shapeScores||(Q.shapeScores=[])).push(Q.curFails?Math.max(0,Q.curFirst-0.1*(Q.curFails-1)):1); Q.curFails=0;
   if(Q.found.length>=questionShapes()){
     const sc=chordScore(), pc=Math.round(sc*100);
-    setFeedback(!Q.mist?'good':sc>=PART_MIN?'info':'bad',`${!Q.mist?'Correct':sc>=PART_MIN?`Nearly: ${pc}%`:`Done: ${pc}%`}. ${chordName(Q)} is ${chordSpelling(Q)}.${Q.mist?` ${Q.mist} ${Q.mist===1?'check was':'checks were'} off along the way.`:''}`);
+    setFeedback(!Q.mist?'good':sc>=PART_MIN?'info':'bad',`${!Q.mist?'Correct':sc>=PART_MIN?`Nearly: ${pc}%`:`Done: ${pc}%`}. ${chordName(Q)} is ${chordSpelling(Q)}.${Q.mist?` ${Q.mist} ${Q.mist===1?'check was':'checks were'} off along the way.`:''}${hardNote}`);
     Q.show={src:'u',i:Q.found.length-1};
     finish(Q.mist===0,chordName(Q),sc);
   }else{
-    setFeedback('good',`That works. Shape ${Q.found.length} of ${questionShapes()} found. Now find a different one.`);
+    setFeedback(hardNote?'info':'good',`That works. Shape ${Q.found.length} of ${questionShapes()} found.${hardNote} Now find a different one.`);
     Q.sel=new Map(); Q.show=null; render();
   }
 }
@@ -2083,7 +2117,8 @@ function summaryHeadline(){
 function minis(list,src){
   return `<div class="minis">${list.map((fr,i)=>{
     const on=!!(Q.show&&Q.show.src===src&&Q.show.i===i);
-    return `<button type="button" class="mini" data-shape="${src}${i}" aria-pressed="${on}" aria-label="Shape ${fretsText(fr)}">${miniChord(fr,Q.root)}<small>${fretsText(fr)}</small></button>`;
+    const hard=shapeHard(fr);
+    return `<button type="button" class="mini${hard?' hard':''}" data-shape="${src}${i}" aria-pressed="${on}" aria-label="Shape ${fretsText(fr)}${hard?', very hard to play':''}"${hard?` title="Right, but needs ${shapeFingers(fr)} fingers"`:''}>${miniChord(fr,Q.root)}<small>${fretsText(fr)}${hard?' · hard':''}</small></button>`;
   }).join('')}</div>`;
 }
 function renderAnswer(){
@@ -5342,11 +5377,13 @@ function renderChordExplorer(){
   const label=pc=>chordNoteName(q,pc);
   const current=best?best.name:a.notes.length===0?'No notes selected':a.pcs.length===1?label(a.pcs[0])+' · single note':'No common chord match';
   $('exploreTitle').textContent=chordName(e.base)+' → '+current;
-  let h=`<div class="hint">Tap a note to remove it, or another fret on the same string to move it. You can also use the string selectors. This edits a copy; your answer, saved shapes and score stay as they were.</div>
+  const degName=pc=>{ const d=degOf(q,pc); return d?DEG_WORD[d]?`${d} · ${DEG_WORD[d]}`:d:'not in the chord'; };
+  let h=`<div class="hint">Tap a note to remove it, or another fret on the same string to move it. This edits a copy; your answer, saved shapes and score stay as they were.</div>
     <div class="reference-neck"><svg id="exploreBoard" role="img" aria-label="Editable chord fretboard"></svg></div>
-    <div class="library-controls">${INSTRUMENTS[e.inst].strings.map((s,i)=>`<label>${s.name}<select data-explore-string="${i}" aria-label="${s.name} fret"><option value="-1"${e.frets[i]<0?' selected':''}>Muted</option>${Array.from({length:16},(_,f)=>`<option value="${f}"${e.frets[i]===f?' selected':''}>${f===0?'Open':f}</option>`).join('')}</select></label>`).join('')}</div>
+    <div class="xstrings">${INSTRUMENTS[e.inst].strings.map((st,i)=>{ const f=e.frets[i]; if(f<0) return `<div class="xstr muted"><span>${st.name}</span><b>×</b><small>muted</small></div>`;
+      const pc=(st.midi+f)%12; return `<div class="xstr${pc===q.root?' root':''}"><span>${st.name} · ${f===0?'open':'fret '+f}</span><b>${label(pc)}</b><small>${degName(pc)}</small></div>`; }).join('')}</div>
     <div class="actions"><button class="btn" data-eact="undo"${e.undo.length?'':' disabled'}>Undo</button><button class="btn" data-eact="redo"${e.redo.length?'':' disabled'}>Redo</button><button class="btn quiet" data-eact="reset">Restore original</button><button class="btn quiet" data-eact="clear">Mute all</button><button class="btn primary" data-eact="play"${a.notes.length?'':' disabled'}>Strum</button></div>
-    <div aria-live="polite"><b>Notes, low to high:</b> ${a.notes.length?a.notes.map(n=>label(n.pc)).join(' · '):'—'}<br><b>Bass:</b> ${a.notes.length?label(a.bass):'—'} · <span class="hint">${fretsText(e.frets)}</span></div>`;
+    <div aria-live="polite"><b>Notes, low to high:</b> ${a.notes.length?a.notes.map(n=>`${label(n.pc)}${degOf(q,n.pc)?` (${degOf(q,n.pc)})`:''}`).join(' · '):'—'}<br><b>Bass:</b> ${a.notes.length?label(a.bass):'—'} · <span class="hint">${fretsText(e.frets)}</span></div>`;
   if(best){
     h+=`<p><b>Possible name: ${best.name}</b>${best.omitted.length?` · omitted degrees: ${best.omitted.join(', ')}`:''}</p>`;
     if(a.bass!==best.q.root) h+='<p class="hint">The note after “/” is the bass: changing the lowest note can change the inversion without changing the chord’s other notes.</p>';
@@ -5370,10 +5407,6 @@ $('chordExplorer').addEventListener('click',ev=>{
   else if(a==='clear') editExploredFrets(e.frets.map(()=>-1));
   else if(a==='undo'&&e.undo.length){ e.redo.push(e.frets);e.frets=e.undo.pop();renderChordExplorer(); }
   else if(a==='redo'&&e.redo.length){ e.undo.push(e.frets);e.frets=e.redo.pop();renderChordExplorer(); }
-});
-$('chordExplorer').addEventListener('change',ev=>{
-  if(!explorer||ev.target.dataset.exploreString==null) return;
-  const fr=explorer.frets.slice(); fr[+ev.target.dataset.exploreString]=+ev.target.value; editExploredFrets(fr);
 });
 $('chordExplorer').addEventListener('cancel',ev=>{ev.preventDefault();requestCloseExplorer();});
 $('chordExplorer').addEventListener('close',()=>{
