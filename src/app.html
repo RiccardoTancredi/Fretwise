@@ -3444,7 +3444,35 @@ const V_ES_VERBS=[
   {inf:'ver',it:'vedere',part:'visto',t:{pres:'veo ves ve vemos veis ven',pret:'vi viste vio vimos visteis vieron',impf:'veía veías veía veíamos veíais veían',
     spres:'vea veas vea veamos veáis vean',imp:'- ve vea veamos ved vean'}},
   {inf:'dar',it:'dare',t:{pres:'doy das da damos dais dan',pret:'di diste dio dimos disteis dieron',spres:'dé des dé demos deis den',
-    sira:'diera dieras diera diéramos dierais dieran',sise:'diese dieses diese diésemos dieseis diesen',imp:'- da dé demos dad den'}}
+    sira:'diera dieras diera diéramos dierais dieran',sise:'diese dieses diese diésemos dieseis diesen',imp:'- da dé demos dad den'}},
+  {inf:'querer',it:'volere',fs:'querr',t:{pres:'quiero quieres quiere queremos queréis quieren',pret:'quise quisiste quiso quisimos quisisteis quisieron',
+    spres:'quiera quieras quiera queramos queráis quieran',sira:'quisiera quisieras quisiera quisiéramos quisierais quisieran',
+    sise:'quisiese quisieses quisiese quisiésemos quisieseis quisiesen',imp:'- quiere quiera queramos quered quieran'}},
+  {inf:'saber',it:'sapere, avere sapore di',fs:'sabr',t:{pres:'sé sabes sabe sabemos sabéis saben',pret:'supe supiste supo supimos supisteis supieron',
+    spres:'sepa sepas sepa sepamos sepáis sepan',sira:'supiera supieras supiera supiéramos supierais supieran',
+    sise:'supiese supieses supiese supiésemos supieseis supiesen',imp:'- sabe sepa sepamos sabed sepan'}},
+  {inf:'pasar',it:'passare'},
+  {inf:'poner',it:'mettere',fs:'pondr',part:'puesto',t:{pres:'pongo pones pone ponemos ponéis ponen',pret:'puse pusiste puso pusimos pusisteis pusieron',
+    spres:'ponga pongas ponga pongamos pongáis pongan',sira:'pusiera pusieras pusiera pusiéramos pusierais pusieran',
+    sise:'pusiese pusieses pusiese pusiésemos pusieseis pusiesen',imp:'- pon ponga pongamos poned pongan'}},
+  {inf:'llegar',it:'arrivare',t:{pret:'llegué llegaste llegó llegamos llegasteis llegaron',spres:'llegue llegues llegue lleguemos lleguéis lleguen',
+    imp:'- llega llegue lleguemos llegad lleguen'}},
+  {inf:'deber',it:'dovere'},
+  {inf:'creer',it:'credere',ger:'creyendo',part:'creído',t:{pret:'creí creíste creyó creímos creísteis creyeron',
+    sira:'creyera creyeras creyera creyéramos creyerais creyeran',sise:'creyese creyeses creyese creyésemos creyeseis creyesen'}},
+  {inf:'dejar',it:'lasciare'},
+  {inf:'parecer',it:'sembrare',t:{pres:'parezco pareces parece parecemos parecéis parecen',spres:'parezca parezcas parezca parezcamos parezcáis parezcan',
+    imp:'- parece parezca parezcamos pareced parezcan'}},
+  {inf:'hablar',it:'parlare'},
+  {inf:'seguir',it:'seguire, continuare',ger:'siguiendo',t:{pres:'sigo sigues sigue seguimos seguís siguen',pret:'seguí seguiste siguió seguimos seguisteis siguieron',
+    spres:'siga sigas siga sigamos sigáis sigan',sira:'siguiera siguieras siguiera siguiéramos siguierais siguieran',
+    sise:'siguiese siguieses siguiese siguiésemos siguieseis siguiesen',imp:'- sigue siga sigamos seguid sigan'}},
+  {inf:'quedar',it:'rimanere, restare'},
+  {inf:'llevar',it:'portare, indossare'},
+  {inf:'encontrar',it:'trovare, incontrare',t:{pres:'encuentro encuentras encuentra encontramos encontráis encuentran',
+    spres:'encuentre encuentres encuentre encontremos encontréis encuentren',imp:'- encuentra encuentre encontremos encontrad encuentren'}},
+  {inf:'pensar',it:'pensare',t:{pres:'pienso piensas piensa pensamos pensáis piensan',spres:'piense pienses piense pensemos penséis piensen',
+    imp:'- piensa piense pensemos pensad piensen'}}
 ];;
 const V_FR_END={
   er:{pres:['e','es','e','ons','ez','ent'],impf:['ais','ais','ait','ions','iez','aient'],ps:['ai','as','a','âmes','âtes','èrent'],
@@ -3476,7 +3504,26 @@ const V_FR_VERBS=[
   {inf:'vouloir',it:'volere',fs:'voudr',ger:'voulant',part:'voulu',t:{pres:'veux veux veut voulons voulez veulent',impf:'voulais voulais voulait voulions vouliez voulaient',ps:'voulus voulus voulut voulûmes voulûtes voulurent',
     spres:'veuille veuilles veuille voulions vouliez veuillent',simp:'voulusse voulusses voulût voulussions voulussiez voulussent',imp:'- veuille - veuillons veuillez -'}},
   {inf:'venir',it:'venire',cls:'ir3',aux:'être',fs:'viendr',ger:'venant',part:'venu',t:{pres:'viens viens vient venons venez viennent',impf:'venais venais venait venions veniez venaient',ps:'vins vins vint vînmes vîntes vinrent',
-    spres:'vienne viennes vienne venions veniez viennent',simp:'vinsse vinsses vînt vinssions vinssiez vinssent',imp:'- viens - venons venez -'}}
+    spres:'vienne viennes vienne venions veniez viennent',simp:'vinsse vinsses vînt vinssions vinssiez vinssent',imp:'- viens - venons venez -'}},
+  {inf:'donner',it:'dare'},
+  {inf:'tenir',it:'tenere',cls:'ir3',fs:'tiendr',ger:'tenant',part:'tenu',t:{pres:'tiens tiens tient tenons tenez tiennent',impf:'tenais tenais tenait tenions teniez tenaient',
+    ps:'tins tins tint tînmes tîntes tinrent',spres:'tienne tiennes tienne tenions teniez tiennent',simp:'tinsse tinsses tînt tinssions tinssiez tinssent',imp:'- tiens - tenons tenez -'}},
+  {inf:'passer',it:'passare'},
+  {inf:'mettre',it:'mettere',part:'mis',t:{pres:'mets mets met mettons mettez mettent',ps:'mis mis mit mîmes mîtes mirent',simp:'misse misses mît missions missiez missent',imp:'- mets - mettons mettez -'}},
+  {inf:'arriver',it:'arrivare',aux:'être'},
+  {inf:'devoir',it:'dovere',fs:'devr',part:'dû',t:{pres:'dois dois doit devons devez doivent',ps:'dus dus dut dûmes dûtes durent',
+    spres:'doive doives doive devions deviez doivent',simp:'dusse dusses dût dussions dussiez dussent',imp:'- dois - devons devez -'}},
+  {inf:'croire',it:'credere',ger:'croyant',part:'cru',t:{pres:'crois crois croit croyons croyez croient',impf:'croyais croyais croyait croyions croyiez croyaient',
+    ps:'crus crus crut crûmes crûtes crurent',spres:'croie croies croie croyions croyiez croient',simp:'crusse crusses crût crussions crussiez crussent',imp:'- crois - croyons croyez -'}},
+  {inf:'laisser',it:'lasciare'},
+  {inf:'paraître',it:'sembrare',ger:'paraissant',part:'paru',t:{pres:'parais parais paraît paraissons paraissez paraissent',impf:'paraissais paraissais paraissait paraissions paraissiez paraissaient',
+    ps:'parus parus parut parûmes parûtes parurent',spres:'paraisse paraisses paraisse paraissions paraissiez paraissent',simp:'parusse parusses parût parussions parussiez parussent',imp:'- parais - paraissons paraissez -'}},
+  {inf:'parler',it:'parlare'},
+  {inf:'suivre',it:'seguire',part:'suivi',t:{pres:'suis suis suit suivons suivez suivent',imp:'- suis - suivons suivez -'}},
+  {inf:'rester',it:'rimanere, restare',aux:'être'},
+  {inf:'porter',it:'portare, indossare'},
+  {inf:'trouver',it:'trovare'},
+  {inf:'penser',it:'pensare'}
 ];
 const V_CA_END={
   ar:{pres:['o','es','a','em','eu','en'],impf:['ava','aves','ava','àvem','àveu','aven'],ps:['í','ares','à','àrem','àreu','aren'],
@@ -3510,7 +3557,27 @@ const V_CA_VERBS=[
   {inf:'veure',it:'vedere',ger:'veient',part:'vist',t:{pres:'veig veus veu veiem veieu veuen',impf:'veia veies veia vèiem vèieu veien',ps:'viu veieres veié veiérem veiéreu veieren',
     spres:'vegi vegis vegi vegem vegeu vegin',simp:'veiés veiessis veiés veiéssim veiéssiu veiessin',imp:'- veges vegi vegem veieu vegin'}},
   {inf:'voler',it:'volere',fs:'voldr',part:'volgut',t:{pres:'vull vols vol volem voleu volen',ps:'volguí volgueres volgué volguérem volguéreu volgueren',
-    spres:'vulgui vulguis vulgui vulguem vulgueu vulguin',simp:'volgués volguessis volgués volguéssim volguéssiu volguessin',imp:'- vulgues vulgui vulguem vulgueu vulguin'}}
+    spres:'vulgui vulguis vulgui vulguem vulgueu vulguin',simp:'volgués volguessis volgués volguéssim volguéssiu volguessin',imp:'- vulgues vulgui vulguem vulgueu vulguin'}},
+  {inf:'donar',it:'dare'},
+  {inf:'saber',it:'sapere',fs:'sabr',t:{pres:'sé saps sap sabem sabeu saben',spres:'sàpiga sàpigues sàpiga sapiguem sapigueu sàpiguen',
+    imp:'- sàpigues sàpiga sapiguem sapigueu sàpiguen'}},
+  {inf:'passar',it:'passare'},
+  {inf:'posar',it:'mettere'},
+  {inf:'arribar',it:'arrivare'},
+  {inf:'deure',it:'dovere',ger:'devent',part:'degut',t:{pres:'dec deus deu devem deveu deuen',impf:'devia devies devia devíem devíeu devien',
+    ps:'deguí degueres degué deguérem deguéreu degueren',spres:'degui deguis degui deguem degueu deguin',simp:'degués deguessis degués deguéssim deguéssiu deguessin',
+    imp:'- deu degui deguem deveu deguin'}},
+  {inf:'creure',it:'credere',ger:'creient',part:'cregut',t:{pres:'crec creus creu creiem creieu creuen',impf:'creia creies creia crèiem crèieu creien',
+    ps:'creguí cregueres cregué creguérem creguéreu cregueren',spres:'cregui creguis cregui creguem cregueu creguin',simp:'cregués creguessis cregués creguéssim creguéssiu creguessin',
+    imp:'- creu cregui creguem creieu creguin'}},
+  {inf:'deixar',it:'lasciare'},
+  {inf:'semblar',it:'sembrare'},
+  {inf:'parlar',it:'parlare'},
+  {inf:'seguir',it:'seguire, continuare'},
+  {inf:'quedar',it:'rimanere, restare'},
+  {inf:'portar',it:'portare, indossare'},
+  {inf:'trobar',it:'trovare, incontrare'},
+  {inf:'pensar',it:'pensare'}
 ];
 const V_LANGS={
   es:{id:'es',name:'Español',en:'Spanish',speech:'es-ES',aux:'haber',
@@ -3709,7 +3776,8 @@ function vAnalyse(f,B,cut,E,fut,alts){
   if(F===E&&!E){ notes.push('No ending in this person: just the stem.'); }
   else if(F===E){ T.push({op:'+'}); T.push({t:E}); notes.push(fut?`The regular ending ${vQ(E)} is added after the infinitive.`:`The regular ending ${vQ(E)} is added.`); }
   else if(!F){ T.push({op:'−'}); T.push({t:E,c:'cut'}); notes.push(`The ending ${vQ(E)} drops: the form is just the stem.`); }
-  else if(alts&&alts.some(x=>vBare(x[1])===vBare(F)&&x[1]!==E)){ const m=alts.filter(x=>vBare(x[1])===vBare(F)&&x[1]!==E), a=m[0]; T.push({op:'+'}); T.push({t:E+'→'+F,c:'irr'});
+  // an ending borrowed from another class (diste); not when it is only the end of the usual one (creyó: ió → ó)
+  else if(alts&&!vBare(E).endsWith(vBare(F))&&alts.some(x=>vBare(x[1])===vBare(F)&&x[1]!==E)){ const m=alts.filter(x=>vBare(x[1])===vBare(F)&&x[1]!==E), a=m[0]; T.push({op:'+'}); T.push({t:E+'→'+F,c:'irr'});
     const names=[...new Set(m.map(x=>'-'+x[0]))], list=names.length>1?names.slice(0,-1).join(', ')+' and '+names[names.length-1]:names[0];
     notes.push(`It takes the ending of ${list} verbs, ${vQ(a[1])}, instead of ${vQ(E)}${F!==a[1]?`, written ${vQ(F)} since one-syllable forms take no accent`:''}.`); }
   else if(F.startsWith(E)){ T.push({op:'+'}); T.push({t:E}); T.push({op:'+'}); T.push({t:F.slice(E.length),c:'irr'}); notes.push(`${vQ(F.slice(E.length))} is added after the ending ${vQ(E)}.`); }
@@ -3756,13 +3824,17 @@ const V_SAME={
   futshort:'haré, diré, desharé, predeciré', timp:'ten, haz, di, ve, sé, pon, sal, ven', subjyo:'tenga, haga, diga, ponga, salga, venga, vea, conozca',
   subjown:'sea, esté, vaya, haya, dé, sepa', mono:'di, dio, vi, vio, fui, fue, dais, veis', geru:'pudiendo, durmiendo, muriendo',
   geri:'diciendo, pidiendo, sirviendo, viniendo', impf3:'era (ser), iba (ir), veía (ver)', sirase:'fuera, tuviera, hiciera, dijera, pudiera, estuviera',
-  eadd:'sea, vea, prevea, entrevea', accent:'estás, está, están, esté, dé'
+  eadd:'sea, vea, prevea, entrevea', accent:'estás, está, están, esté, dé',
+  zc:'parezco, conozco, nazco, ofrezco, conduzco, traduzco', yi:'creyó, creyeron, creyendo, leyó, oyó, cayó', gue:'llegué, llegue, pagué, jugué, apagué', gug:'sigo, siga, distingo, consigo'
 };
-const V_PARTSAME={hacer:'deshecho, rehecho, satisfecho',decir:'predicho, contradicho, desdicho',ver:'previsto, entrevisto'};
-const V_STRONG={tener:'tuv',estar:'estuv',poder:'pud',hacer:'hic',decir:'dij',haber:'hub'};
+const V_PARTSAME={poner:'compuesto, propuesto, supuesto, dispuesto',hacer:'deshecho, rehecho, satisfecho',decir:'predicho, contradicho, desdicho',ver:'previsto, entrevisto'};
+const V_STRONG={tener:'tuv',estar:'estuv',poder:'pud',hacer:'hic',decir:'dij',haber:'hub',querer:'quis',saber:'sup',poner:'pus'};
 const V_FUTWHY={tener:['futd','tendr-: the «e» of the infinitive drops and a «d» comes in, as in poner, venir, salir, valer.'],
   poder:['futdrop','podr-: the «e» of the infinitive drops, as in saber, caber, querer, haber.'],
   haber:['futdrop','habr-: the «e» of the infinitive drops, as in poder, saber, caber, querer.'],
+  querer:['futdrop','querr-: the «e» of the infinitive drops, as in poder, saber, caber, haber.'],
+  saber:['futdrop','sabr-: the «e» of the infinitive drops, as in poder, caber, querer, haber.'],
+  poner:['futd','pondr-: the «e» of the infinitive drops and a «d» comes in, as in tener, venir, salir, valer.'],
   hacer:['futshort','har-: a short stem, only in hacer and its compounds (deshacer, rehacer, satisfacer).'],
   decir:['futshort','dir-: a short stem, only in decir and some compounds (predecir, contradecir).']};
 // where this form fits: which verbs share it and why ([{text, same}]); the building blocks say what changed
@@ -3775,9 +3847,15 @@ function vRulesEs(v,tid,p){
   const T=tid==='impn'?'spres':tid, f=c[T][p], g=r[T][p], d=vInfo(f,g);
   const stemPres=c.pres.some((x,i)=>vKind(x,r.pres[i])==='stem');
   if(d.k==='spell'&&vBare(f)===vBare(g)) add('Written accents drop on one-syllable forms.','mono');
+  // spelling that keeps a sound, wherever it happens
+  if(/zc/.test(f)&&!/zc/.test(g)) add('Verbs in -ecer, -ocer and -ucir add a «z» before «c» where it is followed by «o» or «a»: parezco, parezca.','zc');
+  if(inf==='creer'&&/y/.test(f)) add('An unstressed «i» between two vowels is written «y»: creyó, creyendo.','yi');
+  if(inf==='llegar'&&/gu[eé]/.test(f)) add('«g» becomes «gu» before «e» to keep its hard sound: llegué, llegue.','gue');
+  if(inf==='seguir'&&/^sig[oa]/.test(f)) add('«gu» becomes «g» before «o» and «a»: sigo, siga (the «u» was only there to keep the «g» hard).','gug');
+  if(inf==='saber'&&T==='pres'&&p===0) add('sé takes an accent to tell it apart from the pronoun «se».');
   if(T==='pres'){
     if(p===0&&/oy$/.test(f)) add('The «-oy» ending of yo: only in ser, estar, ir and dar.','oy');
-    if(p===0&&/go$/.test(f)&&!/go$/.test(g)) add('A «g» in the yo form: the whole present subjunctive is built on it (tengo → tenga).','go');
+    if(p===0&&/go$/.test(f)&&!/go$/.test(g)&&inf!=='seguir') add('A «g» in the yo form: the whole present subjunctive is built on it (tengo → tenga).','go');
     if(inf==='ver'&&p===0) add('ver keeps the «e» of its infinitive here, like prever (preveo).');
     if(inf==='haber') add('haber is the auxiliary of the compound tenses (he visto); «hay» is its impersonal form: there is / there are.');
     if(inf==='ir') add('ir has almost no stem: its present is built on «v-», and «vamos» also means let’s go.');
@@ -3796,7 +3874,7 @@ function vRulesEs(v,tid,p){
   if(T==='impf'&&(inf==='ser'||inf==='ir'||inf==='ver')) add('Only three verbs are irregular in the imperfect.','impf3');
   if((T==='fut'||T==='cond')&&V_FUTWHY[inf]) add(V_FUTWHY[inf][1]+` The ${T==='fut'?'conditional':'future'} uses the same stem.`,V_FUTWHY[inf][0]);
   if(T==='spres'){
-    if(['ser','estar','ir','haber','dar'].indexOf(inf)>=0) add('One of the six present subjunctives not built on the yo form of the present.','subjown');
+    if(['ser','estar','ir','haber','dar','saber'].indexOf(inf)>=0) add('One of the six present subjunctives not built on the yo form of the present.','subjown');
     else{ const yo=c.pres[0]; add(`Built on the yo form of the present: ${vQ(yo)} → ${vQ(yo.slice(0,-1)+(cls==='ar'?'e':'a'))}.`,/go$/.test(yo)||inf==='ver'?'subjyo':''); }
     if(d.k==='stem') add('The stem changes where the stress falls, as in the present: not in nosotros and vosotros.',d.to==='ie'?'ie':d.to==='ue'?'ue':'ei');
     if(inf==='ser') add('ser adds an «e» to its stem (se-), as do ver (vea) and prever (prevea).','eadd');
@@ -3826,7 +3904,7 @@ const V_SAME_FR={
   ps_is:'fis, dis, vis, mis, pris, partis, finis', ps_in:'vins, tins, devins, revins, obtins',
   ien:'viens, tiens, deviens, reviens, obtiens', eu:'peux, veux, peuvent, veulent', part_t:'fait, dit, écrit, mis, pris'
 };
-const V_PARTSAME_FR={faire:'défait, refait, satisfait',dire:'redit, prédit',venir:'devenu, revenu, tenu',voir:'revu, prévu'};
+const V_PARTSAME_FR={faire:'défait, refait, satisfait',dire:'redit, prédit',venir:'devenu, revenu, tenu',tenir:'obtenu, retenu, maintenu, venu',voir:'revu, prévu',mettre:'admis, permis, promis, remis',croire:'cru, accru'};
 function vRulesFr(v,tid,p){
   const c=vConj(v), r=vRegConj(v), t=V_T[tid], inf=v.inf, out=[], add=(text,same)=>out.push({text,same:same||''});
   if(t.aux){
@@ -3838,7 +3916,11 @@ function vRulesFr(v,tid,p){
   const T=tid, f=c[T][p], g=r[T][p], d=vInfo(f,g);
   if(T==='pres'){
     if(['pouvoir','vouloir'].includes(inf)&&[0,1,2,5].includes(p)) add('The stem becomes «eu» where the ending is silent (je, tu, il, ils); nous and vous keep the infinitive’s «ou».','eu');
-    if(inf==='venir'&&[0,1,2,5].includes(p)) add('«e» becomes «ie» where the stress falls on the stem; ils viennent also doubles the «n».','ien');
+    if((inf==='venir'||inf==='tenir')&&[0,1,2,5].includes(p)) add('«e» becomes «ie» where the stress falls on the stem; ils viennent, tiennent also double the «n».','ien');
+    if((inf==='voir'||inf==='croire')&&(p===3||p===4)) add('«i» becomes «y» before a pronounced ending: voyons, croyez (and in the imparfait).');
+    if(inf==='devoir'&&[0,1,2,5].includes(p)) add('«oi» where the ending is silent (dois, doivent); nous and vous keep «ev» (devons).');
+    if(inf==='suivre'&&p<2) add('je suis, tu suis: the same as être’s «je suis»; the context tells which.');
+    if(inf==='paraître'&&p===2) add('«î» before «t»: il paraît (traditional spelling; paraît/parait both accepted since 1990).');
     if((inf==='faire'||inf==='dire')&&p===4) add('vous faites, vous dites: with être (vous êtes), the only «-tes» endings in the present.');
     if(['être','avoir','aller','faire'].includes(inf)&&p===5) add('One of four «-ont» endings in ils: sont, ont, vont, font.');
     if(p===0&&f===c.pres[1]) add('je and tu share this form; only the pronoun tells them apart.');
@@ -3875,7 +3957,7 @@ const V_SAME_CA={
   gut:'tingut, pogut, volgut, hagut, begut, vingut, sabut', subjps:'tingués, pogués, volgués, digués, estigués, hagués',
   ia:'feia, deia, veia, reia, creia', ent:'fent, dient, veient, sent, rient'
 };
-const V_PARTSAME_CA={fer:'desfet, refet, satisfet',dir:'predit, contradit',veure:'previst'};
+const V_PARTSAME_CA={fer:'desfet, refet, satisfet',dir:'predit, contradit',veure:'previst',deure:'degut, begut, cregut',creure:'cregut, begut, degut'};
 function vRulesCa(v,tid,p){
   const c=vConj(v), r=vRegConj(v), t=V_T[tid], inf=v.inf, out=[], add=(text,same)=>out.push({text,same:same||''});
   if(t.aux==='perif'){ add('The everyday past tense of spoken Catalan: «anar» in a special set of forms (vaig, vas, va, vam, vau, van) + the infinitive. It never changes the verb itself.','perif'); return out; }
@@ -3885,6 +3967,9 @@ function vRulesCa(v,tid,p){
     return out;
   }
   const T=tid, f=c[T][p], g=r[T][p], d=vInfo(f,g);
+  if(inf==='saber'&&(T==='spres'||T==='imp')&&p!==4&&!(T==='imp'&&p===4)) add('saber builds its subjunctive on «sàpig-» (sàpiga, sàpigues), without the accent where the stress moves (sapiguem).');
+  if(inf==='saber'&&T==='pres'&&p===0) add('jo sé: an irregular form with an accent.');
+  if((inf==='deure'||inf==='creure')&&T==='impf') add('The «u» of the stem becomes a vowel-linking «v» or «i»: devia, creia.');
   if(T==='pres'){
     if(p===0&&/(c|g)$/.test(f)&&!/(c|g)$/.test(g)) add('A «velar» jo form ending in «-c» or «-g»: the present subjunctive and the passat simple take «-gu-» from it (tinc → tingui).','velar');
     if(inf==='ser'&&p!==0) add('ser is irregular all through the present: soc, ets, és, som, sou, són.');
@@ -3925,7 +4010,41 @@ const V_ABOUT_FR={
   vouloir:['veux, veut, veulent: «eu» like pouvoir; future voudr-, subjunctive veuille, imperative veuillez.',''],
   venir:['viens, venons, viennent; future viendr-, passé simple vins; compound tenses with être.','devenir, revenir, se souvenir, tenir, obtenir, appartenir, retenir']
 };
-const V_ABOUT_CA={
+const V_ABOUT_CA_MORE={
+  donar:['A regular -ar verb: dono, donava, vaig donar, donaré.','passar, posar, arribar, deixar, parlar, quedar, portar, trobar, pensar'],
+  saber:['jo sé; subjunctive and imperative on «sàpig-» (sàpiga); future sabr-.',''],
+  passar:['A regular -ar verb.','donar, parlar, deixar'],
+  posar:['A regular -ar verb.','donar, passar, parlar'],
+  arribar:['A regular -ar verb.','donar, passar, parlar'],
+  deure:['Velar: dec, degui, deguí, degut; imperfet devia.','beure (bec, begui, begut), creure'],
+  creure:['Velar: crec, cregui, creguí, cregut; imperfet creia.','beure, deure, seure'],
+  deixar:['A regular -ar verb.','donar, passar, parlar'],
+  semblar:['A regular -ar verb.','donar, passar, parlar'],
+  parlar:['The model -ar verb: most Catalan verbs follow it.','donar, passar, posar, arribar, deixar, quedar, portar, trobar, pensar'],
+  seguir:['An -ir verb with «-eix-»: segueixo, segueixi (but seguim, seguiu).','servir, llegir, patir, preferir'],
+  quedar:['A regular -ar verb.','donar, passar, parlar'],
+  portar:['A regular -ar verb.','donar, passar, parlar'],
+  trobar:['A regular -ar verb.','donar, passar, parlar'],
+  pensar:['A regular -ar verb.','donar, passar, parlar']
+};
+Object.assign(V_ABOUT_FR,{
+  donner:['A regular -er verb (first group): je donne, j’ai donné.','parler, passer, laisser, porter, trouver, penser'],
+  tenir:['Like venir: tiens, tenons, tiennent; future tiendr-, passé simple tins; but compound tenses with avoir.','obtenir, retenir, maintenir, appartenir, contenir'],
+  passer:['A regular -er verb; with être when it means going past (je suis passé), with avoir when it has an object.','donner, parler, laisser'],
+  mettre:['mets, met, mettons; passé simple mis; participle mis.','admettre, permettre, promettre, remettre, transmettre'],
+  arriver:['A regular -er verb taking être in compound tenses: je suis arrivé(e).','rester, entrer, tomber, monter'],
+  devoir:['dois, doit, devons, doivent; future devr-; participle dû (with a circumflex only in the masculine singular).','recevoir (reçois, recevrai), apercevoir'],
+  croire:['crois, croyons («y» before a pronounced ending); passé simple crus; participle cru.','voir follows the same «y» pattern (voyons)'],
+  laisser:['A regular -er verb.','donner, parler, passer'],
+  'paraître':['parais, paraît, paraissons; passé simple parus; participle paru.','connaître, apparaître, disparaître, reconnaître'],
+  parler:['The model -er verb: most French verbs follow it.','donner, passer, laisser, porter, trouver, penser'],
+  suivre:['suis, suit, suivons; participle suivi; je suis is also être’s.','poursuivre, s’ensuivre'],
+  rester:['A regular -er verb taking être in compound tenses: je suis resté(e).','arriver, entrer, tomber'],
+  porter:['A regular -er verb.','apporter, emporter, supporter'],
+  trouver:['A regular -er verb.','retrouver, prouver'],
+  penser:['A regular -er verb.','parler, donner, passer']
+});
+const V_ABOUT_CA_BASE={
   ser:['The most irregular verb: soc, ets, és; passat simple fui, fou; subjunctive sigui. Participle estat (also sigut).',''],
   estar:['Velar: estic, estigui, estiguí; the present has accents on the ending (estàs, està).','anar has the same set of special forms in the present (vaig)'],
   haver:['Auxiliary of every compound tense (he fet) and of hi ha (there is / there are).',''],
@@ -3937,6 +4056,7 @@ const V_ABOUT_CA={
   veure:['veig, veus; imperfet veia; subjunctive vegi; participle vist.','preveure, reveure'],
   voler:['Velar: vull, vulgui, volguí, volgut; future voldr-.','']
 };
+const V_ABOUT_CA=Object.assign({},V_ABOUT_CA_BASE,V_ABOUT_CA_MORE);
 
 const V_SAMES={es:null,fr:V_SAME_FR,ca:V_SAME_CA}, V_PARTSAMES={es:null,fr:V_PARTSAME_FR,ca:V_PARTSAME_CA};
 // about each verb, and verbs conjugated the same way
@@ -3950,6 +4070,21 @@ const V_ABOUT={
   decir:['yo digo, the stem changes e → i, preterite dij-, future dir-, participle dicho, tú imperative di.','predecir, contradecir, desdecir; bendecir and maldecir only in part'],
   ir:['Three stems: v- (voy, vaya), i- (iba, iré) and fu- (fui, fuera, shared with ser).',''],
   ver:['Nearly regular: veo, the imperfect veía, the participle visto, and one-syllable forms without an accent (vi, vio).','prever, entrever'],
+  querer:['The stem changes e → ie in the present, a strong preterite in quis-, future querr-.','e → ie like pensar, entender, empezar; querer’s future is like poder’s (podré)'],
+  saber:['yo sé, preterite sup-, future sabr-, subjunctive sepa.','caber (cupe, cabré) has the same pattern'],
+  pasar:['Regular -ar verb: hablo, hablé, hablaba… patterns all apply.','hablar, dejar, quedar, llevar'],
+  poner:['yo pongo, preterite pus-, future pondr-, participle puesto, tú imperative pon.','componer, proponer, suponer, disponer, imponer'],
+  llegar:['Regular, except for the spelling «gu» before «e»: llegué, llegue.','pagar, jugar (also o → ue), apagar, entregar'],
+  deber:['Regular -er verb.','comer, beber, aprender, comprender'],
+  creer:['Regular except an «i» between vowels written «y» (creyó, creyendo) and accents in the preterite (creíste).','leer, poseer, proveer'],
+  dejar:['Regular -ar verb.','hablar, pasar, quedar, llevar'],
+  parecer:['Regular except «zc» before «o» and «a»: parezco, parezca.','conocer, nacer, ofrecer, crecer, aparecer'],
+  hablar:['The model regular -ar verb.','pasar, dejar, quedar, llevar, trabajar, estudiar'],
+  seguir:['Stem change e → i (sigue, siguió, siguiendo) and «gu» → «g» before «o», «a» (sigo, siga).','conseguir, perseguir, proseguir; pedir and servir change e → i the same way'],
+  quedar:['Regular -ar verb.','hablar, pasar, dejar, llevar'],
+  llevar:['Regular -ar verb.','hablar, pasar, dejar, quedar'],
+  encontrar:['Stem change o → ue where the stress falls on the stem: encuentro, encuentre.','contar, mostrar, recordar, costar, probar'],
+  pensar:['Stem change e → ie where the stress falls on the stem: pienso, piense.','empezar, cerrar, comenzar, sentar, despertar'],
   dar:['Present doy, a preterite with -er endings (di, dio) and a subjunctive with an accent (dé).','estar has the same «-oy» in the present']
 };
 

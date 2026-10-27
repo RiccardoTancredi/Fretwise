@@ -9,7 +9,7 @@ const esc=s=>String(s);
 const V=new Function('esc',src.slice(a,b)+';return {VERBS,V_TENSES,vConj,vRegConj,vForm,vKind,vMark,vLevel,vVerb,vPersonsOf,vInfo};')(esc);
 
 test('every verb has every form of every tense',()=>{
-  assert.equal(V.VERBS.length,10);
+  assert.equal(V.VERBS.length,25);
   for(const v of V.VERBS) for(const t of V.V_TENSES) for(const p of V.vPersonsOf(t.id)){
     const f=V.vForm(v,t.id,p);
     assert.ok(f&&!/undefined|null/.test(f),`${v.inf} ${t.id} ${p}: ${f}`);
@@ -63,7 +63,7 @@ test('French and Catalan: every form exists, its building blocks spell it, and i
   const c=src.indexOf('/* ---------- progress ---------- */');
   const W=new Function('esc',src.slice(a,c)+';return {vUseLang,V_LANGS,vForm,vFormTokens,vRules,vBuild,vPersonsOf};')(esc);
   for(const lang of ['es','fr','ca']){
-    W.vUseLang(lang); const L=W.V_LANGS[lang]; assert.equal(L.verbs.length,10,lang);
+    W.vUseLang(lang); const L=W.V_LANGS[lang]; assert.equal(L.verbs.length,25,lang);
     for(const v of L.verbs) for(const t of L.tenses) for(const p of W.vPersonsOf(t.id)){
       const f=W.vForm(v,t.id,p); if(f==null){ assert.ok(['pouvoir','haver'].includes(v.inf)&&t.id==='imp',`${lang} ${v.inf} ${t.id} ${p} missing`); continue; }
       assert.ok(!/undefined|null/.test(f),`${lang} ${v.inf} ${t.id} ${p}: ${f}`);
