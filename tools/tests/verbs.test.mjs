@@ -35,7 +35,7 @@ test('what is irregular is told apart from stem and spelling changes',()=>{
   assert.equal(k('dar','pres',4),'spell');    // dais
   assert.equal(k('estar','pres',1),'irr');    // estás: the stress moves
   assert.equal(k('tener','pres',3),'');       // tenemos is regular
-  const v=V.vVerb('tener'); assert.equal(V.vMark(V.vConj(v).pres[1],V.vRegConj(v).pres[1]),'t<mark class="v-stem">ie</mark>nes');
+  const v=V.vVerb('tener'); assert.equal(V.vMark(V.vConj(v).pres[1],V.vRegConj(v).pres[1]),'t<mark class="v-stem">i</mark>enes');
   assert.equal(V.vLevel(V.vVerb('ser')),3);
 });
 

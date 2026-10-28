@@ -6,7 +6,7 @@
 // painters who died before (this year - 70) are included. The cut-off moves forward every January.
 // To keep this from being only the Mona Lisa, each painter is capped and the cut-off for "how known"
 // a work must be is low: plenty of lesser-known works by the great painters get in.
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 
 const ENDPOINT = 'https://query.wikidata.org/sparql?format=json&query=';
 const UA = { Accept: 'application/sparql-results+json', 'User-Agent': 'Fretwise/1.0 (https://github.com/RiccardoTancredi/Fretwise)' };
@@ -53,6 +53,43 @@ for (const list of [...byPainter.values()].map(l => l.sort((x, y) => y.links - x
   const spread = []; for (let i = rest.length - 1; i >= 0 && spread.length < PER_ARTIST - TOP; i -= step) spread.push(rest[Math.floor(i)]);
   picked.push(...top, ...spread);
   if (picked.length >= MAX) break;
+}
+
+// 3b) the great museums: their best-known works too, so the collection doesn't rest on the painters' fame
+//     alone (it left the Vatican with 4 works, the Borghese with 2 and Palazzo Pitti with none)
+const MUSEUMS = ['Uffizi Gallery', 'Vatican Museums', 'Pinacoteca Vaticana', 'Galleria Borghese', 'Palatine Gallery', 'Pinacoteca di Brera',
+  "Gallerie dell'Accademia", 'Museo di Capodimonte', "Galleria Nazionale d'Arte Antica", 'Pinacoteca Ambrosiana', 'Accademia Carrara',
+  'Galleria Doria Pamphilj', 'Capitoline Museums', 'Galleria Sabauda', 'Galleria Nazionale delle Marche', 'Louvre', "Musée d'Orsay",
+  'Museo del Prado', 'Thyssen-Bornemisza Museum', 'National Gallery', 'Rijksmuseum', 'Mauritshuis', 'Kunsthistorisches Museum',
+  'Alte Pinakothek', 'Gemäldegalerie Alte Meister', 'Hermitage Museum', 'Royal Museums of Fine Arts of Belgium', 'Musée Condé', 'Louvre Museum', 'Galleria Palatina', 'Palazzo Pitti'];
+const PER_MUSEUM = 15;
+const inSet = new Set(picked.map(o => o.id));
+const museums = await sparql(`SELECT DISTINCT ?m ?ml WHERE { VALUES ?ml { ${MUSEUMS.map(m => JSON.stringify(m) + '@en').join(' ')} } ?m rdfs:label ?ml; wdt:P17 []. }`);
+for (const b of museums) {
+  const m = qid(b.m.value);
+  const rows = await sparql(`SELECT ?p ?a ?img ?links WHERE { ?p wdt:P195 wd:${m}; wdt:P31 wd:Q3305213; wdt:P170 ?a; wdt:P18 ?img; wikibase:sitelinks ?links.
+    FILTER(?links >= ${FAME_MIN}) ?a wdt:P570 ?d. FILTER(YEAR(?d) < ${DIED_BEFORE}) } ORDER BY DESC(?links) LIMIT 60`);
+  let added = 0;
+  for (const r of rows) {
+    const id = qid(r.p.value);
+    if (inSet.has(id) || EXCLUDE.has(id)) continue;
+    picked.push({ id, a: qid(r.a.value), image: decodeURIComponent(qid(r.img.value)), links: +r.links.value }); inSet.add(id);
+    if (++added >= PER_MUSEUM) break;
+  }
+  console.log(`${b.ml.value}: +${added}`);
+}
+
+// 3c) works already in the collection stay (while still out of copyright, with a picture), so a rebuild
+//     never takes away a painting someone has been learning
+let previous = [];
+try { previous = JSON.parse(await readFile(new URL('../data/paintings.json', import.meta.url), 'utf8')).paintings.map(x => x.id); } catch (e) {}
+for (const group of chunks(previous.filter(id => !inSet.has(id) && !EXCLUDE.has(id)), 150)) {
+  const rows = await sparql(`SELECT ?p ?a ?img ?links WHERE { VALUES ?p { ${group.map(id => 'wd:' + id).join(' ')} }
+    ?p wdt:P170 ?a; wdt:P18 ?img; wikibase:sitelinks ?links. ?a wdt:P570 ?d. FILTER(YEAR(?d) < ${DIED_BEFORE}) }`);
+  for (const r of rows) {
+    const id = qid(r.p.value); if (inSet.has(id)) continue;
+    picked.push({ id, a: qid(r.a.value), image: decodeURIComponent(qid(r.img.value)), links: +r.links.value }); inSet.add(id);
+  }
 }
 
 // 4) details for the chosen ones: English names, year, movement, museum, English Wikipedia article

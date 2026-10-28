@@ -1,9 +1,11 @@
 name: Daily reminders
-# Runs every hour and notifies each device once a day, at the hour picked in the app.
+# Notifies each device once a day, from the hour picked in the app. GitHub delays and drops scheduled runs
+# (an hourly schedule ran only every 4-5 hours), so it is asked every 10 minutes: the first run at or after
+# the chosen hour sends, and the rest of the day's runs see it was sent and stop at once.
 # Needs the FIREBASE_SERVICE_ACCOUNT secret. Run it by hand with "force" to test right away.
 on:
   schedule:
-    - cron: '7 * * * *'
+    - cron: '*/10 * * * *'
   workflow_dispatch:
     inputs:
       force:
@@ -23,6 +25,7 @@ jobs:
           cache: npm
           cache-dependency-path: tools/package-lock.json
       - run: node --test tools/tests/*.test.mjs
+        if: github.event_name != 'schedule'
       - run: npm ci --prefix tools --no-audit --no-fund
       - run: node tools/send-reminders.mjs
         env:
