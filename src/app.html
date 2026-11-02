@@ -3534,7 +3534,83 @@ const V_ES_VERBS=[
   {inf:'encontrar',it:'trovare, incontrare',t:{pres:'encuentro encuentras encuentra encontramos encontráis encuentran',
     spres:'encuentre encuentres encuentre encontremos encontréis encuentren',imp:'- encuentra encuentre encontremos encontrad encuentren'}},
   {inf:'pensar',it:'pensare',t:{pres:'pienso piensas piensa pensamos pensáis piensan',spres:'piense pienses piense pensemos penséis piensen',
-    imp:'- piensa piense pensemos pensad piensen'}}
+    imp:'- piensa piense pensemos pensad piensen'}},
+  // the rest of the 100 most common verbs, read from Wiktionary's tables: only what differs from the regular pattern
+  {inf:'volver',it:'tornare',part:'vuelto',t:{pres:'vuelvo vuelves vuelve volvemos volvéis vuelven',spres:'vuelva vuelvas vuelva volvamos volváis vuelvan',imp:'- vuelve vuelva volvamos volved vuelvan'}},
+  {inf:'salir',it:'uscire',fs:'saldr',t:{pres:'salgo sales sale salimos salís salen',spres:'salga salgas salga salgamos salgáis salgan',imp:'- sal salga salgamos salid salgan'}},
+  {inf:'venir',it:'venire',fs:'vendr',ger:'viniendo',t:{pres:'vengo vienes viene venimos venís vienen',pret:'vine viniste vino vinimos vinisteis vinieron',spres:'venga vengas venga vengamos vengáis vengan',sira:'viniera vinieras viniera viniéramos vinierais vinieran',sise:'viniese vinieses viniese viniésemos vinieseis viniesen',imp:'- ven venga vengamos venid vengan'}},
+  {inf:'llamar',it:'chiamare'},
+  {inf:'mirar',it:'guardare'},
+  {inf:'conocer',it:'conoscere',t:{pres:'conozco conoces conoce conocemos conocéis conocen',spres:'conozca conozcas conozca conozcamos conozcáis conozcan',imp:'- conoce conozca conozcamos conoced conozcan'}},
+  {inf:'tomar',it:'prendere'},
+  {inf:'sentir',it:'sentire',ger:'sintiendo',t:{pres:'siento sientes siente sentimos sentís sienten',pret:'sentí sentiste sintió sentimos sentisteis sintieron',spres:'sienta sientas sienta sintamos sintáis sientan',sira:'sintiera sintieras sintiera sintiéramos sintierais sintieran',sise:'sintiese sintieses sintiese sintiésemos sintieseis sintiesen',imp:'- siente sienta sintamos sentid sientan'}},
+  {inf:'tratar',it:'trattare, tentare'},
+  {inf:'vivir',it:'vivere'},
+  {inf:'acercar',it:'avvicinare',t:{pret:'acerqué acercaste acercó acercamos acercasteis acercaron',spres:'acerque acerques acerque acerquemos acerquéis acerquen',imp:'- acerca acerque acerquemos acercad acerquen'}},
+  {inf:'esperar',it:'aspettare, sperare'},
+  {inf:'gustar',it:'piacere'},
+  {inf:'contar',it:'raccontare, contare',t:{pres:'cuento cuentas cuenta contamos contáis cuentan',spres:'cuente cuentes cuente contemos contéis cuenten',imp:'- cuenta cuente contemos contad cuenten'}},
+  {inf:'trabajar',it:'lavorare'},
+  {inf:'empezar',it:'cominciare',t:{pres:'empiezo empiezas empieza empezamos empezáis empiezan',pret:'empecé empezaste empezó empezamos empezasteis empezaron',spres:'empiece empieces empiece empecemos empecéis empiecen',imp:'- empieza empiece empecemos empezad empiecen'}},
+  {inf:'buscar',it:'cercare',t:{pret:'busqué buscaste buscó buscamos buscasteis buscaron',spres:'busque busques busque busquemos busquéis busquen',imp:'- busca busque busquemos buscad busquen'}},
+  {inf:'existir',it:'esistere'},
+  {inf:'perder',it:'perdere',t:{pres:'pierdo pierdes pierde perdemos perdéis pierden',spres:'pierda pierdas pierda perdamos perdáis pierdan',imp:'- pierde pierda perdamos perded pierdan'}},
+  {inf:'escribir',it:'scrivere',part:'escrito'},
+  {inf:'realizar',it:'eseguire, realizzare',t:{pret:'realicé realizaste realizó realizamos realizasteis realizaron',spres:'realice realices realice realicemos realicéis realicen',imp:'- realiza realice realicemos realizad realicen'}},
+  {inf:'entrar',it:'entrare'},
+  {inf:'leer',it:'leggere',ger:'leyendo',part:'leído',t:{pret:'leí leíste leyó leímos leísteis leyeron',sira:'leyera leyeras leyera leyéramos leyerais leyeran',sise:'leyese leyeses leyese leyésemos leyeseis leyesen'}},
+  {inf:'recordar',it:'ricordare',t:{pres:'recuerdo recuerdas recuerda recordamos recordáis recuerdan',spres:'recuerde recuerdes recuerde recordemos recordéis recuerden',imp:'- recuerda recuerde recordemos recordad recuerden'}},
+  {inf:'morir',it:'morire',ger:'muriendo',part:'muerto',t:{pres:'muero mueres muere morimos morís mueren',pret:'morí moriste murió morimos moristeis murieron',spres:'muera mueras muera muramos muráis mueran',sira:'muriera murieras muriera muriéramos murierais murieran',sise:'muriese murieses muriese muriésemos murieseis muriesen',imp:'- muere muera muramos morid mueran'}},
+  {inf:'recibir',it:'ricevere'},
+  {inf:'permitir',it:'permettere'},
+  {inf:'pedir',it:'chiedere, ordinare',ger:'pidiendo',t:{pres:'pido pides pide pedimos pedís piden',pret:'pedí pediste pidió pedimos pedisteis pidieron',spres:'pida pidas pida pidamos pidáis pidan',sira:'pidiera pidieras pidiera pidiéramos pidierais pidieran',sise:'pidiese pidieses pidiese pidiésemos pidieseis pidiesen',imp:'- pide pida pidamos pedid pidan'}},
+  {inf:'crear',it:'creare'},
+  {inf:'presentar',it:'presentare'},
+  {inf:'entender',it:'capire',t:{pres:'entiendo entiendes entiende entendemos entendéis entienden',spres:'entienda entiendas entienda entendamos entendáis entiendan',imp:'- entiende entienda entendamos entended entiendan'}},
+  {inf:'comenzar',it:'iniziare',t:{pres:'comienzo comienzas comienza comenzamos comenzáis comienzan',pret:'comencé comenzaste comenzó comenzamos comenzasteis comenzaron',spres:'comience comiences comience comencemos comencéis comiencen',imp:'- comienza comience comencemos comenzad comiencen'}},
+  {inf:'preguntar',it:'domandare, chiedere'},
+  {inf:'producir',it:'produrre',t:{pres:'produzco produces produce producimos producís producen',pret:'produje produjiste produjo produjimos produjisteis produjeron',spres:'produzca produzcas produzca produzcamos produzcáis produzcan',sira:'produjera produjeras produjera produjéramos produjerais produjeran',sise:'produjese produjeses produjese produjésemos produjeseis produjesen',imp:'- produce produzca produzcamos producid produzcan'}},
+  {inf:'considerar',it:'considerare'},
+  {inf:'cambiar',it:'cambiare'},
+  {inf:'abrir',it:'aprire',part:'abierto'},
+  {inf:'utilizar',it:'utilizzare',t:{pret:'utilicé utilizaste utilizó utilizamos utilizasteis utilizaron',spres:'utilice utilices utilice utilicemos utilicéis utilicen',imp:'- utiliza utilice utilicemos utilizad utilicen'}},
+  {inf:'mantener',it:'mantenere, sostenere',fs:'mantendr',t:{pres:'mantengo mantienes mantiene mantenemos mantenéis mantienen',pret:'mantuve mantuviste mantuvo mantuvimos mantuvisteis mantuvieron',spres:'mantenga mantengas mantenga mantengamos mantengáis mantengan',sira:'mantuviera mantuvieras mantuviera mantuviéramos mantuvierais mantuvieran',sise:'mantuviese mantuvieses mantuviese mantuviésemos mantuvieseis mantuviesen',imp:'- mantén mantenga mantengamos mantened mantengan'}},
+  {inf:'convertir',it:'convertire, trasformare',ger:'convirtiendo',t:{pres:'convierto conviertes convierte convertimos convertís convierten',pret:'convertí convertiste convirtió convertimos convertisteis convirtieron',spres:'convierta conviertas convierta convirtamos convirtáis conviertan',sira:'convirtiera convirtieras convirtiera convirtiéramos convirtierais convirtieran',sise:'convirtiese convirtieses convirtiese convirtiésemos convirtieseis convirtiesen',imp:'- convierte convierta convirtamos convertid conviertan'}},
+  {inf:'terminar',it:'terminare'},
+  {inf:'necesitar',it:'avere bisogno di'},
+  {inf:'lograr',it:'riuscire a, conseguire'},
+  {inf:'resultar',it:'risultare, tradursi in'},
+  {inf:'caer',it:'cadere',ger:'cayendo',part:'caído',t:{pres:'caigo caes cae caemos caéis caen',pret:'caí caíste cayó caímos caísteis cayeron',spres:'caiga caigas caiga caigamos caigáis caigan',sira:'cayera cayeras cayera cayéramos cayerais cayeran',sise:'cayese cayeses cayese cayésemos cayeseis cayesen',imp:'- cae caiga caigamos caed caigan'}},
+  {inf:'conseguir',it:'riuscire a ottenere',ger:'consiguiendo',t:{pres:'consigo consigues consigue conseguimos conseguís consiguen',pret:'conseguí conseguiste consiguió conseguimos conseguisteis consiguieron',spres:'consiga consigas consiga consigamos consigáis consigan',sira:'consiguiera consiguieras consiguiera consiguiéramos consiguierais consiguieran',sise:'consiguiese consiguieses consiguiese consiguiésemos consiguieseis consiguiesen',imp:'- consigue consiga consigamos conseguid consigan'}},
+  {inf:'escuchar',it:'ascoltare'},
+  {inf:'usar',it:'usare'},
+  {inf:'ganar',it:'vincere, guadagnare'},
+  {inf:'sacar',it:'togliere, tirare fuori',t:{pret:'saqué sacaste sacó sacamos sacasteis sacaron',spres:'saque saques saque saquemos saquéis saquen',imp:'- saca saque saquemos sacad saquen'}},
+  {inf:'explicar',it:'spiegare',t:{pret:'expliqué explicaste explicó explicamos explicasteis explicaron',spres:'explique expliques explique expliquemos expliquéis expliquen',imp:'- explica explique expliquemos explicad expliquen'}},
+  {inf:'ocurrir',it:'accadere, verificarsi'},
+  {inf:'ayudar',it:'aiutare'},
+  {inf:'aparecer',it:'apparire',t:{pres:'aparezco apareces aparece aparecemos aparecéis aparecen',spres:'aparezca aparezcas aparezca aparezcamos aparezcáis aparezcan',imp:'- aparece aparezca aparezcamos apareced aparezcan'}},
+  {inf:'mostrar',it:'mostrare',t:{pres:'muestro muestras muestra mostramos mostráis muestran',spres:'muestre muestres muestre mostremos mostréis muestren',imp:'- muestra muestre mostremos mostrad muestren'}},
+  {inf:'servir',it:'servire',ger:'sirviendo',t:{pres:'sirvo sirves sirve servimos servís sirven',pret:'serví serviste sirvió servimos servisteis sirvieron',spres:'sirva sirvas sirva sirvamos sirváis sirvan',sira:'sirviera sirvieras sirviera sirviéramos sirvierais sirvieran',sise:'sirviese sirvieses sirviese sirviésemos sirvieseis sirviesen',imp:'- sirve sirva sirvamos servid sirvan'}},
+  {inf:'formar',it:'formare'},
+  {inf:'acabar',it:'finire'},
+  {inf:'ofrecer',it:'offrire',t:{pres:'ofrezco ofreces ofrece ofrecemos ofrecéis ofrecen',spres:'ofrezca ofrezcas ofrezca ofrezcamos ofrezcáis ofrezcan',imp:'- ofrece ofrezca ofrezcamos ofreced ofrezcan'}},
+  {inf:'jugar',it:'giocare',t:{pres:'juego juegas juega jugamos jugáis juegan',pret:'jugué jugaste jugó jugamos jugasteis jugaron',spres:'juegue juegues juegue juguemos juguéis jueguen',imp:'- juega juegue juguemos jugad jueguen'}},
+  {inf:'decidir',it:'decidere'},
+  {inf:'tocar',it:'toccare, suonare',t:{pret:'toqué tocaste tocó tocamos tocasteis tocaron',spres:'toque toques toque toquemos toquéis toquen',imp:'- toca toque toquemos tocad toquen'}},
+  {inf:'comprar',it:'comprare'},
+  {inf:'cumplir',it:'adempiere, rispettare'},
+  {inf:'pagar',it:'pagare',t:{pret:'pagué pagaste pagó pagamos pagasteis pagaron',spres:'pague pagues pague paguemos paguéis paguen',imp:'- paga pague paguemos pagad paguen'}},
+  {inf:'comer',it:'mangiare'},
+  {inf:'desarrollar',it:'sviluppare'},
+  {inf:'estudiar',it:'studiare'},
+  {inf:'alcanzar',it:'raggiungere',t:{pret:'alcancé alcanzaste alcanzó alcanzamos alcanzasteis alcanzaron',spres:'alcance alcances alcance alcancemos alcancéis alcancen',imp:'- alcanza alcance alcancemos alcanzad alcancen'}},
+  {inf:'traer',it:'portare',ger:'trayendo',part:'traído',t:{pres:'traigo traes trae traemos traéis traen',pret:'traje trajiste trajo trajimos trajisteis trajeron',spres:'traiga traigas traiga traigamos traigáis traigan',sira:'trajera trajeras trajera trajéramos trajerais trajeran',sise:'trajese trajeses trajese trajésemos trajeseis trajesen',imp:'- trae traiga traigamos traed traigan'}},
+  {inf:'incluir',it:'includere',ger:'incluyendo',t:{pres:'incluyo incluyes incluye incluimos incluís incluyen',pret:'incluí incluiste incluyó incluimos incluisteis incluyeron',spres:'incluya incluyas incluya incluyamos incluyáis incluyan',sira:'incluyera incluyeras incluyera incluyéramos incluyerais incluyeran',sise:'incluyese incluyeses incluyese incluyésemos incluyeseis incluyesen',imp:'- incluye incluya incluyamos incluid incluyan'}},
+  {inf:'establecer',it:'stabilire',t:{pres:'establezco estableces establece establecemos establecéis establecen',spres:'establezca establezcas establezca establezcamos establezcáis establezcan',imp:'- establece establezca establezcamos estableced establezcan'}},
+  {inf:'reconocer',it:'riconoscere',t:{pres:'reconozco reconoces reconoce reconocemos reconocéis reconocen',spres:'reconozca reconozcas reconozca reconozcamos reconozcáis reconozcan',imp:'- reconoce reconozca reconozcamos reconoced reconozcan'}},
+  {inf:'dirigir',it:'dirigere, gestire',t:{pres:'dirijo diriges dirige dirigimos dirigís dirigen',spres:'dirija dirijas dirija dirijamos dirijáis dirijan',imp:'- dirige dirija dirijamos dirigid dirijan'}},
+  {inf:'intentar',it:'provare, tentare'}
 ];;
 const V_FR_END={
   er:{pres:['e','es','e','ons','ez','ent'],impf:['ais','ais','ait','ions','iez','aient'],ps:['ai','as','a','âmes','âtes','èrent'],
@@ -3585,7 +3661,83 @@ const V_FR_VERBS=[
   {inf:'rester',it:'rimanere, restare',aux:'être'},
   {inf:'porter',it:'portare, indossare'},
   {inf:'trouver',it:'trovare'},
-  {inf:'penser',it:'pensare'}
+  {inf:'penser',it:'pensare'},
+  // the rest of the 100 most common verbs, read from Wiktionary's tables: only what differs from the regular pattern
+  {inf:'revenir',it:'tornare',cls:'ir3',aux:'être',fs:'reviendr',part:'revenu',t:{pres:'reviens reviens revient revenons revenez reviennent',ps:'revins revins revint revînmes revîntes revinrent',spres:'revienne reviennes revienne revenions reveniez reviennent',simp:'revinsse revinsses revînt revinssions revinssiez revinssent',imp:'- reviens - revenons revenez -'}},
+  {inf:'sortir',it:'uscire',cls:'ir3',aux:'être',t:{pres:'sors sors sort sortons sortez sortent',imp:'- sors - sortons sortez -'}},
+  {inf:'appeler',it:'chiamare',fs:'appeller',t:{pres:'appelle appelles appelle appelons appelez appellent',spres:'appelle appelles appelle appelions appeliez appellent',imp:'- appelle - appelons appelez -'}},
+  {inf:'regarder',it:'guardare'},
+  {inf:'connaître',it:'conoscere',ger:'connaissant',part:'connu',t:{pres:'connais connais connaît connaissons connaissez connaissent',impf:'connaissais connaissais connaissait connaissions connaissiez connaissaient',ps:'connus connus connut connûmes connûtes connurent',spres:'connaisse connaisses connaisse connaissions connaissiez connaissent',simp:'connusse connusses connût connussions connussiez connussent',imp:'- connais - connaissons connaissez -'}},
+  {inf:'prendre',it:'prendere',ger:'prenant',part:'pris',t:{pres:'prends prends prend prenons prenez prennent',impf:'prenais prenais prenait prenions preniez prenaient',ps:'pris pris prit prîmes prîtes prirent',spres:'prenne prennes prenne prenions preniez prennent',simp:'prisse prisses prît prissions prissiez prissent',imp:'- prends - prenons prenez -'}},
+  {inf:'sentir',it:'sentire',cls:'ir3',t:{pres:'sens sens sent sentons sentez sentent',imp:'- sens - sentons sentez -'}},
+  {inf:'traiter',it:'trattare'},
+  {inf:'vivre',it:'vivere',part:'vécu',t:{pres:'vis vis vit vivons vivez vivent',ps:'vécus vécus vécut vécûmes vécûtes vécurent',simp:'vécusse vécusses vécût vécussions vécussiez vécussent',imp:'- vis - vivons vivez -'}},
+  {inf:'approcher',it:'avvicinare'},
+  {inf:'attendre',it:'aspettare'},
+  {inf:'espérer',it:'sperare',fs:'espèrer',t:{pres:'espère espères espère espérons espérez espèrent',spres:'espère espères espère espérions espériez espèrent',imp:'- espère - espérons espérez -'}},
+  {inf:'plaire',it:'piacere',ger:'plaisant',part:'plu',t:{pres:'plais plais plaît plaisons plaisez plaisent',impf:'plaisais plaisais plaisait plaisions plaisiez plaisaient',ps:'plus plus plut plûmes plûtes plurent',spres:'plaise plaises plaise plaisions plaisiez plaisent',simp:'plusse plusses plût plussions plussiez plussent',imp:'- plais - plaisons plaisez -'}},
+  {inf:'raconter',it:'raccontare'},
+  {inf:'travailler',it:'lavorare'},
+  {inf:'commencer',it:'cominciare',ger:'commençant',t:{pres:'commence commences commence commençons commencez commencent',impf:'commençais commençais commençait commencions commenciez commençaient',ps:'commençai commenças commença commençâmes commençâtes commencèrent',simp:'commençasse commençasses commençât commençassions commençassiez commençassent',imp:'- commence - commençons commencez -'}},
+  {inf:'chercher',it:'cercare'},
+  {inf:'exister',it:'esistere'},
+  {inf:'perdre',it:'perdere'},
+  {inf:'écrire',it:'scrivere',ger:'écrivant',part:'écrit',t:{pres:'écris écris écrit écrivons écrivez écrivent',impf:'écrivais écrivais écrivait écrivions écriviez écrivaient',ps:'écrivis écrivis écrivit écrivîmes écrivîtes écrivirent',spres:'écrive écrives écrive écrivions écriviez écrivent',simp:'écrivisse écrivisses écrivît écrivissions écrivissiez écrivissent',imp:'- écris - écrivons écrivez -'}},
+  {inf:'réaliser',it:'realizzare'},
+  {inf:'entrer',it:'entrare',aux:'être'},
+  {inf:'lire',it:'leggere',ger:'lisant',part:'lu',t:{pres:'lis lis lit lisons lisez lisent',impf:'lisais lisais lisait lisions lisiez lisaient',ps:'lus lus lut lûmes lûtes lurent',spres:'lise lises lise lisions lisiez lisent',simp:'lusse lusses lût lussions lussiez lussent',imp:'- lis - lisons lisez -'}},
+  {inf:'rappeler',it:'richiamare, ricordare',fs:'rappeller',t:{pres:'rappelle rappelles rappelle rappelons rappelez rappellent',spres:'rappelle rappelles rappelle rappelions rappeliez rappellent',imp:'- rappelle - rappelons rappelez -'}},
+  {inf:'mourir',it:'morire',cls:'ir3',aux:'être',fs:'mourr',part:'mort',t:{pres:'meurs meurs meurt mourons mourez meurent',ps:'mourus mourus mourut mourûmes mourûtes moururent',spres:'meure meures meure mourions mouriez meurent',simp:'mourusse mourusses mourût mourussions mourussiez mourussent',imp:'- meurs - mourons mourez -'}},
+  {inf:'recevoir',it:'ricevere',cls:'ir3',fs:'recevr',ger:'recevant',part:'reçu',t:{pres:'reçois reçois reçoit recevons recevez reçoivent',impf:'recevais recevais recevait recevions receviez recevaient',ps:'reçus reçus reçut reçûmes reçûtes reçurent',spres:'reçoive reçoives reçoive recevions receviez reçoivent',simp:'reçusse reçusses reçût reçussions reçussiez reçussent',imp:'- reçois - recevons recevez -'}},
+  {inf:'permettre',it:'permettere',part:'permis',t:{pres:'permets permets permet permettons permettez permettent',ps:'permis permis permit permîmes permîtes permirent',simp:'permisse permisses permît permissions permissiez permissent',imp:'- permets - permettons permettez -'}},
+  {inf:'commander',it:'ordinare'},
+  {inf:'créer',it:'creare'},
+  {inf:'présenter',it:'presentare'},
+  {inf:'comprendre',it:'capire',ger:'comprenant',part:'compris',t:{pres:'comprends comprends comprend comprenons comprenez comprennent',impf:'comprenais comprenais comprenait comprenions compreniez comprenaient',ps:'compris compris comprit comprîmes comprîtes comprirent',spres:'comprenne comprennes comprenne comprenions compreniez comprennent',simp:'comprisse comprisses comprît comprissions comprissiez comprissent',imp:'- comprends - comprenons comprenez -'}},
+  {inf:'débuter',it:'iniziare'},
+  {inf:'demander',it:'domandare, chiedere'},
+  {inf:'produire',it:'produrre',ger:'produisant',part:'produit',t:{pres:'produis produis produit produisons produisez produisent',impf:'produisais produisais produisait produisions produisiez produisaient',ps:'produisis produisis produisit produisîmes produisîtes produisirent',spres:'produise produises produise produisions produisiez produisent',simp:'produisisse produisisses produisît produisissions produisissiez produisissent',imp:'- produis - produisons produisez -'}},
+  {inf:'considérer',it:'considerare',fs:'considèrer',t:{pres:'considère considères considère considérons considérez considèrent',spres:'considère considères considère considérions considériez considèrent',imp:'- considère - considérons considérez -'}},
+  {inf:'changer',it:'cambiare',ger:'changeant',t:{pres:'change changes change changeons changez changent',impf:'changeais changeais changeait changions changiez changeaient',ps:'changeai changeas changea changeâmes changeâtes changèrent',simp:'changeasse changeasses changeât changeassions changeassiez changeassent',imp:'- change - changeons changez -'}},
+  {inf:'ouvrir',it:'aprire',cls:'ir3',part:'ouvert',t:{pres:'ouvre ouvres ouvre ouvrons ouvrez ouvrent',imp:'- ouvre - ouvrons ouvrez -'}},
+  {inf:'utiliser',it:'utilizzare'},
+  {inf:'maintenir',it:'mantenere',cls:'ir3',fs:'maintiendr',part:'maintenu',t:{pres:'maintiens maintiens maintient maintenons maintenez maintiennent',ps:'maintins maintins maintint maintînmes maintîntes maintinrent',spres:'maintienne maintiennes maintienne maintenions mainteniez maintiennent',simp:'maintinsse maintinsses maintînt maintinssions maintinssiez maintinssent',imp:'- maintiens - maintenons maintenez -'}},
+  {inf:'convertir',it:'convertire'},
+  {inf:'terminer',it:'terminare'},
+  {inf:'nécessiter',it:'richiedere, avere bisogno di'},
+  {inf:'réussir',it:'riuscire'},
+  {inf:'résulter',it:'risultare'},
+  {inf:'tomber',it:'cadere',aux:'être'},
+  {inf:'obtenir',it:'ottenere',cls:'ir3',fs:'obtiendr',part:'obtenu',t:{pres:'obtiens obtiens obtient obtenons obtenez obtiennent',ps:'obtins obtins obtint obtînmes obtîntes obtinrent',spres:'obtienne obtiennes obtienne obtenions obteniez obtiennent',simp:'obtinsse obtinsses obtînt obtinssions obtinssiez obtinssent',imp:'- obtiens - obtenons obtenez -'}},
+  {inf:'écouter',it:'ascoltare'},
+  {inf:'employer',it:'usare, impiegare',fs:'emploier',t:{pres:'emploie emploies emploie employons employez emploient',spres:'emploie emploies emploie employions employiez emploient',imp:'- emploie - employons employez -'}},
+  {inf:'gagner',it:'vincere, guadagnare'},
+  {inf:'tirer',it:'tirare'},
+  {inf:'expliquer',it:'spiegare'},
+  {inf:'survenir',it:'accadere',cls:'ir3',aux:'être',fs:'surviendr',part:'survenu',t:{pres:'surviens surviens survient survenons survenez surviennent',ps:'survins survins survint survînmes survîntes survinrent',spres:'survienne surviennes survienne survenions surveniez surviennent',simp:'survinsse survinsses survînt survinssions survinssiez survinssent',imp:'- surviens - survenons survenez -'}},
+  {inf:'aider',it:'aiutare'},
+  {inf:'apparaître',it:'apparire',aux:'être',ger:'apparaissant',part:'apparu',t:{pres:'apparais apparais apparaît apparaissons apparaissez apparaissent',impf:'apparaissais apparaissais apparaissait apparaissions apparaissiez apparaissaient',ps:'apparus apparus apparut apparûmes apparûtes apparurent',spres:'apparaisse apparaisses apparaisse apparaissions apparaissiez apparaissent',simp:'apparusse apparusses apparût apparussions apparussiez apparussent',imp:'- apparais - apparaissons apparaissez -'}},
+  {inf:'montrer',it:'mostrare'},
+  {inf:'servir',it:'servire',cls:'ir3',t:{pres:'sers sers sert servons servez servent',imp:'- sers - servons servez -'}},
+  {inf:'former',it:'formare'},
+  {inf:'finir',it:'finire'},
+  {inf:'offrir',it:'offrire',cls:'ir3',part:'offert',t:{pres:'offre offres offre offrons offrez offrent',imp:'- offre - offrons offrez -'}},
+  {inf:'jouer',it:'giocare, suonare'},
+  {inf:'décider',it:'decidere'},
+  {inf:'toucher',it:'toccare'},
+  {inf:'acheter',it:'comprare',fs:'achèter',t:{pres:'achète achètes achète achetons achetez achètent',spres:'achète achètes achète achetions achetiez achètent',imp:'- achète - achetons achetez -'}},
+  {inf:'accomplir',it:'compiere'},
+  {inf:'payer',it:'pagare'},
+  {inf:'manger',it:'mangiare',ger:'mangeant',t:{pres:'mange manges mange mangeons mangez mangent',impf:'mangeais mangeais mangeait mangions mangiez mangeaient',ps:'mangeai mangeas mangea mangeâmes mangeâtes mangèrent',simp:'mangeasse mangeasses mangeât mangeassions mangeassiez mangeassent',imp:'- mange - mangeons mangez -'}},
+  {inf:'développer',it:'sviluppare'},
+  {inf:'étudier',it:'studiare'},
+  {inf:'atteindre',it:'raggiungere',ger:'atteignant',part:'atteint',t:{pres:'atteins atteins atteint atteignons atteignez atteignent',impf:'atteignais atteignais atteignait atteignions atteigniez atteignaient',ps:'atteignis atteignis atteignit atteignîmes atteignîtes atteignirent',spres:'atteigne atteignes atteigne atteignions atteigniez atteignent',simp:'atteignisse atteignisses atteignît atteignissions atteignissiez atteignissent',imp:'- atteins - atteignons atteignez -'}},
+  {inf:'apporter',it:'portare'},
+  {inf:'inclure',it:'includere',part:'inclus',t:{pres:'inclus inclus inclut incluons incluez incluent',ps:'inclus inclus inclut inclûmes inclûtes inclurent',simp:'inclusse inclusses inclût inclussions inclussiez inclussent'}},
+  {inf:'établir',it:'stabilire'},
+  {inf:'reconnaître',it:'riconoscere',ger:'reconnaissant',part:'reconnu',t:{pres:'reconnais reconnais reconnaît reconnaissons reconnaissez reconnaissent',impf:'reconnaissais reconnaissais reconnaissait reconnaissions reconnaissiez reconnaissaient',ps:'reconnus reconnus reconnut reconnûmes reconnûtes reconnurent',spres:'reconnaisse reconnaisses reconnaisse reconnaissions reconnaissiez reconnaissent',simp:'reconnusse reconnusses reconnût reconnussions reconnussiez reconnussent',imp:'- reconnais - reconnaissons reconnaissez -'}},
+  {inf:'diriger',it:'dirigere',ger:'dirigeant',t:{pres:'dirige diriges dirige dirigeons dirigez dirigent',impf:'dirigeais dirigeais dirigeait dirigions dirigiez dirigeaient',ps:'dirigeai dirigeas dirigea dirigeâmes dirigeâtes dirigèrent',simp:'dirigeasse dirigeasses dirigeât dirigeassions dirigeassiez dirigeassent',imp:'- dirige - dirigeons dirigez -'}},
+  {inf:'essayer',it:'provare, tentare'}
 ];
 const V_CA_END={
   ar:{pres:['o','es','a','em','eu','en'],impf:['ava','aves','ava','àvem','àveu','aven'],ps:['í','ares','à','àrem','àreu','aren'],
@@ -3639,7 +3791,83 @@ const V_CA_VERBS=[
   {inf:'quedar',it:'rimanere, restare'},
   {inf:'portar',it:'portare, indossare'},
   {inf:'trobar',it:'trovare, incontrare'},
-  {inf:'pensar',it:'pensare'}
+  {inf:'pensar',it:'pensare'},
+  // the rest of the 100 most common verbs, read from Wiktionary's tables: only what differs from the regular pattern
+  {inf:'tornar',it:'tornare'},
+  {inf:'sortir',it:'uscire',cls:'ir2',t:{pres:'surto surts surt sortim sortiu surten',spres:'surti surtis surti sortim sortiu surtin',imp:'- surt surti sortim sortiu surtin'}},
+  {inf:'venir',it:'venire',cls:'ir2',fs:'vindr',part:'vingut',t:{pres:'vinc vens ve venim veniu venen',ps:'vinguí vingueres vingué vinguérem vinguéreu vingueren',spres:'vingui vinguis vingui vinguem vingueu vinguin',simp:'vingués vinguessis vingués vinguéssim vinguéssiu vinguessin',imp:'- vine vingui vinguem veniu vinguin'}},
+  {inf:'cridar',it:'chiamare, gridare'},
+  {inf:'mirar',it:'guardare'},
+  {inf:'conèixer',it:'conoscere',fs:'coneixer',ger:'coneixent',part:'conegut',t:{pres:'conec coneixes coneix coneixem coneixeu coneixen',impf:'coneixia coneixies coneixia coneixíem coneixíeu coneixien',ps:'coneguí conegueres conegué coneguérem coneguéreu conegueren',spres:'conegui coneguis conegui coneguem conegueu coneguin',simp:'conegués coneguessis conegués coneguéssim coneguéssiu coneguessin',imp:'- coneix conegui coneguem coneixeu coneguin'}},
+  {inf:'prendre',it:'prendere',ger:'prenent',part:'pres',t:{pres:'prenc prens pren prenem preneu prenen',impf:'prenia prenies prenia preníem preníeu prenien',ps:'prenguí prengueres prengué prenguérem prenguéreu prengueren',spres:'prengui prenguis prengui prenguem prengueu prenguin',simp:'prengués prenguessis prengués prenguéssim prenguéssiu prenguessin',imp:'- pren prengui prenguem preneu prenguin'}},
+  {inf:'sentir',it:'sentire',cls:'ir2'},
+  {inf:'tractar',it:'trattare'},
+  {inf:'viure',it:'vivere',ger:'vivint',part:'viscut',t:{pres:'visc vius viu vivim viviu viuen',impf:'vivia vivies vivia vivíem vivíeu vivien',ps:'visquí visqueres visqué visquérem visquéreu visqueren',spres:'visqui visquis visqui visquem visqueu visquin',simp:'visqués visquessis visqués visquéssim visquéssiu visquessin',imp:'- viu visqui visquem viviu visquin'}},
+  {inf:'apropar',it:'avvicinare'},
+  {inf:'esperar',it:'aspettare, sperare'},
+  {inf:'agradar',it:'piacere'},
+  {inf:'comptar',it:'contare'},
+  {inf:'treballar',it:'lavorare'},
+  {inf:'començar',it:'cominciare',t:{pres:'començo comences comença comencem comenceu comencen',ps:'comencí començares començà començàrem començàreu començaren',spres:'comenci comencis comenci comencem comenceu comencin',simp:'comencés comencessis comencés comencéssim comencéssiu comencessin',imp:'- comença comenci comencem comenceu comencin'}},
+  {inf:'buscar',it:'cercare',t:{pres:'busco busques busca busquem busqueu busquen',ps:'busquí buscares buscà buscàrem buscàreu buscaren',spres:'busqui busquis busqui busquem busqueu busquin',simp:'busqués busquessis busqués busquéssim busquéssiu busquessin',imp:'- busca busqui busquem busqueu busquin'}},
+  {inf:'existir',it:'esistere'},
+  {inf:'perdre',it:'perdere'},
+  {inf:'escriure',it:'scrivere',ger:'escrivint',part:'escrit',t:{pres:'escric escrius escriu escrivim escriviu escriuen',impf:'escrivia escrivies escrivia escrivíem escrivíeu escrivien',ps:'escriví escrivires escriví escrivírem escrivíreu escriviren',spres:'escrigui escriguis escrigui escriguem escrigueu escriguin',simp:'escrivís escrivissis escrivís escrivíssim escrivíssiu escrivissin',imp:'- escriu escrigui escriguem escriviu escriguin'}},
+  {inf:'realitzar',it:'realizzare'},
+  {inf:'entrar',it:'entrare'},
+  {inf:'llegir',it:'leggere'},
+  {inf:'recordar',it:'ricordare'},
+  {inf:'morir',it:'morire',cls:'ir2',part:'mort'},
+  {inf:'rebre',it:'ricevere',t:{pres:'rebo reps rep rebem rebeu reben',imp:'- rep rebi rebem rebeu rebin'}},
+  {inf:'permetre',it:'permettere',part:'permès'},
+  {inf:'demanar',it:'chiedere'},
+  {inf:'crear',it:'creare',t:{spres:'creï creïs creï creem creeu creïn',imp:'- crea creï creem creeu creïn'}},
+  {inf:'presentar',it:'presentare'},
+  {inf:'entendre',it:'capire',ger:'entenent',part:'entès',t:{pres:'entenc entens entén entenem enteneu entenen',impf:'entenia entenies entenia enteníem enteníeu entenien',ps:'entenguí entengueres entengué entenguérem entenguéreu entengueren',spres:'entengui entenguis entengui entenguem entengueu entenguin',simp:'entengués entenguessis entengués entenguéssim entenguéssiu entenguessin',imp:'- entén entengui entenguem enteneu entenguin'}},
+  {inf:'iniciar',it:'iniziare',t:{spres:'iniciï iniciïs iniciï iniciem inicieu iniciïn',imp:'- inicia iniciï iniciem inicieu iniciïn'}},
+  {inf:'preguntar',it:'domandare'},
+  {inf:'produir',it:'produrre',part:'produït',t:{pres:'produeixo produeixes produeix produïm produïu produeixen',impf:'produïa produïes produïa produíem produíeu produïen',ps:'produí produïres produí produírem produíreu produïren',spres:'produeixi produeixis produeixi produïm produïu produeixin',simp:'produís produïssis produís produíssim produíssiu produïssin',imp:'- produeix produeixi produïm produïu produeixin'}},
+  {inf:'considerar',it:'considerare'},
+  {inf:'canviar',it:'cambiare',t:{spres:'canviï canviïs canviï canviem canvieu canviïn',imp:'- canvia canviï canviem canvieu canviïn'}},
+  {inf:'obrir',it:'aprire',cls:'ir2',part:'obert',t:{pres:'obro obres obre obrim obriu obren',imp:'- obre obri obrim obriu obrin'}},
+  {inf:'utilitzar',it:'utilizzare'},
+  {inf:'mantenir',it:'mantenere',cls:'ir2',fs:'mantindr',part:'mantingut',t:{pres:'mantinc mantens manté mantenim manteniu mantenen',ps:'mantinguí mantingueres mantingué mantinguérem mantinguéreu mantingueren',spres:'mantingui mantinguis mantingui mantinguem mantingueu mantinguin',simp:'mantingués mantinguessis mantingués mantinguéssim mantinguéssiu mantinguessin',imp:'- mantén mantingui mantinguem manteniu mantinguin'}},
+  {inf:'convertir',it:'convertire'},
+  {inf:'finalitzar',it:'terminare'},
+  {inf:'necessitar',it:'avere bisogno di'},
+  {inf:'aconseguir',it:'riuscire a, ottenere'},
+  {inf:'resultar',it:'risultare'},
+  {inf:'caure',it:'cadere',ger:'caient',part:'caigut',t:{pres:'caic caus cau caiem caieu cauen',impf:'queia queies queia quèiem quèieu queien',ps:'caiguí caigueres caigué caiguérem caiguéreu caigueren',spres:'caigui caiguis caigui caiguem caigueu caiguin',simp:'caigués caiguessis caigués caiguéssim caiguéssiu caiguessin',imp:'- cau caigui caiguem caieu caiguin'}},
+  {inf:'obtenir',it:'ottenere',cls:'ir2',fs:'obtindr',part:'obtingut',t:{pres:'obtinc obtens obté obtenim obteniu obtenen',ps:'obtinguí obtingueres obtingué obtinguérem obtinguéreu obtingueren',spres:'obtingui obtinguis obtingui obtinguem obtingueu obtinguin',simp:'obtingués obtinguessis obtingués obtinguéssim obtinguéssiu obtinguessin',imp:'- obtén obtingui obtinguem obteniu obtinguin'}},
+  {inf:'escoltar',it:'ascoltare'},
+  {inf:'usar',it:'usare'},
+  {inf:'guanyar',it:'vincere, guadagnare'},
+  {inf:'treure',it:'togliere, tirare fuori',fs:'traur',ger:'traient',part:'tret',t:{pres:'trec treus treu traiem traieu treuen',impf:'treia treies treia trèiem trèieu treien',ps:'traguí tragueres tragué traguérem traguéreu tragueren',spres:'tregui treguis tregui traguem tragueu treguin',simp:'tragués traguessis tragués traguéssim traguéssiu traguessin',imp:'- treu tregui traguem traieu treguin'}},
+  {inf:'explicar',it:'spiegare',t:{pres:'explico expliques explica expliquem expliqueu expliquen',ps:'expliquí explicares explicà explicàrem explicàreu explicaren',spres:'expliqui expliquis expliqui expliquem expliqueu expliquin',simp:'expliqués expliquessis expliqués expliquéssim expliquéssiu expliquessin',imp:'- explica expliqui expliquem expliqueu expliquin'}},
+  {inf:'ocórrer',it:'accadere',fs:'ocorrer',ger:'ocorrent',part:'ocorregut',t:{pres:'ocorro ocorres ocorre ocorrem ocorreu ocorren',impf:'ocorria ocorries ocorria ocorríem ocorríeu ocorrien',ps:'ocorreguí ocorregueres ocorregué ocorreguérem ocorreguéreu ocorregueren',spres:'ocorri ocorris ocorri ocorrem ocorreu ocorrin',simp:'ocorregués ocorreguessis ocorregués ocorreguéssim ocorreguéssiu ocorreguessin',imp:'- ocorre ocorri ocorrem ocorreu ocorrin'}},
+  {inf:'ajudar',it:'aiutare'},
+  {inf:'aparèixer',it:'apparire',fs:'apareixer',ger:'apareixent',part:'aparegut',t:{pres:'aparec apareixes apareix apareixem apareixeu apareixen',impf:'apareixia apareixies apareixia apareixíem apareixíeu apareixien',ps:'apareguí aparegueres aparegué apareguérem apareguéreu aparegueren',spres:'aparegui apareguis aparegui apareguem aparegueu apareguin',simp:'aparegués apareguessis aparegués apareguéssim apareguéssiu apareguessin',imp:'- apareix aparegui apareguem apareixeu apareguin'}},
+  {inf:'mostrar',it:'mostrare'},
+  {inf:'servir',it:'servire'},
+  {inf:'formar',it:'formare'},
+  {inf:'acabar',it:'finire'},
+  {inf:'oferir',it:'offrire',part:'ofert'},
+  {inf:'jugar',it:'giocare',t:{pres:'jugo jugues juga juguem jugueu juguen',ps:'juguí jugares jugà jugàrem jugàreu jugaren',spres:'jugui juguis jugui juguem jugueu juguin',simp:'jugués juguessis jugués juguéssim juguéssiu juguessin',imp:'- juga jugui juguem jugueu juguin'}},
+  {inf:'decidir',it:'decidere'},
+  {inf:'tocar',it:'toccare, suonare',t:{pres:'toco toques toca toquem toqueu toquen',ps:'toquí tocares tocà tocàrem tocàreu tocaren',spres:'toqui toquis toqui toquem toqueu toquin',simp:'toqués toquessis toqués toquéssim toquéssiu toquessin',imp:'- toca toqui toquem toqueu toquin'}},
+  {inf:'comprar',it:'comprare'},
+  {inf:'complir',it:'compiere, rispettare',part:'complert'},
+  {inf:'pagar',it:'pagare',t:{pres:'pago pagues paga paguem pagueu paguen',ps:'paguí pagares pagà pagàrem pagàreu pagaren',spres:'pagui paguis pagui paguem pagueu paguin',simp:'pagués paguessis pagués paguéssim paguéssiu paguessin',imp:'- paga pagui paguem pagueu paguin'}},
+  {inf:'menjar',it:'mangiare',t:{pres:'menjo menges menja mengem mengeu mengen',ps:'mengí menjares menjà menjàrem menjàreu menjaren',spres:'mengi mengis mengi mengem mengeu mengin',simp:'mengés mengessis mengés mengéssim mengéssiu mengessin',imp:'- menja mengi mengem mengeu mengin'}},
+  {inf:'desenvolupar',it:'sviluppare'},
+  {inf:'estudiar',it:'studiare',t:{spres:'estudiï estudiïs estudiï estudiem estudieu estudiïn',imp:'- estudia estudiï estudiem estudieu estudiïn'}},
+  {inf:'assolir',it:'raggiungere'},
+  {inf:'dur',it:'portare',cls:'re',ger:'duent',t:{pres:'duc duus duu duem dueu duen',impf:'duia duies duia dúiem dúieu duien',ps:'duguí dugueres dugué duguérem duguéreu dugueren',spres:'dugui duguis dugui duguem dugueu duguin',simp:'dugués duguessis dugués duguéssim duguéssiu duguessin',imp:'- duu dugui duguem dueu duguin'}},
+  {inf:'incloure',it:'includere',ger:'incloent',part:'inclòs',t:{pres:'incloc inclous inclou incloem incloeu inclouen',impf:'incloïa incloïes incloïa incloíem incloíeu incloïen',ps:'incloguí inclogueres inclogué incloguérem incloguéreu inclogueren',spres:'inclogui incloguis inclogui incloguem inclogueu incloguin',simp:'inclogués incloguessis inclogués incloguéssim incloguéssiu incloguessin',imp:'- inclou inclogui incloguem incloeu incloguin'}},
+  {inf:'establir',it:'stabilire',part:'establert'},
+  {inf:'reconèixer',it:'riconoscere',fs:'reconeixer',ger:'reconeixent',part:'reconegut',t:{pres:'reconec reconeixes reconeix reconeixem reconeixeu reconeixen',impf:'reconeixia reconeixies reconeixia reconeixíem reconeixíeu reconeixien',ps:'reconeguí reconegueres reconegué reconeguérem reconeguéreu reconegueren',spres:'reconegui reconeguis reconegui reconeguem reconegueu reconeguin',simp:'reconegués reconeguessis reconegués reconeguéssim reconeguéssiu reconeguessin',imp:'- reconeix reconegui reconeguem reconeixeu reconeguin'}},
+  {inf:'dirigir',it:'dirigere'},
+  {inf:'intentar',it:'provare, tentare'}
 ];
 const V_LANGS={
   es:{id:'es',name:'Español',en:'Spanish',speech:'es-ES',aux:'haber',
@@ -3744,7 +3972,8 @@ function vForm(v,tid,p){
 // how a form departs from the regular one: '' regular, 'stem' a vowel of the stem changes (e→ie, o→ue,
 // e→i...), 'spell' only the spelling changes (c→z, an accent dropped on a one-syllable form), else 'irr'
 const V_STEM=[['e','ie'],['o','ue'],['e','i'],['o','u'],['u','ue'],['i','ie']];
-const V_SPELL=[['c','qu'],['g','gu'],['z','c'],['c','z'],['g','j'],['gu','gü'],['i','y'],['gu','g'],['qu','c']];
+const V_SPELL=[['c','qu'],['g','gu'],['z','c'],['c','z'],['g','j'],['gu','gü'],['i','y'],['gu','g'],['qu','c'],
+  ['c','ç'],['g','ge'],['y','i'],['l','ll'],['t','tt'],['e','è'],['é','è']];   // French: commençons, mangeons, emploie, appelle, jette, achète, espère
 const vAcc=s=>(s.normalize('NFD').match(/\u0301/g)||[]).length;
 const vBare=s=>s.normalize('NFD').replace(/\u0301/g,'').normalize('NFC');
 // {k, s, e: the changed part of the form, from, to: what it replaces}
@@ -3891,16 +4120,21 @@ const V_SAME={
   subjown:'sea, esté, vaya, haya, dé, sepa', mono:'di, dio, vi, vio, fui, fue, dais, veis', geru:'pudiendo, durmiendo, muriendo',
   geri:'diciendo, pidiendo, sirviendo, viniendo', impf3:'era (ser), iba (ir), veía (ver)', sirase:'fuera, tuviera, hiciera, dijera, pudiera, estuviera',
   eadd:'sea, vea, prevea, entrevea', accent:'estás, está, están, esté, dé',
-  zc:'parezco, conozco, nazco, ofrezco, conduzco, traduzco', yi:'creyó, creyeron, creyendo, leyó, oyó, cayó', gue:'llegué, llegue, pagué, jugué, apagué', gug:'sigo, siga, distingo, consigo'
+  zc:'parezco, conozco, nazco, ofrezco, conduzco, traduzco', que:'busqué, saqué, toqué, expliqué, acerqué', zce:'empecé, comencé, realicé, utilicé, alcancé',
+  jo:'dirijo, escojo, cojo, protejo, exijo', uy:'incluyo, construyo, destruyo, huyo, concluyo', yi:'creyó, creyeron, creyendo, leyó, oyó, cayó', gue:'llegué, llegue, pagué, jugué, apagué', gug:'sigo, siga, distingo, consigo'
 };
 const V_PARTSAME={poner:'compuesto, propuesto, supuesto, dispuesto',hacer:'deshecho, rehecho, satisfecho',decir:'predicho, contradicho, desdicho',ver:'previsto, entrevisto'};
-const V_STRONG={tener:'tuv',estar:'estuv',poder:'pud',hacer:'hic',decir:'dij',haber:'hub',querer:'quis',saber:'sup',poner:'pus'};
+const V_STRONG={tener:'tuv',estar:'estuv',poder:'pud',hacer:'hic',decir:'dij',haber:'hub',querer:'quis',saber:'sup',poner:'pus',
+  venir:'vin',mantener:'mantuv',traer:'traj',producir:'produj'};
 const V_FUTWHY={tener:['futd','tendr-: the «e» of the infinitive drops and a «d» comes in, as in poner, venir, salir, valer.'],
   poder:['futdrop','podr-: the «e» of the infinitive drops, as in saber, caber, querer, haber.'],
   haber:['futdrop','habr-: the «e» of the infinitive drops, as in poder, saber, caber, querer.'],
   querer:['futdrop','querr-: the «e» of the infinitive drops, as in poder, saber, caber, haber.'],
   saber:['futdrop','sabr-: the «e» of the infinitive drops, as in poder, caber, querer, haber.'],
   poner:['futd','pondr-: the «e» of the infinitive drops and a «d» comes in, as in tener, venir, salir, valer.'],
+  venir:['futd','vendr-: the «i» of the infinitive drops and a «d» comes in, as in tener, poner, salir.'],
+  salir:['futd','saldr-: the «i» of the infinitive drops and a «d» comes in, as in tener, poner, venir.'],
+  mantener:['futd','mantendr-: like tener (tendré), as every compound of tener.'],
   hacer:['futshort','har-: a short stem, only in hacer and its compounds (deshacer, rehacer, satisfacer).'],
   decir:['futshort','dir-: a short stem, only in decir and some compounds (predecir, contradecir).']};
 // where this form fits: which verbs share it and why ([{text, same}]); the building blocks say what changed
@@ -3915,13 +4149,17 @@ function vRulesEs(v,tid,p){
   if(d.k==='spell'&&vBare(f)===vBare(g)) add('Written accents drop on one-syllable forms.','mono');
   // spelling that keeps a sound, wherever it happens
   if(/zc/.test(f)&&!/zc/.test(g)) add('Verbs in -ecer, -ocer and -ucir add a «z» before «c» where it is followed by «o» or «a»: parezco, parezca.','zc');
-  if(inf==='creer'&&/y/.test(f)) add('An unstressed «i» between two vowels is written «y»: creyó, creyendo.','yi');
-  if(inf==='llegar'&&/gu[eé]/.test(f)) add('«g» becomes «gu» before «e» to keep its hard sound: llegué, llegue.','gue');
-  if(inf==='seguir'&&/^sig[oa]/.test(f)) add('«gu» becomes «g» before «o» and «a»: sigo, siga (the «u» was only there to keep the «g» hard).','gug');
+  if(/uir$/.test(inf)&&/uy/.test(f)&&!/uy/.test(g)) add('-uir verbs add a «y» after the «u» before «o», «a» and «e»: incluyo, incluya, incluye.','uy');
+  else if(/y/.test(f)&&!/y/.test(g)&&!['ir','haber'].includes(inf)) add('An unstressed «i» between two vowels is written «y»: creyó, leyendo, cayeron.','yi');
+  if(/gar$/.test(inf)&&/gu[eé]/.test(f)&&!/gu[eé]/.test(g)) add('«g» becomes «gu» before «e» to keep its hard sound: llegué, pague.','gue');
+  if(/car$/.test(inf)&&/qu[eé]/.test(f)&&!/qu[eé]/.test(g)) add('«c» becomes «qu» before «e» to keep the sound «k»: busqué, toque.','que');
+  if(/zar$/.test(inf)&&/c[eé]/.test(f)&&!/c[eé]/.test(g)) add('«z» becomes «c» before «e»: empecé, realice (Spanish writes «ce», not «ze»).','zce');
+  if(/g(ir|er)$/.test(inf)&&/j[oa]/.test(f)&&!/j[oa]/.test(g)) add('«g» becomes «j» before «o» and «a» to keep its sound: dirijo, dirija.','jo');
+  if(/guir$/.test(inf)&&/g[oa]/.test(f)&&!/g[oa]/.test(g)) add('«gu» becomes «g» before «o» and «a»: sigo, consiga (the «u» was only there to keep the «g» hard).','gug');
   if(inf==='saber'&&T==='pres'&&p===0) add('sé takes an accent to tell it apart from the pronoun «se».');
   if(T==='pres'){
     if(p===0&&/oy$/.test(f)) add('The «-oy» ending of yo: only in ser, estar, ir and dar.','oy');
-    if(p===0&&/go$/.test(f)&&!/go$/.test(g)&&inf!=='seguir') add('A «g» in the yo form: the whole present subjunctive is built on it (tengo → tenga).','go');
+    if(p===0&&/go$/.test(f)&&!/go$/.test(g)&&!/guir$|gir$/.test(inf)) add('A «g» in the yo form: the whole present subjunctive is built on it (tengo → tenga).','go');
     if(inf==='ver'&&p===0) add('ver keeps the «e» of its infinitive here, like prever (preveo).');
     if(inf==='haber') add('haber is the auxiliary of the compound tenses (he visto); «hay» is its impersonal form: there is / there are.');
     if(inf==='ir') add('ir has almost no stem: its present is built on «v-», and «vamos» also means let’s go.');
@@ -3932,7 +4170,7 @@ function vRulesEs(v,tid,p){
   }
   if(T==='pret'){
     if(V_STRONG[inf]) add(`A strong preterite: the new stem ${vQ(V_STRONG[inf]+'-')} takes the endings -e, -iste, -o, -imos, -isteis, -ieron, with no accent on yo and él.`,'strong');
-    if(inf==='decir'&&p===5) add('After «j» the ending is «-eron», not «-ieron».','jeron');
+    if(/jeron$/.test(f)) add('After «j» the ending is «-eron», not «-ieron».','jeron');
     if(inf==='hacer'&&p===2) add('The «c» of hic- turns into «z» before «o» to keep its sound: hizo.');
     if(inf==='ser'||inf==='ir') add('ser and ir share the same preterite: the context says which one it is.');
     if(inf==='dar') add('dar takes the endings of -er and -ir verbs in the preterite, like ver (vi, viste, vio).');
@@ -3965,6 +4203,8 @@ function vRulesEs(v,tid,p){
 // French: where each form fits
 const V_SAME_FR={
   futst:'serai, aurai, ferai, irai, pourrai, verrai, saurai, voudrai, viendrai, devrai, enverrai',
+  fr_c:'commençons, plaçons, lançons, avançons', fr_g:'mangeons, changeons, nageons, voyageons', fr_ll:'appelle, jette, rappelle, épelle',
+  fr_e:'achète, lève, mène, espère, considère', fr_y:'emploie, essaie, paie, nettoie, ennuie',
   etre:'aller, venir, arriver, partir, entrer, sortir, rester, tomber, naître, mourir, devenir, revenir',
   subjown:'sois, aie, fasse, aille, puisse, sache, veuille', ps_us:'eus, fus, pus, sus, voulus, dus, lus, crus',
   ps_is:'fis, dis, vis, mis, pris, partis, finis', ps_in:'vins, tins, devins, revins, obtins',
@@ -3980,6 +4220,12 @@ function vRulesFr(v,tid,p){
     return out;
   }
   const T=tid, f=c[T][p], g=r[T][p], d=vInfo(f,g);
+  // French spelling that follows the sound
+  if(/ç/.test(f)&&!/ç/.test(g)) add('-cer verbs write «ç» before «a» and «o» to keep the soft «c»: nous commençons, il commença.','fr_c');
+  if(/ge[ao]/.test(f)&&!/ge[ao]/.test(g)) add('-ger verbs keep an «e» before «a» and «o» to keep the soft «g»: nous mangeons, il mangeait.','fr_g');
+  if(/(ll|tt)e/.test(f)&&!/(ll|tt)e/.test(g)) add('appeler, jeter and their family double the consonant before a silent «e»: j’appelle, je jette.','fr_ll');
+  if(/è/.test(f)&&!/è/.test(g)) add('«e» or «é» becomes «è» before a silent ending: j’achète, j’espère.','fr_e');
+  if(/oie|uie|aie/.test(f)&&!/oie|uie|aie/.test(g)&&/yer$/.test(inf)) add('-oyer and -uyer verbs change «y» to «i» before a silent «e»: j’emploie (in -ayer both are allowed: je paie, je paye).','fr_y');
   if(T==='pres'){
     if(['pouvoir','vouloir'].includes(inf)&&[0,1,2,5].includes(p)) add('The stem becomes «eu» where the ending is silent (je, tu, il, ils); nous and vous keep the infinitive’s «ou».','eu');
     if((inf==='venir'||inf==='tenir')&&[0,1,2,5].includes(p)) add('«e» becomes «ie» where the stress falls on the stem; ils viennent, tiennent also double the «n».','ien');
