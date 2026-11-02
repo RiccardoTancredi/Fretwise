@@ -548,8 +548,33 @@ mark.v-irr{color:var(--v-irr)} mark.v-stem{color:var(--v-stem)} mark.v-spell{col
 .vweekcard{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:16px;background:var(--surface-2);border:1px solid var(--line)}
 .vweek{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
 .vday{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
-.vday span{display:grid;place-items:center;width:min(38px,100%);aspect-ratio:1;border-radius:50%;border:2px solid var(--line)}
-.vday.done span{border-color:var(--mark);background:color-mix(in srgb,var(--mark) 22%,var(--surface))}
+.vday>span{display:grid;place-items:center;width:min(38px,100%);aspect-ratio:1;border-radius:50%;border:2px solid var(--line)}
+.vday.done>span{border-color:var(--mark);background:color-mix(in srgb,var(--mark) 22%,var(--surface))}
+.vday.done:not(.now)>span{background:var(--mark);color:#fff}
+.vday.done:not(.now)>span svg{width:70%;height:70%}
+.vtoast{position:fixed;top:max(10px,env(safe-area-inset-top));left:50%;z-index:90;width:min(460px,calc(100% - 24px));padding:12px 14px 14px;border-radius:18px;background:var(--surface);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:8px;text-align:center;transform:translate(-50%,0);animation:vtoastin .35s ease-out}
+.vtoast b{font-family:var(--font-display)}
+.vtoast.out{transition:transform .5s ease-in,opacity .5s ease-in;transform:translate(-50%,-140%);opacity:0}
+@keyframes vtoastin{from{transform:translate(-50%,-140%);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+.vgoaldone{position:relative;display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:20px;border:2px solid var(--mark);background:color-mix(in srgb,var(--mark) 8%,var(--surface));overflow:hidden}
+.vgoaldone.fresh{padding-top:78px}
+.vsky{position:absolute;top:4px;left:0;right:0;height:70px;pointer-events:none}
+.vplane{position:absolute;top:0;width:150px;height:76px;left:-170px;animation:vfly 3.6s ease-in-out .2s 1 forwards,vbob .6s ease-in-out infinite alternate}
+.vprop{transform-origin:151px 48px;animation:vspin .12s linear infinite}
+@keyframes vfly{0%{left:-170px}55%{left:calc(50% - 75px)}70%{left:calc(50% - 60px)}100%{left:calc(100% + 20px)}}
+@keyframes vbob{from{margin-top:0}to{margin-top:5px}}
+@keyframes vspin{from{transform:scaleY(1)}50%{transform:scaleY(.2)}to{transform:scaleY(1)}}
+.vgtitle{text-align:center;color:var(--mark);font-family:var(--font-display);font-weight:800;font-size:1.2rem}
+.vgsub{text-align:center;font-family:var(--font-display);font-weight:800;font-size:1.05rem}
+.vglists{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.vglists ul{margin:4px 0 0;padding-left:16px;max-height:9.5em;overflow:auto;font-size:.95rem;line-height:1.5}
+.vglh{display:flex;align-items:center;gap:6px;font-weight:800}
+.vglh svg{width:18px;height:18px}
+.vglh.no{color:var(--no-ink)} .vglh.yes{color:var(--yes-ink)}
+.vgcont{align-self:stretch;background:var(--mark);border-color:var(--mark);color:var(--on-mark)}
+.vtchips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.vtense.alt{background:var(--surface-2);color:var(--ink);border:1px solid var(--line)}
+@media (prefers-reduced-motion:reduce){.vtoast,.vtoast.out{animation:none;transition:none}.vplane{animation:none;left:calc(50% - 75px)}.vprop{animation:none}}
 .vday.done .vcat{width:76%;height:76%;vertical-align:0}
 .vday.now small{color:var(--ink);font-weight:700}
 .vday small{color:var(--muted);font-size:.8rem}
@@ -4231,7 +4256,23 @@ function vFlip(t){
 const vNorm=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
 const vLoose=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 function vTap(){ if(!VT) return; if(VT.phase==='ask'){ VT.phase='shown'; renderConj(); } else vAdvance(true); }
-function vAdvance(ok){ if(!VT||VT.phase!=='shown') return; vGrade(ok); vNew(); renderConj(); }
+function vAdvance(ok){
+  if(!VT||VT.phase!=='shown') return;
+  const first=!vDayKeys(romeDay()).length, before=vToday();
+  vGrade(ok);
+  if(before<vGoal()&&vToday()>=vGoal()) VBV.celebrate=true;     // the goal just reached: a little party
+  vNew(); renderConj();
+  if(first) vToast();
+}
+// the week slides down from the top for a moment after the day's first answer, in any language
+function vToast(){
+  const old=document.querySelector('.vtoast'); if(old) old.remove();
+  const streak=vStreak(), el=document.createElement('div');
+  el.className='vtoast'; el.setAttribute('role','status');
+  el.innerHTML=vWeekHtml()+`<b>${streak>1?`${streak} days in a row: keep it going!`:'A little practice counts: keep it up!'}</b>`;
+  document.body.appendChild(el);
+  setTimeout(()=>el.classList.add('out'),2600); setTimeout(()=>el.remove(),3200);
+}
 // Spanish speech, where the browser has a voice for it
 const vCanSay=()=>typeof window.speechSynthesis!=='undefined'&&typeof window.SpeechSynthesisUtterance!=='undefined';
 function vSay(text){
@@ -4264,11 +4305,10 @@ function vTabsHtml(){
 function vTrainHtml(){
   const goal=vGoal(), n=vToday(); let h=vTabsHtml();
   h+=`<div class="vgoal"><div class="vbar"><i style="width:${Math.min(100,Math.round(n/goal*100))}%"></i></div><div class="vgl"><span>Daily goal</span><span class="mono">${n} / ${goal}</span></div></div>`;
-  if(n>=goal&&!VBV.more&&!(VT&&VT.phase==='shown'))
-    return h+`<div class="wcard vcard"><div class="vinf">¡Hecho!</div><div>Today’s goal is done: ${n} ${n===1?'form':'forms'}.</div></div><div class="actions"><span class="spacer"></span><button type="button" class="btn" data-vbact="more">Keep going</button></div><div class="hint">To do more another day, raise the goal in Settings: the forms you’ve already done today count towards it.</div>`;
+  if(VBV.celebrate||n>=goal&&!VBV.more&&!(VT&&VT.phase==='shown')) return h+vGoalHtml(!!VBV.celebrate);
   if(!VT) return h+`<div class="hint">Nothing to practise: turn on at least one verb and one tense (Verbs tab and Settings).</div>`;
   const {v,tid,p}=vParse(VT.k), t=V_T[tid], shown=VT.phase==='shown';
-  h+=`<div class="wcard vcard vtap" role="button" tabindex="0" data-vbtap aria-label="${shown?'Next form':'Show the answer'}"><div class="vit">${esc(v.it)}</div><div class="vinf">${esc(v.inf)}</div><div class="vtense">${esc(t.name)}</div><div class="vperson">${esc(VT.pron||V_PERSONS[p])}</div>`
+  h+=`<div class="wcard vcard vtap" role="button" tabindex="0" data-vbtap aria-label="${shown?'Next form':'Show the answer'}"><div class="vit">${esc(v.it)}</div><div class="vinf">${esc(v.inf)}</div>${vTenseChips(t)}<div class="vperson">${esc(VT.pron||V_PERSONS[p])}</div>`
     +(shown?`<div class="vans">${vFormHtml(v,tid,p)}</div><div class="vjudge"><button type="button" class="vno" data-vbact="missed" aria-label="I didn’t know it" title="I didn’t know it">${V_ICON.down}</button><button type="button" class="vyes" data-vbact="knew" aria-label="I knew it" title="I knew it">${V_ICON.up}</button></div>`:`<div class="vblank">${tid==='impn'?'<span>no</span>':''}<i></i></div><div class="hint">Say it out loud, then tap to show the answer</div>`)+`</div>`;
   h+=`<div class="vtools"><button type="button" class="btn" data-vbact="hist" aria-label="History" title="History">${V_ICON.hist}</button><button type="button" class="btn" data-vbact="book" aria-label="Conjugation of ${esc(v.inf)}" title="Conjugation table">${V_ICON.book}</button>${vCanSay()?`<button type="button" class="btn" data-vbact="say" aria-label="Listen" title="${shown?'Listen to the answer':'Listen to the verb'}">${V_ICON.say}</button>`:''}</div>`;
   if(VT.practice) h+=`<div class="hint">Nothing due right now, so this is practice: it doesn’t change your review schedule.</div>`;
@@ -4322,12 +4362,34 @@ function vStreak(){ let n=0, t=Date.now(); if(!vDayDone(romeDay(t))) t-=DAY; whi
 // review stars: none (comes back soon) to three (three months), half stars in between
 const V_STARS=[0,.5,1,2,2.5,3];
 const vStarsHtml=b=>{ const n=V_STARS[Math.min(b||0,5)]; return `<span class="vst" aria-label="${n} of 3 stars">${[0,1,2].map(i=>`<i class="${n>=i+1?'on':n>=i+.5?'half':''}">★</i>`).join('')}</span>`; };
-function vHistHtml(){
-  let h=vTabsHtml();
+const V_TICK='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+// a red plane with the cat in the cockpit
+const V_PLANE=`<svg class="vplane" viewBox="0 0 170 86" aria-hidden="true"><path d="M20 34 6 10l18 3 14 21z" fill="#c8161f"/>`
+  +V_CAT.replace('<svg class="vcat" viewBox="0 0 64 64" aria-hidden="true">','<svg x="58" y="-2" width="44" height="44" viewBox="0 0 64 64">')
+  +`<ellipse cx="82" cy="48" rx="62" ry="18" fill="#e3232c"/><path d="M28 52q54 22 110 0q-55 12-110 0z" fill="#b3121b"/><path d="M34 44q48-9 96 0" stroke="#ffd23f" stroke-width="3" fill="none" stroke-linecap="round"/>`
+  +`<path d="M64 52h46l-16 26H70z" fill="#c4171f"/><ellipse cx="143" cy="48" rx="7" ry="10" fill="#d4d9df"/><g class="vprop"><ellipse cx="151" cy="48" rx="3" ry="24" fill="#9aa3ad"/></g></svg>`;
+function vGoalHtml(fresh){
+  const {hard,easy}=vTodayCounts(), today=romeDay();
+  // each form once, by how its latest answer today went
+  const latest=new Map(); VB.hist.forEach(x=>{ const pr=vParse(x.k); if(pr.lang===VL&&pr.v&&romeDay(x.t)===today) latest.set(x.k,{x,pr}); });
+  const forms=ok=>[...latest.values()].reverse().filter(o=>!!o.x.ok===ok).map(o=>vForm(o.pr.v,o.pr.tid,o.pr.p));
+  const list=(arr,empty)=>arr.length?`<ul>${arr.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:`<p class="hint">${empty}</p>`;
+  return `<div class="vgoaldone${fresh?' fresh':''}">${fresh?`<div class="vsky">${V_PLANE}</div>`:''}<div class="vgtitle">Daily goal reached!</div>${vWeekHtml()}`
+    +`<div class="vgsub">Today’s training</div><div class="vtoday"><div class="vhard"><b>${hard}</b><span>Hard</span></div><div class="veasy"><b>${easy}</b><span>Easy</span></div></div>`
+    +`<div class="vglists"><div><div class="vglh no">${V_ICON.down} To review</div>${list(forms(false),'Nothing missed today.')}</div><div><div class="vglh yes">${V_ICON.up} Most solid</div>${list(forms(true),'—')}</div></div>`
+    +`<button type="button" class="btn primary big vgcont" data-vbact="cont">Continue</button><div class="hint">Continue keeps training beyond the goal; the forms count for tomorrow’s reviews as usual.</div></div>`;
+}
+const vTenseChips=t=>/ progresivo$/.test(t.name)?`<div class="vtchips"><span class="vtense">${esc(t.name.replace(/ progresivo$/,''))}</span><span class="vtense alt">Progresivo</span></div>`:`<div class="vtense">${esc(t.name)}</div>`;
+function vWeekHtml(){
   const today=romeDay(), d0=new Date(today+'T12:00:00Z'), dow=(d0.getUTCDay()+6)%7;
   const week=Array.from({length:7},(_,i)=>new Date(d0.getTime()+(i-dow)*DAY).toISOString().slice(0,10));
-  const res=vDayRes(today,VL), hard=res.filter(x=>!x).length, easy=res.length-hard, streak=vStreak();
-  h+=`<div class="vweekcard"><div class="vweek">${week.map((d,i)=>`<div class="vday${vDayDone(d)?' done':''}${d===today?' now':''}"><span>${vDayDone(d)?V_CAT:''}</span><small><span class="dshort">${V_L.days[i][0]}</span><span class="dlong">${V_L.days[i][1]}</span></small></div>`).join('')}</div>`
+  return `<div class="vweek">${week.map((d,i)=>{ const done=vDayDone(d); return `<div class="vday${done?' done':''}${d===today?' now':''}"><span>${done?(d===today?V_CAT:V_TICK):''}</span><small><span class="dshort">${V_L.days[i][0]}</span><span class="dlong">${V_L.days[i][1]}</span></small></div>`; }).join('')}</div>`;
+}
+const vTodayCounts=()=>{ const res=vDayRes(romeDay(),VL), hard=res.filter(x=>!x).length; return {hard,easy:res.length-hard}; };
+function vHistHtml(){
+  let h=vTabsHtml();
+  const {hard,easy}=vTodayCounts(), streak=vStreak();
+  h+=`<div class="vweekcard">${vWeekHtml()}`
     +`<div class="vstreak">${streak?`${streak}-day streak`:'Train today to start a streak'}</div>`
     +`<div class="vtoday"><div class="vhard"><b>${hard}</b><span>Hard</span></div><div class="veasy"><b>${easy}</b><span>Easy</span></div></div></div>`;
   const list=VB.hist.filter(x=>vParse(x.k).lang===VL).slice(-60).reverse(); if(!list.length) return h+'<div class="hint">Nothing yet: your answers appear here as you train.</div>';
@@ -4380,7 +4442,7 @@ function vClick(e){
     const a=b.dataset.vbact;
     if(a==='missed') vAdvance(false);
     else if(a==='knew') vAdvance(true);
-    else if(a==='more'){ VBV.more=true; if(!VT) vNew(); renderConj(); }
+    else if(a==='more'||a==='cont'){ VBV.more=true; VBV.celebrate=false; if(!VT) vNew(); renderConj(); scrollTo(0,0); }
     else if(a==='hist'){ VBV={tab:'hist'}; renderConj(); }
     else if(a==='book'&&VT){ const {v,tid,p}=vParse(VT.k); openVerb(v.inf,VT.phase==='shown'?tid:null,VT.phase==='shown'?p:null,'train'); }
     else if(a==='say'&&VT){ const {v,tid,p}=vParse(VT.k); vSay(VT.phase==='ask'?v.inf:vSayForm(VT.pron||V_SAY[p],vForm(v,tid,p))); }

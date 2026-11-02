@@ -8,3 +8,7 @@ dist/
 push.sh
 # local Claude Code settings and preview config
 .claude/
+
+# screen recordings shared while working, not part of the app
+*.mp4
+*.mov
