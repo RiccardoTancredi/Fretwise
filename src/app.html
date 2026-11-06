@@ -450,7 +450,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .tread b{font-family:var(--font-display);font-size:2.6rem;font-weight:800;line-height:1}
 .tread span{font-family:var(--font-mono);font-size:.85rem;color:var(--muted)} .tread .thint{font-family:var(--font-body);font-size:1rem;color:var(--ink);min-height:1.3em}
 .cneck{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
-.cneck svg{display:block;max-width:100%}
+.cneck svg{display:block;max-width:none}
 .fit{display:flex;flex-direction:column;gap:12px}
 .fitadd{display:flex;gap:8px}
 .fitadd input{flex:1;min-width:0;font:inherit;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)}
@@ -5089,7 +5089,7 @@ async function connectPaint(db,uid){
 function loadPaintings(){
   if(PDATA) return Promise.resolve(PDATA);
   if(!pLoading) pLoading=fetch('paintings.json').then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); })
-    .then(d=>{ PDATA=(d.paintings||[]).filter(x=>x.thumb&&x.artist&&x.title); return PDATA; })
+    .then(d=>{ PDATA=(d.paintings||[]).filter(x=>x.thumb&&x.artist&&x.title); PMAP=null; setTimeout(pKeepFav,3000); return PDATA; })
     .catch(e=>{ pLoading=null; throw e; });
   return pLoading;
 }
@@ -5234,6 +5234,18 @@ function restorePaint(){
 let PG=null, PMAP=null;
 const pWork=id=>{ if(!PMAP){ PMAP=new Map(); PDATA.forEach(x=>PMAP.set(x.id,x)); } return PMAP.get(id); };
 // To revisit, Right last time and Known don't overlap: a work moves from one to the next as you answer it
+// pictures of favourite works are saved on the device (the service worker also keeps the last ones seen),
+// so they still show offline; un-starring lets them go
+const P_FAV_CACHE='fretwise-fav';
+async function pKeepFav(){
+  if(!('caches' in window)||!PDATA) return;
+  try{
+    const c=await caches.open(P_FAV_CACHE), want=new Set();
+    favIds(PS.fav).forEach(id=>{ const x=pWork(id); if(x){ want.add(x.thumb); want.add(pSmall(x)); } });
+    for(const r of await c.keys()) if(!want.has(r.url)) await c.delete(r);
+    for(const u of want) if(!(await c.match(u))){ try{ const r=await fetch(u,{mode:'no-cors'}); await c.put(u,r); }catch(e){} }
+  }catch(e){}
+}
 const P_FILTERS=[['all','All seen'],['missed','To revisit'],['right','Right last time'],['known','Known'],['fav','★ Favorites']];
 const pStar=id=>starBtn('data-pfav',id,favOn(PS.fav,id));
 const pFilter=(v,f)=>!!v&&(f==='all'||(f==='right'?pRightLast(v)&&!pKnown(v):f==='known'?pKnown(v)&&pRightLast(v):pMissed(v)));
@@ -5373,7 +5385,7 @@ function openPaintings(){
 $('pbody').addEventListener('click',e=>{
   const o=e.target.closest('[data-popt]'); if(o){ answerPaint(+o.dataset.popt); return; }
   const g=e.target.closest('[data-pgal]'); if(g){ openGallery(g.dataset.pgal); return; }
-  const pf=e.target.closest('[data-pfav]'); if(pf){ const id=pf.dataset.pfav; favSet(PS.fav,id,!favOn(PS.fav,id)); pSave(); renderPaint(); return; }
+  const pf=e.target.closest('[data-pfav]'); if(pf){ const id=pf.dataset.pfav; favSet(PS.fav,id,!favOn(PS.fav,id)); pSave(); pKeepFav(); renderPaint(); return; }
   const pv=e.target.closest('[data-pview]'); if(pv){ subPush(); PG.i=+pv.dataset.pview; renderPaint(); scrollTo(0,0); return; }
   const im=e.target.closest('.pframe img[data-big]'); if(im){ openLightbox(im.src,im.dataset.big,im.alt); return; }
   const pr=e.target.closest('[data-pround]'); if(pr){ openRoundWork(+pr.dataset.pround); return; }
@@ -5688,21 +5700,25 @@ function renderFit(){
   h+=`<div class="row fitshow"><span class="hint">Light up</span><div class="chips">${['All chords'].concat(f.chords.map(c=>chordName(fitChord(c)))).map((n,i)=>`<button type="button" class="chip" data-fitshow="${i-1}" aria-pressed="${show===i-1}">${esc(n)}</button>`).join('')}</div>`
     +`<span class="spacer"></span><button type="button" class="btn sm" data-fit="playscale">Play scale</button>${show>=0?`<button type="button" class="btn sm" data-fit="playarp">Play arpeggio</button>`:''}</div>`
     +`<div class="cneck fitneck"><svg id="fitNeck" role="img" aria-label="${esc(note(x.root)+' '+x.sc.name)} on the neck"></svg></div>`
-    +`<div class="hint">${show>=0?`Filled: the notes of ${esc(chordName(fitChord(f.chords[show])))}, its root in orange: play them in one position for an arpeggio. Outlined: the rest of ${esc(note(x.root))} ${esc(x.sc.name)}.`:`Filled: every chord’s notes; outlined: the rest of the scale. Pick one chord to see its arpeggio shapes.`}${x.missing.length?` ${x.missing.map(pc=>note(pc)).join(', ')} ${x.missing.length===1?'is':'are'} in the chords but not in this scale: shown in red.`:''}</div></div>`;
+    +`<div class="hint">${show>=0?`Filled: the notes of ${esc(chordName(fitChord(f.chords[show])))}, its root in orange: play them in one position for an arpeggio. Outlined: the rest of ${esc(note(x.root))} ${esc(x.sc.name)}.`:`Filled: every chord’s notes; outlined: the rest of the scale. Pick one chord to see its arpeggio shapes.`}${x.missing.length?` ${x.missing.map(pc=>note(pc)).join(', ')} ${x.missing.length===1?'is':'are'} in the chords but not in this scale: shown in red (a chord’s root stays orange).`:''}</div></div>`;
   el.innerHTML=h;
   const names=new Map(fitScaleNames(x).map(t=>[t.pc,t.name])), lit=new Map(), roots=new Set();
   (show>=0?[f.chords[show]]:f.chords).forEach(c=>{ fitTones(c).forEach(t=>{ if(!lit.has(t.pc)) lit.set(t.pc,t.name); }); if(show>=0) roots.add(c.root); });
   const M=[]; for(let s=0;s<NS;s++) for(let fr=0;fr<=15;fr++){ const pc=pcOf(s,fr);
-    if(lit.has(pc)) M.push({s,f:fr,kind:!names.has(pc)?'bad':roots.has(pc)?'root':'good',label:lit.get(pc)});
+    if(lit.has(pc)) M.push({s,f:fr,kind:roots.has(pc)?'root':!names.has(pc)?'bad':'good',label:lit.get(pc)});
     else if(names.has(pc)) M.push({s,f:fr,kind:'ghost',label:names.get(pc)}); }
   fullNeck('fitNeck',M,'wood4');
 }
-// the whole neck, 0 to 15, as wide as the page; on a phone it stands up so every fret fits
+// the whole neck, 0 to 15: as wide as the page on a computer, a sideways scroll on a phone
 function fullNeck(id,M,gid){
-  const svg=$(id), w=Math.max(280,svg.parentNode.clientWidth||600), vertical=w<640;
-  drawBoard(svg,{width:w,vertical,start:0,end:15,markers:M,gid,maxLen:vertical?Math.max(760,innerHeight*1.1):undefined});
+  const svg=$(id), w=svg.parentNode.clientWidth||600;
+  drawBoard(svg,{width:w>=760?w:(NS<=4?860:1000),vertical:false,start:0,end:15,markers:M,gid});
 }
-function fitAdd(list){ const f=fitState(); f.chords=f.chords.concat(list).slice(0,8); f.sel=''; f.show=-1; save(); renderFit(); }
+function fitAdd(list){
+  const f=fitState(), same=(a,b)=>a.root===b.root&&a.ch===b.ch;
+  list.forEach(c=>{ if(!f.chords.some(x=>same(x,c))) f.chords.push(c); });
+  f.chords=f.chords.slice(0,8); f.sel=''; f.show=-1; save(); renderFit();
+}
 $('answer').addEventListener('click',e=>{
   if(S.mode!=='fit') return;
   const b=e.target.closest('[data-fit],[data-fitdel],[data-fitsel],[data-fitshow]'); if(!b) return;
@@ -5711,7 +5727,10 @@ $('answer').addEventListener('click',e=>{
   if(b.dataset.fitsel){ f.sel=b.dataset.fitsel; save(); renderFit(); return; }
   if(b.dataset.fitshow!=null){ f.show=+b.dataset.fitshow; save(); renderFit(); return; }
   const a=b.dataset.fit;
-  if(a==='add'){ const t=$('fitText'), r=fitParse(t.value); if(r.out.length) fitAdd(r.out); const m=$('fitMsg'); if(m) m.textContent=r.bad.length?`Couldn’t read: ${r.bad.join(', ')}. Write a root and a chord type, e.g. Am7, F#dim, Bbmaj7.`:''; if($('fitText')&&r.bad.length) $('fitText').value=r.bad.join(' '); return; }
+  if(a==='add'){ const r=fitParse($('fitText').value); if(r.out.length) fitAdd(r.out);
+    const t=$('fitText'), m=$('fitMsg'); if(t) t.value=r.bad.join(' ');
+    if(m) m.textContent=r.bad.length?`Couldn’t read: ${r.bad.join(', ')}. Write a root and a chord type, e.g. Am7, F#dim, Bbmaj7.`:'';
+    return; }
   if(a==='addsel') fitAdd([{root:+$('fitRoot').value,ch:$('fitType').value}]);
   if(a==='clear'){ f.chords=[]; f.sel=''; f.show=-1; save(); renderFit(); }
   if(a==='playscale'){ const x=fitScales(f.chords).find(y=>y.key===f.sel); if(!x) return; ensureAudio(); const base=48+x.root; playSeq(x.sc.steps.concat([12]).map(st=>base+st),0.24); }
