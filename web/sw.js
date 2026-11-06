@@ -26,14 +26,25 @@ self.addEventListener('install',e=>{
 self.addEventListener('activate',e=>{
   e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('fretwise-')&&![CACHE,RUNTIME,PICS,FAV].includes(k)).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
 });
+// once the network has kept a file waiting 3 s, the next minute's files come straight from the saved copy
+// (each one still asks the network in the background), so a weak signal costs one wait, not one per file
+let slowUntil=0;
 async function trim(c,n=60){ const ks=await c.keys(); for(let i=0;i<ks.length-n;i++) await c.delete(ks[i]); }
 self.addEventListener('fetch',e=>{
   const req=e.request; if(req.method!=='GET') return;
   const url=new URL(req.url);
   if(url.origin===location.origin){
-    // app files: network first so updates show up straight away, the saved copy when offline
-    e.respondWith(fetch(req).then(r=>{ if(r.ok){ const copy=r.clone(); caches.open(CACHE).then(c=>c.put(req,copy)); } return r; })
-      .catch(()=>caches.match(req,{ignoreSearch:true}).then(r=>r||(req.mode==='navigate'?caches.match('index.html'):Response.error()))));
+    // app files: network first so updates show up straight away; the saved copy when offline, or when the
+    // network hasn't answered within 3 seconds (a weak signal), while the fresh copy still lands for next time
+    const saved=()=>caches.match(req,{ignoreSearch:true}).then(r=>r||(req.mode==='navigate'?caches.match('index.html'):null));
+    const net=fetch(req).then(r=>{ if(r.ok){ const copy=r.clone(); caches.open(CACHE).then(c=>c.put(req,copy)); } return r; });
+    e.waitUntil(net.catch(()=>{}));
+    e.respondWith(new Promise(resolve=>{
+      let done=false; const give=r=>{ if(!done&&r){ done=true; resolve(r); } };
+      if(Date.now()<slowUntil) saved().then(give);
+      const t=setTimeout(()=>{ slowUntil=Date.now()+60000; saved().then(give); },3000);
+      net.then(r=>{ clearTimeout(t); if(!done) slowUntil=0; give(r); }).catch(()=>{ clearTimeout(t); saved().then(r=>{ give(r||Response.error()); }); });
+    }));
     return;
   }
   if(PIC.test(req.url)){
