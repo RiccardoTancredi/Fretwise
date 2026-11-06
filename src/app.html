@@ -5690,7 +5690,7 @@ function renderFit(){
     +`<div class="library-controls"><label>Root<select id="fitRoot">${ALL12.map(pc=>`<option value="${pc}">${note(pc)}</option>`).join('')}</select></label>`
     +`<label>Chord<select id="fitType">${CHORD_GROUPS.map(g=>`<optgroup label="${g[1]}">${CHORDS.filter(ch=>ch.grp===g[0]).map(ch=>`<option value="${ch.id}">${ch.sym||'major'} · ${ch.name}</option>`).join('')}</optgroup>`).join('')}</select></label>`
     +`<button type="button" class="btn" data-fit="addsel">Add chord</button></div><div class="hint" id="fitMsg"></div>`;
-  if(f.chords.length) h+=`<div class="chips fitchips">${f.chords.map((c,i)=>`<span class="fitchip"><b>${esc(chordName(fitChord(c)))}</b><small>${fitTones(c).map(t=>t.name).join(' ')}</small><button type="button" class="linkbtn" data-fitdel="${i}" aria-label="Remove ${esc(chordName(fitChord(c)))}">✕</button></span>`).join('')}<button type="button" class="linkbtn" data-fit="clear">Clear all</button></div>`;
+  if(f.chords.length) h+=`<div class="chips fitchips">${f.chords.map((c,i)=>`<span class="fitchip"><b>${esc(chordName(fitChord(c)))}</b><small>${fitTones(c).map(t=>t.name).join(' ')}</small><button type="button" class="linkbtn" data-fitdel="${i}" aria-label="Remove ${esc(chordName(fitChord(c)))}">✕</button></span>`).join('')}<button type="button" class="btn sm" data-fit="clear">Erase all</button></div>`;
   if(!f.chords.length){ el.innerHTML=h+`<div class="hint">Type chord names (C, Am7, F♯m7♭5, B♭maj7, G7♯9…) or pick them, and the scales that contain all their notes appear here, with the chords’ notes lit on the neck.</div></div>`; return; }
   if(!list.length){ el.innerHTML=h+`<div class="hint">No scale in this app comes within two notes of these chords. Try fewer chords at a time.</div></div>`; return; }
   const full=list.filter(y=>!y.missing.length);
@@ -5714,11 +5714,8 @@ function fullNeck(id,M,gid){
   const svg=$(id), w=svg.parentNode.clientWidth||600;
   drawBoard(svg,{width:w>=760?w:(NS<=4?860:1000),vertical:false,start:0,end:15,markers:M,gid});
 }
-function fitAdd(list){
-  const f=fitState(), same=(a,b)=>a.root===b.root&&a.ch===b.ch;
-  list.forEach(c=>{ if(!f.chords.some(x=>same(x,c))) f.chords.push(c); });
-  f.chords=f.chords.slice(0,8); f.sel=''; f.show=-1; save(); renderFit();
-}
+// Add puts the new chords at the end of the progression (a chord may come back, as in C G Am C)
+function fitAdd(list){ const f=fitState(); f.chords=f.chords.concat(list).slice(0,12); f.sel=''; f.show=-1; save(); renderFit(); }
 $('answer').addEventListener('click',e=>{
   if(S.mode!=='fit') return;
   const b=e.target.closest('[data-fit],[data-fitdel],[data-fitsel],[data-fitshow]'); if(!b) return;
