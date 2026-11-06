@@ -5714,8 +5714,12 @@ function fullNeck(id,M,gid){
   const svg=$(id), w=svg.parentNode.clientWidth||600;
   drawBoard(svg,{width:w>=760?w:(NS<=4?860:1000),vertical:false,start:0,end:15,markers:M,gid});
 }
-// Add puts the new chords at the end of the progression (a chord may come back, as in C G Am C)
-function fitAdd(list){ const f=fitState(); f.chords=f.chords.concat(list).slice(0,12); f.sel=''; f.show=-1; save(); renderFit(); }
+// Add puts new chords at the end of the list; a chord already there counts as added, so it isn't listed twice
+function fitAdd(list){
+  const f=fitState(), have=c=>f.chords.some(x=>x.root===c.root&&x.ch===c.ch);
+  list.forEach(c=>{ if(!have(c)) f.chords.push(c); });
+  f.chords=f.chords.slice(0,12); f.sel=''; f.show=-1; save(); renderFit();
+}
 $('answer').addEventListener('click',e=>{
   if(S.mode!=='fit') return;
   const b=e.target.closest('[data-fit],[data-fitdel],[data-fitsel],[data-fitshow]'); if(!b) return;
