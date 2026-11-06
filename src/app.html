@@ -450,7 +450,19 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .tread b{font-family:var(--font-display);font-size:2.6rem;font-weight:800;line-height:1}
 .tread span{font-family:var(--font-mono);font-size:.85rem;color:var(--muted)} .tread .thint{font-family:var(--font-body);font-size:1rem;color:var(--ink);min-height:1.3em}
 .cneck{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
-.cneck svg{display:block;max-width:none}
+.cneck svg{display:block;max-width:100%}
+.fit{display:flex;flex-direction:column;gap:12px}
+.fitadd{display:flex;gap:8px}
+.fitadd input{flex:1;min-width:0;font:inherit;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)}
+.fitchips{align-items:center}
+.fitchip{display:inline-flex;align-items:baseline;gap:8px;padding:6px 10px;border-radius:12px;background:var(--accent-soft);border:1px solid var(--line)}
+.fitchip small{color:var(--muted)}
+.fitlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.fitres{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);font:inherit;color:inherit;text-align:left;cursor:pointer}
+.fitres b{font-family:var(--font-display)} .fitres small{color:var(--muted);font-size:.82rem;line-height:1.35}
+.fitres.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-soft)}
+.fitres.near b::after{content:' · close';color:var(--warn);font-weight:600}
+.fitshow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .pick .wordmark{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;padding:14px 4px 4px;min-height:96px;font-family:var(--font-display);font-weight:800;font-size:1.35rem;letter-spacing:-.01em}
 .pick .wordmark span:nth-child(2n){color:var(--accent)}
 .pick .wordmark small{flex-basis:100%;font-family:var(--font-body);font-weight:400;font-size:.85rem;color:var(--muted)}
@@ -689,6 +701,7 @@ mark.v-irr{color:var(--v-irr)} mark.v-stem{color:var(--v-stem)} mark.v-spell{col
       <span class="theory-label">Theory</span>
       <button role="tab" data-mode="circle" aria-selected="false">Circle<span class="long"> of 5ths</span></button>
       <button role="tab" data-mode="library" aria-selected="false">All Chords</button>
+      <button role="tab" data-mode="fit" aria-selected="false">Scale finder</button>
       <button role="tab" data-mode="tuner" aria-selected="false">Tuner</button>
     </nav>
     <nav class="modes" id="chessModes" role="tablist" aria-label="Chess" hidden>
@@ -1016,7 +1029,7 @@ function load(){
     const st=d.settings||{};
     // older versions kept a single (guitar) range and string list at the top level
     if(st.fretStart!=null&&!st.by){ S.by.guitar.fretStart=st.fretStart; S.by.guitar.fretEnd=st.fretEnd; if(Array.isArray(st.strings)&&st.strings.length===6) S.by.guitar.strings=st.strings; }
-    ['mode','lastView','acc','naturalsOnly','allPc','ivMode','ivAll','intervals','scales','scaleRootPcs','scaleArea','scalePos','circle','library','tuner','roundLen','sound','chordShapes','inst'].forEach(k=>{ if(st[k]!=null) S[k]=st[k]; });
+    ['mode','lastView','acc','naturalsOnly','allPc','ivMode','ivAll','intervals','scales','scaleRootPcs','scaleArea','scalePos','circle','library','tuner','fit','roundLen','sound','chordShapes','inst'].forEach(k=>{ if(st[k]!=null) S[k]=st[k]; });
     // scales used to live under Intervals
     if(S.mode==='iv'&&S.ivMode==='scale'){ S.mode='scale'; S.ivMode='interval'; }
     S.roundLen=validRoundLength(S.roundLen)||10;
@@ -1483,7 +1496,7 @@ function renderCircle(){
       <div class="row cofscale"><label for="cofScale" class="hint">On the neck</label><select id="cofScale"></select><span class="spacer"></span><button type="button" class="btn sm" data-cof="playscale">Play scale</button></div>
       <div id="cofSChordsWrap" hidden><div class="eyebrow" id="cofSTitle"></div><div class="cchords" id="cofSChords"></div><div class="cofinfo" id="cofSInfo"></div></div>
       <div class="cneck" id="cofNeckWrap"><svg id="cofNeck" role="img" aria-label="Scale on the neck"></svg></div>
-      <div class="hint">Tap a key to make it the key; tap one of its chords (the coloured segments, or the buttons) to see it on the neck. Neighbours on the circle are a fifth apart and differ by one sharp or flat. Swipe the neck sideways to see it all.</div>
+      <div class="hint">Tap a key to make it the key; tap one of its chords (the coloured segments, or the buttons) to see it on the neck. Neighbours on the circle are a fifth apart and differ by one sharp or flat.</div>
       <details class="chord-help"><summary>How chords work · 7ths, extensions and alt</summary>
         <p>A triad stacks a root, a 3rd and a 5th. The 3rd makes it major or minor. Adding a 7th gives a seventh chord: <b>7</b> means a major 3rd and a minor 7th; <b>maj7</b> means a major 7th.</p>
         <p><b>9, 11 and 13</b> are 2, 4 and 6 an octave higher. The symbol describes the harmony; a playable <i>voicing</i> chooses which notes to sound, in which octaves. You do not need to fit every theoretical note onto the strings.</p>
@@ -1535,8 +1548,7 @@ function renderCircle(){
     if(tones&&tones.has(pc)) M.push({s,f,kind:pc===nc.tones[0].pc?'root':'good',label:tones.get(pc)});
     else if(names.has(pc)) M.push({s,f,kind:tones?'ghost':pc===st.tonicPc?'root':'reveal',label:names.get(pc)});
   }
-  const nW=NS<=4?860:1000;
-  drawBoard($('cofNeck'),{width:nW,vertical:false,start:0,end:15,markers:M,gid:'wood3'});
+  fullNeck('cofNeck',M,'wood3');
   const theory=theoryQuestion(st);
   $('cofTheory').innerHTML=CHORDS.map(ch=>`<option value="${ch.id}"${ch===theory.ch?' selected':''}>${chordName({...theory,ch})}</option>`).join('');
   $('cofTheoryBody').innerHTML=chordGuide(theory);
@@ -1756,7 +1768,7 @@ function questionReplacer(k,v){
 }
 function questionReviver(k,v){ return v&&v.fwCollection==='Map'?new Map(v.values):v&&v.fwCollection==='Set'?new Set(v.values):v; }
 function storeRound(){
-  if(!round||(!Q&&phase!=='summary')||['circle','library','tuner'].includes(S.mode)||Q&&Q.practice&&Q.practice.mode!==S.mode) return;
+  if(!round||(!Q&&phase!=='summary')||['circle','library','tuner','fit'].includes(S.mode)||Q&&Q.practice&&Q.practice.mode!==S.mode) return;
   const a=roundsAll(); a[roundKey()]={results:round.results,n:S.roundLen,counted:!!round.counted,t:Date.now(),phase,
     feedback:$('feedback').textContent,feedbackClass:($('feedback').className.split(' ').find(c=>['good','bad','info'].includes(c))||''),
     question:Q?JSON.stringify(Q,questionReplacer):null,elapsed:phase==='ask'?Math.max(0,performance.now()-qStart):Q&&Q.elapsed||0};
@@ -1769,7 +1781,7 @@ function newRound(fresh){
   if(saved&&inClear(saved.t)) saved=null;
   if(fresh) dropRound();
   round={results:saved&&Array.isArray(saved.results)?saved.results:[],counted:!!(saved&&saved.counted)}; Q=null;
-  if(S.mode==='library'||S.mode==='tuner'){ Q=null; phase=S.mode; setFeedback('',''); return render(); }
+  if(S.mode==='library'||S.mode==='tuner'||S.mode==='fit'){ Q=null; phase=S.mode; setFeedback('',''); return render(); }
   if(S.mode==='circle'){ Q=null; phase='circle'; setFeedback('',''); return render(); }
   if(saved&&saved.question){
     try{
@@ -1790,7 +1802,7 @@ function newRound(fresh){
 }
 function practiceSettingsChanged(){
   clearTimeout(advTimer); save(); renderSettings();
-  if(!round||!Q||['library','circle','tuner'].includes(S.mode)){ render(); return; }
+  if(!round||!Q||['library','circle','tuner','fit'].includes(S.mode)){ render(); return; }
   if(S.mode!=='all'&&round.results.length>=S.roundLen) return showSummary();
   if(phase==='summary') return nextQuestion();
   storeRound(); render();
@@ -2236,7 +2248,7 @@ function renderAnswer(){
   if(done&&Q.type==='ivA'&&octaveLinks(Q.targets).length) h+=`<div class="hint">${INST.octaveHint}</div>`;
   el.innerHTML=h;
 }
-function render(){ if(view!=='app') return; updateReviewButtons(); $('boardWrap').hidden=S.mode==='circle'||S.mode==='library'||S.mode==='tuner'; if(S.mode!=='tuner') tunerStop(); if(S.mode==='tuner'){ renderTuner(); renderHeat(); syncTabs(); return; } if(S.mode==='library'){ renderLibrary(); renderHeat(); syncTabs(); return; } if(S.mode==='circle'){ renderCircle(); renderHeat(); syncTabs(); return; } renderPrompt(); renderBoard(); renderAnswer(); renderHeat(); syncTabs(); }
+function render(){ if(view!=='app') return; updateReviewButtons(); $('boardWrap').hidden=S.mode==='circle'||S.mode==='library'||S.mode==='tuner'||S.mode==='fit'; if(S.mode!=='tuner') tunerStop(); if(S.mode==='tuner'){ renderTuner(); renderHeat(); syncTabs(); return; } if(S.mode==='fit'){ renderFit(); renderHeat(); syncTabs(); return; } if(S.mode==='library'){ renderLibrary(); renderHeat(); syncTabs(); return; } if(S.mode==='circle'){ renderCircle(); renderHeat(); syncTabs(); return; } renderPrompt(); renderBoard(); renderAnswer(); renderHeat(); syncTabs(); }
 function syncTabs(){ document.querySelectorAll('.modes button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mode===S.mode))); }
 
 /* ---------- start screen ---------- */
@@ -2319,6 +2331,7 @@ $('instBtn').addEventListener('click',goHome);
 function chip(act,val,on,label,mono){ return `<button type="button" class="chip${mono?' mono':''}" data-act="${act}" data-v="${val}" aria-pressed="${on}">${label}</button>`; }
 function renderSettings(){
   let h=''; const c=C();
+  if(S.mode==='fit'){ $('settings').innerHTML='<p class="hint">Scales are ranked by how well they fit: every chord note inside, as few other notes as possible, on one of the chords’ roots, common scales first. Scales with the same notes (C major, A minor, D Dorian…) are named together.</p>'; return; }
   if(S.mode==='tuner'){ $('settings').innerHTML='<p class="hint">Tunings for this instrument and the reference pitch are in the Tuner itself. The reference A is the A above middle C (440 Hz); every string is worked out from it.</p>'+`<div class="field"><span class="fl">Note names</span><div class="chips">${chip('acc','sharp',S.acc==='sharp','Sharps (C♯)')}${chip('acc','flat',S.acc==='flat','Flats (D♭)')}</div></div><div class="field"><span class="fl">Reference sound</span><div class="chips">${chip('sound','1',S.sound,'Plucked string')}${chip('sound','0',!S.sound,'Off')}</div></div>`; return; }
   if(!['circle','library'].includes(S.mode)) h+='<p class="hint">Settings apply to your next question. Completed answers and this question’s draft are kept. Round length updates this round without removing answers.</p>';
   if(S.mode==='library'){ $('settings').innerHTML='<p class="hint">Choose a root and chord in All Chords. Its fret range and bass setting are independent of your exercises.</p>'+`<div class="field"><span class="fl">Sound</span><div class="chips">${chip('sound','1',S.sound,'Plucked string')}${chip('sound','0',!S.sound,'Off')}</div></div>`; return; }
@@ -2468,7 +2481,7 @@ $('answer').addEventListener('click',e=>{
   else if(a==='replay') replay();
 });
 document.addEventListener('keydown',e=>{
-  if(view!=='app'||S.mode==='library'||S.mode==='circle'||S.mode==='tuner') return;
+  if(view!=='app'||S.mode==='library'||S.mode==='circle'||S.mode==='tuner'||S.mode==='fit') return;
   const tg=e.target&&e.target.tagName; if(tg==='SELECT'||tg==='INPUT'||tg==='TEXTAREA') return;
   if(tg==='TR'&&(e.key==='Enter'||e.key===' ')&&e.target.dataset.note!=null){ e.preventDefault(); pickNote(+e.target.dataset.note); return; }
   if(S.mode==='all'&&e.key==='Enter'&&tg!=='BUTTON'){
@@ -5613,6 +5626,99 @@ $('answer').addEventListener('click',e=>{
 });
 $('answer').addEventListener('change',e=>{ if(S.mode!=='tuner'||e.target.id!=='tunerPreset') return; tunerState()[INST.id]=e.target.value; save(); renderTuner(); });
 
+/* ---------- Scale finder: chords in, scales that hold them out ---------- */
+// Give it one or more chords; it lists the scales whose notes contain every chord tone (closest ones when
+// none does), and draws the chosen scale over the whole neck with a chord's tones lit, to see where its
+// arpeggios sit inside the scale.
+function fitState(){ const f=Object.assign({chords:[],sel:'',show:-1},S.fit); f.chords=(f.chords||[]).filter(c=>CHORDS.some(x=>x.id===c.ch)); S.fit=f; return f; }
+const FIT_ALIAS={'':'maj',maj:'maj',M:'maj',m:'m',min:'m','-':'m',dim:'dim','°':'dim',o:'dim',aug:'aug','+':'aug',sus2:'sus2',sus4:'sus4',sus:'sus4',
+  '7':'7',dom7:'7',maj7:'maj7',M7:'maj7','Δ':'maj7','Δ7':'maj7',m7:'m7',min7:'m7','-7':'m7',m7b5:'m7b5','ø':'m7b5','ø7':'m7b5','-7b5':'m7b5',
+  dim7:'dim7','°7':'dim7',o7:'dim7','6':'6',m6:'m6',add9:'add9','9':'9',maj9:'maj9',M9:'maj9',m9:'m9','-9':'m9',m11:'m11','13':'13',maj13:'maj13',m13:'m13',
+  '7b9':'7b9','7#9':'7s9','7alt':'7alt',alt:'7alt'};
+// "C Am7 F#m7b5 B♭maj7" → [{root, ch}]; returns what it couldn't read too
+function fitParse(text){
+  const out=[], bad=[];
+  String(text).split(/[\s,;|]+/).filter(Boolean).forEach(tok=>{
+    const m=/^([A-Ga-g])([#♯b♭]?)(.*)$/.exec(tok.replace(/♯/g,'#').replace(/♭/g,'b'));
+    if(!m){ bad.push(tok); return; }
+    const root=md(LETTER_PC[m[1].toLowerCase()]+(m[2]==='#'?1:m[2]==='b'?-1:0),12), suf=m[3], id=FIT_ALIAS[suf]??FIT_ALIAS[suf.toLowerCase()];
+    if(!id) bad.push(tok); else out.push({root,ch:id});
+  });
+  return {out,bad};
+}
+const fitChord=c=>{ const ch=CHORDS.find(x=>x.id===c.ch); return {ch,root:c.root,rootName:chordRootName(c.root,ch)}; };
+const fitTones=c=>{ const q=fitChord(c); return q.ch.t.map(t=>({pc:(c.root+t[0])%12,name:spellTone(q.rootName,c.root,t[0],t[1]),deg:t[1]})); };
+const FIT_GRP={mm:0,pent:.15,mode:.5,more:1.1};
+// every scale on every root, ranked: all chord tones in, fewest notes besides them, on a chord's root, common scales first
+function fitScales(chords){
+  if(!chords.length) return [];
+  const want=new Set(chords.flatMap(c=>fitTones(c).map(t=>t.pc))), roots=chords.map(c=>c.root), res=[];
+  for(const sc of SCALES) for(let r=0;r<12;r++){
+    const pcs=new Set(sc.steps.map(x=>(r+x)%12)), missing=[...want].filter(pc=>!pcs.has(pc));
+    if(missing.length>2) continue;
+    const score=missing.length*10+(pcs.size-want.size)*.6+(r===roots[0]?0:roots.includes(r)?.5:1.6)+FIT_GRP[sc.grp];
+    res.push({sc,root:r,pcs,missing,score,key:r+'|'+sc.id});
+  }
+  res.sort((a,b)=>a.score-b.score);
+  const full=res.filter(x=>!x.missing.length), near=res.filter(x=>x.missing.length);
+  return full.length>=3?full.slice(0,14):full.concat(near.slice(0,8-full.length));
+}
+const fitScaleNames=x=>{ const name=note(x.root); return x.sc.steps.map((st,j)=>({pc:(x.root+st)%12,name:spellTone(name,x.root,st,x.sc.deg[j])})); };
+// other scales with exactly the same notes (C major, A minor, D Dorian…)
+const fitSame=(x,list)=>list.filter(y=>y!==x&&!y.missing.length&&!x.missing.length&&y.pcs.size===x.pcs.size&&[...y.pcs].every(pc=>x.pcs.has(pc)));
+function renderFit(){
+  const el=$('answer'), f=fitState(), list=fitScales(f.chords);
+  $('eyebrow').textContent=`Theory · Scale finder · ${INST.name}`;
+  $('prompt').textContent=f.chords.length?f.chords.map(c=>chordName(fitChord(c))).join(' · '):'Which scale fits these chords?';
+  $('dots').innerHTML=''; const sc0=$('score'); sc0.textContent=''; sc0.classList.remove('timer'); sc0.closest('.prompt-row').classList.remove('timed');
+  let x=list.find(y=>y.key===f.sel)||list[0]; if(x) f.sel=x.key;
+  const show=f.show>=0&&f.show<f.chords.length?f.show:-1;
+  let h=`<div class="fit"><div class="row fitadd"><input id="fitText" type="text" placeholder="Chords, e.g. C Am F G7" aria-label="Chords to add" autocomplete="off" autocapitalize="off" spellcheck="false">`
+    +`<button type="button" class="btn primary" data-fit="add">Add</button></div>`
+    +`<div class="library-controls"><label>Root<select id="fitRoot">${ALL12.map(pc=>`<option value="${pc}">${note(pc)}</option>`).join('')}</select></label>`
+    +`<label>Chord<select id="fitType">${CHORD_GROUPS.map(g=>`<optgroup label="${g[1]}">${CHORDS.filter(ch=>ch.grp===g[0]).map(ch=>`<option value="${ch.id}">${ch.sym||'major'} · ${ch.name}</option>`).join('')}</optgroup>`).join('')}</select></label>`
+    +`<button type="button" class="btn" data-fit="addsel">Add chord</button></div><div class="hint" id="fitMsg"></div>`;
+  if(f.chords.length) h+=`<div class="chips fitchips">${f.chords.map((c,i)=>`<span class="fitchip"><b>${esc(chordName(fitChord(c)))}</b><small>${fitTones(c).map(t=>t.name).join(' ')}</small><button type="button" class="linkbtn" data-fitdel="${i}" aria-label="Remove ${esc(chordName(fitChord(c)))}">✕</button></span>`).join('')}<button type="button" class="linkbtn" data-fit="clear">Clear all</button></div>`;
+  if(!f.chords.length){ el.innerHTML=h+`<div class="hint">Type chord names (C, Am7, F♯m7♭5, B♭maj7, G7♯9…) or pick them, and the scales that contain all their notes appear here, with the chords’ notes lit on the neck.</div></div>`; return; }
+  if(!list.length){ el.innerHTML=h+`<div class="hint">No scale in this app comes within two notes of these chords. Try fewer chords at a time.</div></div>`; return; }
+  const full=list.filter(y=>!y.missing.length);
+  h+=`<div class="eyebrow">${full.length?`${full.length===list.length?'Scales':'Best'} that contain every chord tone`:'No scale holds every note: the closest ones'}</div><div class="fitlist">${list.map(y=>{ const same=fitSame(y,list);
+      return `<button type="button" class="fitres${y.key===x.key?' on':''}${y.missing.length?' near':''}" data-fitsel="${y.key}"><b>${esc(note(y.root))} ${esc(y.sc.name)}</b><small>${y.missing.length?`missing ${y.missing.map(pc=>note(pc)).join(', ')}`:fitScaleNames(y).map(t=>t.name).join(' ')}${same.length?` · same notes as ${same.slice(0,2).map(z=>note(z.root)+' '+z.sc.name).join(', ')}`:''}</small></button>`; }).join('')}</div>`;
+  // the chosen scale on the whole neck: the shown chord's tones lit (its root in orange), the rest of the scale outlined
+  h+=`<div class="row fitshow"><span class="hint">Light up</span><div class="chips">${['All chords'].concat(f.chords.map(c=>chordName(fitChord(c)))).map((n,i)=>`<button type="button" class="chip" data-fitshow="${i-1}" aria-pressed="${show===i-1}">${esc(n)}</button>`).join('')}</div>`
+    +`<span class="spacer"></span><button type="button" class="btn sm" data-fit="playscale">Play scale</button>${show>=0?`<button type="button" class="btn sm" data-fit="playarp">Play arpeggio</button>`:''}</div>`
+    +`<div class="cneck fitneck"><svg id="fitNeck" role="img" aria-label="${esc(note(x.root)+' '+x.sc.name)} on the neck"></svg></div>`
+    +`<div class="hint">${show>=0?`Filled: the notes of ${esc(chordName(fitChord(f.chords[show])))}, its root in orange: play them in one position for an arpeggio. Outlined: the rest of ${esc(note(x.root))} ${esc(x.sc.name)}.`:`Filled: every chord’s notes; outlined: the rest of the scale. Pick one chord to see its arpeggio shapes.`}${x.missing.length?` ${x.missing.map(pc=>note(pc)).join(', ')} ${x.missing.length===1?'is':'are'} in the chords but not in this scale: shown in red.`:''}</div></div>`;
+  el.innerHTML=h;
+  const names=new Map(fitScaleNames(x).map(t=>[t.pc,t.name])), lit=new Map(), roots=new Set();
+  (show>=0?[f.chords[show]]:f.chords).forEach(c=>{ fitTones(c).forEach(t=>{ if(!lit.has(t.pc)) lit.set(t.pc,t.name); }); if(show>=0) roots.add(c.root); });
+  const M=[]; for(let s=0;s<NS;s++) for(let fr=0;fr<=15;fr++){ const pc=pcOf(s,fr);
+    if(lit.has(pc)) M.push({s,f:fr,kind:!names.has(pc)?'bad':roots.has(pc)?'root':'good',label:lit.get(pc)});
+    else if(names.has(pc)) M.push({s,f:fr,kind:'ghost',label:names.get(pc)}); }
+  fullNeck('fitNeck',M,'wood4');
+}
+// the whole neck, 0 to 15, as wide as the page; on a phone it stands up so every fret fits
+function fullNeck(id,M,gid){
+  const svg=$(id), w=Math.max(280,svg.parentNode.clientWidth||600), vertical=w<640;
+  drawBoard(svg,{width:w,vertical,start:0,end:15,markers:M,gid,maxLen:vertical?Math.max(760,innerHeight*1.1):undefined});
+}
+function fitAdd(list){ const f=fitState(); f.chords=f.chords.concat(list).slice(0,8); f.sel=''; f.show=-1; save(); renderFit(); }
+$('answer').addEventListener('click',e=>{
+  if(S.mode!=='fit') return;
+  const b=e.target.closest('[data-fit],[data-fitdel],[data-fitsel],[data-fitshow]'); if(!b) return;
+  const f=fitState();
+  if(b.dataset.fitdel!=null){ f.chords.splice(+b.dataset.fitdel,1); f.sel=''; f.show=-1; save(); renderFit(); return; }
+  if(b.dataset.fitsel){ f.sel=b.dataset.fitsel; save(); renderFit(); return; }
+  if(b.dataset.fitshow!=null){ f.show=+b.dataset.fitshow; save(); renderFit(); return; }
+  const a=b.dataset.fit;
+  if(a==='add'){ const t=$('fitText'), r=fitParse(t.value); if(r.out.length) fitAdd(r.out); const m=$('fitMsg'); if(m) m.textContent=r.bad.length?`Couldn’t read: ${r.bad.join(', ')}. Write a root and a chord type, e.g. Am7, F#dim, Bbmaj7.`:''; if($('fitText')&&r.bad.length) $('fitText').value=r.bad.join(' '); return; }
+  if(a==='addsel') fitAdd([{root:+$('fitRoot').value,ch:$('fitType').value}]);
+  if(a==='clear'){ f.chords=[]; f.sel=''; f.show=-1; save(); renderFit(); }
+  if(a==='playscale'){ const x=fitScales(f.chords).find(y=>y.key===f.sel); if(!x) return; ensureAudio(); const base=48+x.root; playSeq(x.sc.steps.concat([12]).map(st=>base+st),0.24); }
+  if(a==='playarp'&&f.show>=0){ const c=f.chords[f.show], q=fitChord(c); ensureAudio(); const base=48+c.root; playSeq([...new Set(q.ch.t.map(t=>t[0]))].sort((p,r)=>p-r).concat([12]).map(st=>base+st),0.28); }
+});
+$('answer').addEventListener('keydown',e=>{ if(S.mode==='fit'&&e.target.id==='fitText'&&e.key==='Enter'){ e.preventDefault(); const b=document.querySelector('[data-fit="add"]'); if(b) b.click(); } });
+
 /* ---------- independent chord reference ---------- */
 let libraryCache=null, libraryIndex=0;
 function librarySettings(){
@@ -5805,7 +5911,7 @@ function reviewBusy(section){
 function updateReviewButtons(){
   const all=exerciseHistory();
   document.querySelectorAll('[data-review]').forEach(b=>{
-    b.closest('.review-bar').hidden=b.dataset.review==='music'&&['circle','library','tuner'].includes(S.mode);
+    b.closest('.review-bar').hidden=b.dataset.review==='music'&&['circle','library','tuner','fit'].includes(S.mode);
     const n=(all[reviewSection(b.dataset.review)]||[]).length;
     b.textContent='Previous exercises'+(n?' · '+n:''); b.disabled=!!reviewBusy(b.dataset.review);
     b.title=b.disabled?'Available after this timed run or move sequence.':'';
