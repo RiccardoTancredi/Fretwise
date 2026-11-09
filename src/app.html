@@ -494,6 +494,17 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .pthumb{position:relative}
 .pthumb .favmark{position:absolute;top:10px;right:10px;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;background:rgba(0,0,0,.6);color:#f6c453;font-size:.85rem}
 .pthumb.na{border-bottom-color:var(--line)}
+.pthumb.unseen img{opacity:.55;filter:grayscale(.4)}
+.pthumb .seenmark{position:absolute;top:10px;left:10px;padding:2px 7px;border-radius:999px;background:var(--good);color:var(--on-good);font-size:.68rem;font-style:normal;font-weight:700}
+.pby{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pgroups{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
+.pgroup{display:flex;flex-direction:column;gap:4px;padding:8px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);font:inherit;color:inherit;text-align:left;cursor:pointer}
+.pgroup:hover{border-color:var(--accent)}
+.pgroup.unseen{opacity:.7}
+.pgroup b{font-family:var(--font-display);font-size:.98rem;line-height:1.2}
+.pgroup small{color:var(--muted);font-size:.78rem}
+.pgpics{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.pgpics img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:5px;background:var(--line)}
 .vhead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
 .vgoal{display:flex;flex-direction:column;gap:6px}
 .vbar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
@@ -4582,7 +4593,25 @@ const V_FLAG='<svg class="vflag" viewBox="0 0 30 20" aria-label="Spanish"><rect 
 const V_GROUPS=[['ind','Indicative'],['sub','Subjunctive'],['other','Other forms']];
 function openVerbs(lang){ vUseLang(lang||VL); if(!VBV) subPush(); VBV={tab:'train'}; if(!VT||VT.lang!==VL||VT.phase==='done') vNew(); renderConj(); scrollTo(0,0); }
 function openVerb(inf,tid,p,back){ subPush(); VBV={tab:'verb',inf,g:tid?V_T[tid].g:'ind',open:tid!=null&&p!=null?tid+'|'+p:null,back:back||'verbs',scroll:tid||null}; renderConj(); }
-function vbBack(){ if(VBV&&VBV.tab==='verb') VBV={tab:VBV.back}; else VBV=null; renderConj(); scrollTo(0,0); }
+// Back: a verb's table → where it was opened from; History or Verbs → Train; Train → the languages (and from there home).
+// Train sits one step above History and Verbs in the browser's history, so the phone's back button follows the same path.
+let vToLangs=false;
+function vbBack(){
+  if(vToLangs){ vToLangs=false; VBV=null; }
+  else if(VBV&&VBV.tab==='verb') VBV={tab:VBV.back};
+  else if(VBV&&VBV.tab!=='train') VBV={tab:'train'};
+  else VBV=null;
+  if(VBV&&VBV.tab==='train'&&!VT) vNew();
+  renderConj(); scrollTo(0,0);
+}
+// to another tab: from Train it is a step forward, back to Train a step back, between History and Verbs a swap
+function vGoTab(tab){
+  const cur=VBV&&VBV.tab;
+  if(tab===cur) return;
+  if(tab==='train'){ navBack(vbBack); return; }
+  if(cur==='train') subPush();
+  VBV={tab}; renderConj(); scrollTo(0,0);
+}
 function vTabsHtml(){
   return `<div class="vhead"><div class="chips" role="tablist" aria-label="Verbs">${[['train','Train'],['verbs','Verbs'],['hist','History']].map(o=>`<button type="button" class="chip" role="tab" data-vbtab="${o[0]}" aria-selected="${VBV.tab===o[0]}" aria-pressed="${VBV.tab===o[0]}">${o[1]}</button>`).join('')}</div><button type="button" class="btn quiet sm" data-vbact="close">Languages</button></div>`;
 }
@@ -4726,7 +4755,7 @@ function vStatsHtml(){
 function vClick(e){
   const g=(sel)=>e.target.closest(sel);
   let b;
-  if((b=g('[data-vbtab]'))){ VBV={tab:b.dataset.vbtab}; if(VBV.tab==='train'&&!VT) vNew(); renderConj(); return true; }
+  if((b=g('[data-vbtab]'))){ vGoTab(b.dataset.vbtab); return true; }
   if((b=g('[data-vbf]'))){ VBV.f=b.dataset.vbf; renderConj(); return true; }
   if((b=g('[data-vbverb]'))){ openVerb(b.dataset.vbverb,null,null,'verbs'); scrollTo(0,0); return true; }
   if((b=g('[data-vbflip]'))){ vFlip(+b.dataset.vbflip); return true; }
@@ -4739,11 +4768,11 @@ function vClick(e){
     if(a==='missed') vAdvance(false);
     else if(a==='knew') vAdvance(true);
     else if(a==='more'||a==='cont'){ V_CONT[VL]=romeDay(); VBV.celebrate=false; if(!VT) vNew(); renderConj(); scrollTo(0,0); }
-    else if(a==='hist'){ VBV={tab:'hist'}; renderConj(); }
+    else if(a==='hist') vGoTab('hist');
     else if(a==='book'&&VT){ const {v,tid,p}=vParse(VT.k); openVerb(v.inf,VT.phase==='shown'?tid:null,VT.phase==='shown'?p:null,'train'); }
     else if(a==='say'&&VT){ const {v,tid,p}=vParse(VT.k); vSay(VT.phase==='ask'?v.inf:vSayForm(VT.pron||V_SAY[p],vForm(v,tid,p))); }
     else if(a==='back') navBack(vbBack);
-    else if(a==='close') navBack(vbBack);
+    else if(a==='close'){ if(VBV.tab==='train') navBack(vbBack); else { vToLangs=true; history.go(-2); } }
     return true;
   }
   if(g('[data-vbtap]')){ vTap(); return true; }
@@ -5254,18 +5283,35 @@ function pDayResults(d){
   const m=new Map(); (PS.days[d]||[]).forEach(e=>{ const r=m.get(e.id)||{id:e.id,ok:1,kinds:[],t:0}; r.kinds.push(e); if(!e.ok) r.ok=0; r.t=Math.max(r.t,e.t); m.set(e.id,r); });
   return [...m.values()].filter(r=>pWork(r.id)).sort((a,b)=>b.t-a.t);
 }
+// the gallery can also be organized by painter or movement: a group shows the works you've seen, or all of them
+const pGroupOf=(x,kind)=>kind==='artist'?x.artist:mvOf(x);
+function pGroups(kind){
+  const m=new Map();
+  (PDATA||[]).forEach(x=>{ const k=pGroupOf(x,kind); if(!k) return; const g=m.get(k)||{name:k,ids:[],seen:0}; g.ids.push(x.id); if(PS.p[x.id]) g.seen++; m.set(k,g); });
+  return [...m.values()].sort((a,b)=>b.seen-a.seen||a.name.localeCompare(b.name));
+}
 function pGalleryIds(f){
   if(f.indexOf('day:')===0) return pDayResults(f.slice(4)).map(r=>r.id);
+  if(f.indexOf('by:')===0) return [];
+  const gm=/^(artist|mv):(.*)$/.exec(f);
+  if(gm){ const all=(PDATA||[]).filter(x=>pGroupOf(x,gm[1])===gm[2]).sort((a,b)=>(a.year||9999)-(b.year||9999)), seen=all.filter(x=>PS.p[x.id]);
+    return (PG&&PG.all||!seen.length?all:seen).map(x=>x.id); }
   if(f==='fav') return favIds(PS.fav).filter(id=>pWork(id));   // every group, not only the one chosen in settings
   return pPool().filter(x=>pFilter(PS.p[x.id],f)).sort((a,b)=>(PS.p[b.id].last||0)-(PS.p[a.id].last||0)).map(x=>x.id);
 }
-const pDays=()=>Object.keys(PS.days).filter(d=>pDayResults(d).length).sort().reverse().slice(0,14);
+const pDays=()=>Object.keys(PS.days).filter(d=>pDayResults(d).length).sort().reverse();
 const pSmall=x=>String(x.thumb).replace(/([?&]width=)\d+/,'$1320');
 const pBig=x=>String(x.thumb).replace(/([?&]width=)\d+/,'$12000');
 function openGallery(f){ if(!PG) subPush(); PG={src:f,ids:pGalleryIds(f),i:null}; pFeedback('',''); renderPaint(); scrollTo(0,0); }
 function openRoundWork(k){ subPush(); PG={src:'round',ids:PSN.items.map(it=>it.x.id),i:k}; pFeedback('',''); renderPaint(); scrollTo(0,0); }
 function pgStep(d){ const i=PG.i+d; if(i<0||i>=PG.ids.length) return; PG.i=i; renderPaint(); }
-function pgBack(){ if(PG.src==='round'||PG.i==null) PG=null; else PG.i=null; renderPaint(); }
+function pgBack(){
+  if(PG.src!=='round'&&PG.i!=null) PG.i=null;
+  else{ const gm=/^(artist|mv):/.exec(PG.src); if(gm&&PG.i==null){ PG.src='by:'+gm[1]; PG.ids=[]; } else PG=null; }
+  renderPaint();
+}
+// how the gallery is organized, from what it shows
+const pBy=src=>/^day:/.test(src)?'date':/^(by:)?artist/.test(src)?'artist':/^(by:)?mv/.test(src)?'mv':'status';
 // how this work is going
 function pStatusHtml(v){
   if(!v) return '';
@@ -5279,7 +5325,8 @@ function galleryHtml(){
   if(PG.i!=null){
     const x=pWork(PG.ids[PG.i]), v=PS.p[x.id], it=PG.src==='round'?PSN.items[PG.i]:null;
     const dr=day?pDayResults(day).find(r=>r.id===x.id):null;
-    eb.textContent=`${PG.src==='round'?'This round':day?dayLabel(day):'Your gallery'} · ${PG.i+1} of ${PG.ids.length}`;
+    const gm2=/^(artist|mv):(.*)$/.exec(PG.src);
+    eb.textContent=`${PG.src==='round'?'This round':day?dayLabel(day):gm2?gm2[2]:'Your gallery'} · ${PG.i+1} of ${PG.ids.length}`;
     pr.textContent=x.title; sc.textContent='';
     h+=`<figure class="pframe" style="margin:0"><span class="ploading">Loading the picture…</span><img class="wait" src="${esc(x.thumb)}" data-big="${esc(pBig(x))}" alt="${esc(x.title+' by '+x.artist)}" decoding="async"></figure>`;
     h+=pCaption(x);
@@ -5290,13 +5337,29 @@ function galleryHtml(){
     h+=`<div class="pcredit">Image: <a href="${commonsPage(x.image)}" target="_blank" rel="noopener">Wikimedia Commons</a></div>`;
     return h;
   }
-  eb.textContent='Your gallery'+(!day&&PG.src!=='fav'&&PS.fame!=='all'?' · '+FAME.find(o=>o[0]===PS.fame)[1]:'');
-  pr.textContent=day?`${dayLabel(day)}: the works you saw`:PG.src==='fav'?'Your favorite works':PG.src==='all'?'Works you’ve seen':PG.src==='right'?'Right last time, not known yet':PG.src==='known'?'Works you know':'Works to revisit';
+  const by=pBy(PG.src), gm=/^(artist|mv):(.*)$/.exec(PG.src), kindName=k=>k==='artist'?'painter':'movement';
+  eb.textContent='Your gallery'+(by==='status'&&PG.src!=='fav'&&PS.fame!=='all'?' · '+FAME.find(o=>o[0]===PS.fame)[1]:'');
+  pr.textContent=gm?gm[2]:/^by:/.test(PG.src)?(by==='artist'?'By painter':'By movement'):day?`${dayLabel(day)}: the works you saw`:PG.src==='fav'?'Your favorite works':PG.src==='all'?'Works you’ve seen':PG.src==='right'?'Right last time, not known yet':PG.src==='known'?'Works you know':'Works to revisit';
+  h+=`<div class="row pby"><span class="hint">Organize by</span><div class="chips">${[['status','Progress'],['date','Date'],['artist','Painter'],['mv','Movement']].map(o=>`<button type="button" class="chip" data-pby="${o[0]}" aria-pressed="${by===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
+  if(/^by:/.test(PG.src)){
+    // the groups: the ones with works you've seen first, the others too if asked for
+    const groups=pGroups(by), shown=PG.all?groups:groups.filter(g=>g.seen);
+    sc.textContent=`${shown.length} ${by==='artist'?(shown.length===1?'painter':'painters'):(shown.length===1?'movement':'movements')}`;
+    h+=`<div class="row"><div class="chips"><button type="button" class="chip" data-pall="0" aria-pressed="${!PG.all}">With works you’ve seen · ${groups.filter(g=>g.seen).length}</button><button type="button" class="chip" data-pall="1" aria-pressed="${!!PG.all}">All · ${groups.length}</button></div></div>`;
+    h+=shown.length?`<div class="pgroups">${shown.map(g=>{ const pics=g.ids.filter(id=>PS.p[id]).concat(g.ids.filter(id=>!PS.p[id])).slice(0,3).map(id=>pWork(id));
+      return `<button type="button" class="pgroup${g.seen?'':' unseen'}" data-pgrp="${by}:${esc(g.name)}"><span class="pgpics">${pics.map(x=>`<img src="${esc(pSmall(x))}" alt="" loading="lazy" decoding="async">`).join('')}</span><b>${esc(g.name)}</b><small>${g.seen?`${g.seen} seen of ${g.ids.length}`:`${g.ids.length} ${g.ids.length===1?'work':'works'}, none seen yet`}</small></button>`; }).join('')}</div>`
+      :`<div class="hint">You haven’t seen any works yet: play a round, or choose “All”.</div>`;
+    h+=`<div class="actions"><button type="button" class="btn quiet" data-pact="back">Back</button></div>`;
+    return h;
+  }
   sc.textContent=`${PG.ids.length} ${PG.ids.length===1?'work':'works'}`;
-  h+=`<div class="chips" role="group" aria-label="Show">${P_FILTERS.map(o=>`<button type="button" class="chip" data-pgal="${o[0]}" aria-pressed="${PG.src===o[0]}">${o[1]} · ${pGalleryIds(o[0]).length}</button>`).join('')}</div>`;
-  const days=pDays(); if(days.length) h+=`<div class="chips" role="group" aria-label="By day">${days.map(d=>`<button type="button" class="chip" data-pgal="day:${d}" aria-pressed="${day===d}">${dayLabel(d)} · ${pDayResults(d).length}</button>`).join('')}</div>`;
+  if(by==='status') h+=`<div class="chips" role="group" aria-label="Show">${P_FILTERS.map(o=>`<button type="button" class="chip" data-pgal="${o[0]}" aria-pressed="${PG.src===o[0]}">${o[1]} · ${pGalleryIds(o[0]).length}</button>`).join('')}</div>`;
+  if(by==='date'){ const days=pDays(); h+=days.length?`<div class="chips" role="group" aria-label="By day">${days.map(d=>`<button type="button" class="chip" data-pgal="day:${d}" aria-pressed="${day===d}">${dayLabel(d)} · ${pDayResults(d).length}</button>`).join('')}</div>`:''; }
+  if(gm){ const all=(PDATA||[]).filter(x=>pGroupOf(x,gm[1])===gm[2]), seen=all.filter(x=>PS.p[x.id]).length;
+    h+=`<div class="row"><div class="chips"><button type="button" class="chip" data-pall="0" aria-pressed="${!PG.all&&seen>0}" ${seen?'':'disabled'}>Seen · ${seen}</button><button type="button" class="chip" data-pall="1" aria-pressed="${!!PG.all||!seen}">All this ${kindName(gm[1])}’s works · ${all.length}</button></div></div>`; }
   const dres=day?new Map(pDayResults(day).map(r=>[r.id,r])):null;
-  if(PG.ids.length) h+=`<div class="pgrid">${PG.ids.map((id,k)=>{ const x=pWork(id), ok=dres?dres.get(id).ok:pRightLast(PS.p[id]); return `<button type="button" class="pthumb ${!dres&&!PS.p[id]?'na':ok?'ok':'no'}" data-pview="${k}"><img src="${esc(pSmall(x))}" alt="" loading="lazy" decoding="async"><span>${esc(x.title)}</span>${favOn(PS.fav,id)?'<i class="favmark" aria-label="Favorite">★</i>':''}</button>`; }).join('')}</div>`;
+  const mixed=!!gm&&PG.ids.some(id=>!PS.p[id])&&PG.ids.some(id=>PS.p[id]);
+  if(PG.ids.length) h+=`<div class="pgrid">${PG.ids.map((id,k)=>{ const x=pWork(id), ok=dres?dres.get(id).ok:pRightLast(PS.p[id]); return `<button type="button" class="pthumb ${!dres&&!PS.p[id]?(gm?'na unseen':'na'):ok?'ok':'no'}" data-pview="${k}"><img src="${esc(pSmall(x))}" alt="" loading="lazy" decoding="async"><span>${esc(x.title)}${gm&&x.year?` · ${x.year}`:''}</span>${favOn(PS.fav,id)?'<i class="favmark" aria-label="Favorite">★</i>':''}${mixed&&PS.p[id]?'<i class="seenmark">Seen</i>':''}</button>`; }).join('')}</div>`;
   else h+=`<div class="hint">${PG.src==='missed'?'Nothing to revisit: every work you’ve seen, you got right last time.':PG.src==='known'?'No work is known yet: a work needs to be right on three review days in a row.':PG.src==='fav'?'No favorite works yet: tap ☆ next to a painting’s title to add it here.':`No works here yet${PS.fame!=='all'?' in this group':''}.`}</div>`;
   h+=`<div class="actions"><button type="button" class="btn quiet" data-pact="back">Back</button><span class="spacer"></span>${PG.ids.length?`<button type="button" class="btn primary" data-pact="practise">Practise ${Math.min(goalFor('paintings'),PG.ids.length)} of these</button>`:''}</div>`;
   h+=`<div class="hint">${day?'A green edge: every question about it was right that day. Red: at least one was missed.':'A green edge: right the last time you saw it. Red: missed.'}</div>`;
@@ -5385,6 +5448,10 @@ function openPaintings(){
 $('pbody').addEventListener('click',e=>{
   const o=e.target.closest('[data-popt]'); if(o){ answerPaint(+o.dataset.popt); return; }
   const g=e.target.closest('[data-pgal]'); if(g){ openGallery(g.dataset.pgal); return; }
+  const by=e.target.closest('[data-pby]'); if(by&&PG){ const k=by.dataset.pby, days=pDays();
+    PG.src=k==='date'?(days.length?'day:'+days[0]:'all'):k==='artist'?'by:artist':k==='mv'?'by:mv':'all'; PG.all=false; PG.ids=pGalleryIds(PG.src); PG.i=null; renderPaint(); return; }
+  const gr=e.target.closest('[data-pgrp]'); if(gr&&PG){ subPush(); PG.src=gr.dataset.pgrp; PG.all=false; PG.ids=pGalleryIds(PG.src); PG.i=null; renderPaint(); scrollTo(0,0); return; }
+  const pa=e.target.closest('[data-pall]'); if(pa&&PG){ PG.all=pa.dataset.pall==='1'; PG.ids=pGalleryIds(PG.src); renderPaint(); return; }
   const pf=e.target.closest('[data-pfav]'); if(pf){ const id=pf.dataset.pfav; favSet(PS.fav,id,!favOn(PS.fav,id)); pSave(); pKeepFav(); renderPaint(); return; }
   const pv=e.target.closest('[data-pview]'); if(pv){ subPush(); PG.i=+pv.dataset.pview; renderPaint(); scrollTo(0,0); return; }
   const im=e.target.closest('.pframe img[data-big]'); if(im){ openLightbox(im.src,im.dataset.big,im.alt); return; }
