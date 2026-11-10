@@ -533,6 +533,9 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .vtools .btn{width:64px;height:56px;padding:0;display:grid;place-items:center;border-radius:16px}
 mark.v-irr,mark.v-stem,mark.v-spell{background:none;color:inherit;font-weight:800}
 mark.v-irr{color:var(--v-irr)} mark.v-stem{color:var(--v-stem)} mark.v-spell{color:var(--v-spell)}
+mark.v-gap{display:inline-block;position:relative;width:.06em;height:.7em;vertical-align:baseline}
+mark.v-gap::after{content:'';position:absolute;left:50%;bottom:-.3em;transform:translateX(-50%);border-left:.22em solid transparent;border-right:.22em solid transparent;border-bottom:.26em solid var(--v-irr)}
+.varr2{font-style:normal;display:inline-block;transform:translateY(.1em);margin:0 .06em}
 .vsearch{width:100%;font:inherit;padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)}
 .vlist .wopen span{text-align:right}
 .wlist li.off{opacity:.55;border-left-color:var(--line)}
@@ -4039,10 +4042,13 @@ function vDiff(f,r){
   let b=0; while(b<f.length-a&&b<r.length-a&&f[f.length-1-b]===r[r.length-1-b]) b++;
   let s=a, e=f.length-b; const rs=a, re=r.length-b;
   if(s>=e){ if(s>0) s--; else e=Math.min(f.length,1); }
-  return {s,e,from:r.slice(rs,re),to:f.slice(a,f.length-b)};
+  return {s,e,g:a,from:r.slice(rs,re),to:f.slice(a,f.length-b)};
 }
+// where letters were only dropped (diría for deciría, ten for tene) no letter of the form is wrong:
+// a small caret marks the gap instead
 function vMark(f,r){
   const d=vInfo(f,r); if(!d.k) return esc(f);
+  if(d.k==='irr'&&d.to===''&&d.g!=null) return esc(f.slice(0,d.g))+`<mark class="v-irr v-gap" title="«${esc(d.from)}» dropped" aria-label="«${esc(d.from)}» dropped"></mark>`+esc(f.slice(d.g));
   return esc(f.slice(0,d.s))+`<mark class="v-${d.k}">${esc(f.slice(d.s,d.e))}</mark>`+esc(f.slice(d.e));
 }
 // how irregular a verb is overall, 0 (regular) to 3, from its simple forms
@@ -4145,7 +4151,7 @@ function vBuild(v,tid,p){
   return {T:pre.concat(a.T),notes:lead.concat(notes),reg:vKind(o.f,o.g)?o.g:null,own:o.f};
 }
 const vFormTokens=(v,tid,p)=>vBuild(v,tid,p).T;
-const vTokHtml=T=>`<div class="vchips">${T.map(x=>x.op?`<span class="vop">${x.op}</span>`:`<span class="vchip ${x.c||''}">${esc(x.t)}</span>`).join('')}</div>`;
+const vTokHtml=T=>`<div class="vchips">${T.map(x=>x.op?`<span class="vop">${x.op}</span>`:`<span class="vchip ${x.c||''}">${esc(x.t).split('→').join('<i class="varr2" aria-label="becomes">→</i>')}</span>`).join('')}</div>`;
 // how irregular this one form is: label and 0 to 3 stars
 function vFormLevel(v,tid,p){
   const o=vOwn(v,tid,p), d=vInfo(o.f,o.g);
@@ -4665,7 +4671,7 @@ function vVerbHtml(){
   h+=`<div class="vtop"><div><div class="vit">${esc(v.it)}</div><span class="vlevel l${lv}">${V_LEVEL[lv]} <i aria-hidden="true">${'★'.repeat(lv)}${'☆'.repeat(3-lv)}</i></span></div>${vCanSay()?`<button type="button" class="btn sm" data-vbsay="${esc(v.inf)}" aria-label="Listen to ${esc(v.inf)}">${V_ICON.say}</button>`:''}</div>`;
   const ab=({es:V_ABOUT,fr:V_ABOUT_FR,ca:V_ABOUT_CA})[VL][v.inf]; if(ab) h+=`<div class="vabout"><p>${esc(ab[0])}</p>${ab[1]?`<p><b>Conjugated the same way:</b> ${esc(ab[1])}</p>`:''}</div>`;
   h+=`<label class="vtoggle"><span>Active for training</span><input type="checkbox" data-vbon="${vVKey(v)}" ${vActive(v)?'checked':''}></label>`;
-  h+=`<div class="hint">Tap a form to see how it’s built. <mark class="v-irr">Red</mark>: irregular · <mark class="v-stem">fuchsia</mark>: stem change · <mark class="v-spell">blue</mark>: spelling change.</div>`;
+  h+=`<div class="hint">Tap a form to see how it’s built. <mark class="v-irr">Red</mark>: irregular · <mark class="v-stem">fuchsia</mark>: stem change · <mark class="v-spell">blue</mark>: spelling change · <mark class="v-irr v-gap"></mark> letters dropped.</div>`;
   if(VBV.g==='other') h+=`<section class="vsec"><h3>Forms of the verb</h3><div class="vrow static"><span class="vp">Infinitivo</span><b>${esc(v.inf)}</b></div><div class="vrow static"><span class="vp">Gerundio</span><b>${vMark(c.ger,r.ger)}</b></div><div class="vrow static"><span class="vp">Participio</span><b>${vMark(c.part,r.part)}</b></div></section>`;
   V_TENSES.filter(t=>t.g===VBV.g&&vPersonsOf(t.id).some(p=>vForm(v,t.id,p)!=null)).forEach(t=>{ h+=vTenseRows(v,t.id); });
   return h;

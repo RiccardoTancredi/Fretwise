@@ -37,6 +37,10 @@ test('what is irregular is told apart from stem and spelling changes',()=>{
   assert.equal(k('tener','pres',3),'');       // tenemos is regular
   const v=V.vVerb('tener'); assert.equal(V.vMark(V.vConj(v).pres[1],V.vRegConj(v).pres[1]),'t<mark class="v-stem">i</mark>enes');
   assert.equal(V.vLevel(V.vVerb('ser')),3);
+  // letters only dropped: nothing of the form is coloured, a caret marks the gap
+  const m=inf=>{ const v=V.vVerb(inf); return x=>V.vMark(V.vConj(v)[x[0]][x[1]],V.vRegConj(v)[x[0]][x[1]]); };
+  assert.equal(m('decir')(['cond',4]),'d<mark class="v-irr v-gap" title="«ec» dropped" aria-label="«ec» dropped"></mark>iríais');
+  assert.equal(m('querer')(['fut',0]).replace(/<mark[^>]*><\/mark>/,'|'),'quer|ré');
 });
 
 test('the building blocks of every form spell the form, and every form has a rule to read',()=>{
