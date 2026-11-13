@@ -600,6 +600,8 @@ mark.v-gap::after{content:'';position:absolute;left:50%;bottom:-.3em;transform:t
 .vglists{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .vglists ul{margin:4px 0 0;padding-left:16px;max-height:9.5em;overflow:auto;font-size:.95rem;line-height:1.5}
 .vglh{display:flex;align-items:center;gap:6px;font-weight:800}
+.vglink{padding:0;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;text-decoration:underline dotted color-mix(in srgb,currentColor 35%,transparent);text-underline-offset:3px}
+.vglink:hover{text-decoration-color:currentColor}
 .vglh svg{width:18px;height:18px}
 .vglh.no{color:var(--no-ink)} .vglh.yes{color:var(--yes-ink)}
 .vgcont{align-self:stretch;background:var(--mark);border-color:var(--mark);color:var(--on-mark)}
@@ -5323,8 +5325,9 @@ function vGoalHtml(fresh){
   const {hard,easy}=vTodayCounts(), today=romeDay();
   // each form once: to review if it was missed at least once today, solid if it was right every time
   const seen=new Map(); VB.hist.forEach(x=>{ const pr=vParse(x.k); if(pr.lang!==VL||!pr.v||romeDay(x.t)!==today) return; const o=seen.get(x.k)||{pr,miss:false}; if(!x.ok) o.miss=true; seen.delete(x.k); seen.set(x.k,o); });
-  const forms=ok=>[...seen.values()].reverse().filter(o=>o.miss!==ok).map(o=>vForm(o.pr.v,o.pr.tid,o.pr.p));
-  const list=(arr,empty)=>arr.length?`<ul>${arr.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:`<p class="hint">${empty}</p>`;
+  // each form opens its tense's page, with that form open
+  const forms=ok=>[...seen.entries()].reverse().filter(([k,o])=>o.miss!==ok).map(([k,o])=>({k,f:vForm(o.pr.v,o.pr.tid,o.pr.p)}));
+  const list=(arr,empty)=>arr.length?`<ul>${arr.map(x=>`<li><button type="button" class="vglink" data-vbgo="${esc(x.k)}">${esc(x.f)}</button></li>`).join('')}</ul>`:`<p class="hint">${empty}</p>`;
   return `<div class="vgoaldone${fresh?' fresh':''}">${fresh?`<div class="vsky">${V_PLANE}</div>`:''}<div class="vgtitle">Daily goal reached!</div>${vWeekHtml()}`
     +`<div class="vgsub">Today’s training</div><div class="vtoday"><div class="vhard"><b>${hard}</b><span>Hard</span></div><div class="veasy"><b>${easy}</b><span>Easy</span></div></div>`
     +`<div class="vglists"><div><div class="vglh no">${V_ICON.down} To review</div>${list(forms(false),'Nothing missed today.')}</div><div><div class="vglh yes">${V_ICON.up} Most solid</div>${list(forms(true),'—')}</div></div>`
@@ -5401,6 +5404,7 @@ function vClick(e){
   if((b=g('[data-vbrow]'))){ VBV.open=VBV.open===b.dataset.vbrow?null:b.dataset.vbrow; renderConj(); return true; }
   if((b=g('[data-vbsay]'))){ vSay(b.dataset.vbsay); return true; }
   if((b=g('[data-vbinfo]'))){ vToTense(b.dataset.vbinfo); return true; }
+  if((b=g('[data-vbgo]'))){ const {v,tid,p}=vParse(b.dataset.vbgo); if(v) openVerb(v.inf,tid,p,'train',true); return true; }
   if((b=g('[data-vbfound]'))){ const [tid,p]=b.dataset.vbfound.split('|'); VBV.find='';
     if(VBV.one){ vToTense(tid); VBV.open=tid+'|'+p; renderConj(); }
     else { VBV.g=V_T[tid].g; VBV.open=tid+'|'+p; VBV.scroll=tid; renderConj(); }
