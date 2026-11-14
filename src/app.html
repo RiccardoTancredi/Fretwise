@@ -220,6 +220,8 @@ kbd{font-family:var(--font-mono);font-size:.78rem;border:1px solid var(--line);b
 .chip.mono{font-family:var(--font-mono);font-weight:600}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 select{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:6px 8px;min-height:36px}
+.vvoice{display:flex;gap:8px;align-items:center}
+.vvoice select{flex:1;min-width:0}
 .heat-wrap{margin-top:4px}
 .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:.78rem;color:var(--muted);margin-top:8px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
@@ -5208,10 +5210,34 @@ function vToast(){
 }
 // Spanish speech, where the browser has a voice for it
 const vCanSay=()=>typeof window.speechSynthesis!=='undefined'&&typeof window.SpeechSynthesisUtterance!=='undefined';
+// The voice: the one chosen in Settings, else the best the device has. A Mac lists its novelty and
+// old robotic voices (Eddy, Flo, Grandma, Reed…) next to the good ones, and taking the first voice
+// for the language often meant one of those; Premium, Enhanced, Siri and Google voices come first.
+let V_VOICES=[];
+const vLoadVoices=()=>{ try{ V_VOICES=speechSynthesis.getVoices()||[]; }catch(e){ V_VOICES=[]; } };
+if(vCanSay()){ vLoadVoices(); try{ speechSynthesis.addEventListener('voiceschanged',()=>{ vLoadVoices(); if(VBV&&$('vjsettings')) $('vjsettings').innerHTML=vSettingsHtml(); }); }catch(e){} }
+const V_NOVELTY=/^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Deranged|Eddy|Flo|Fred|Good News|Grandma|Grandpa|Hysterical|Jester|Junior|Kathy|Organ|Pipe Organ|Ralph|Reed|Rocko|Sandy|Shelley|Superstar|Trinoids|Whisper|Wobble|Zarvox)\b/i;
+const V_GOODV={es:/Mónica|Monica|Jorge|Marisol|Paulina|Helena|Laura|Pablo|Elvira|Álvaro|Alvaro|Dalia/i,fr:/Thomas|Amélie|Amelie|Audrey|Aurélie|Aurelie|Marie|Denise|Henri|Vivienne/i,ca:/Montse|Jordi|Joana|Arnau|Enric/i};
+const vVoiceLang=x=>String(x.lang||'').replace('_','-').toLowerCase();
+const vVoices=()=>V_VOICES.filter(x=>vVoiceLang(x).startsWith(VL));
+function vVoiceScore(x){
+  const n=x.name||''; let s=0;
+  if(vVoiceLang(x)===V_L.speech.toLowerCase()) s+=20;
+  if(V_NOVELTY.test(n)) s-=50;
+  if(/premium/i.test(n)) s+=12;
+  if(/enhanced|mejorad|amélior|millorad|natural|neural|siri/i.test(n)) s+=9;
+  if(/google/i.test(n)) s+=8;
+  if((V_GOODV[VL]||/$^/).test(n)) s+=5;
+  return s;
+}
+// the novelty voices are left out of the list (unless there's nothing else)
+const vRankedVoices=()=>{ const vs=vVoices().sort((a,b)=>vVoiceScore(b)-vVoiceScore(a)), ok=vs.filter(x=>!V_NOVELTY.test(x.name||'')); return ok.length?ok:vs; };
+function vVoice(){ const vs=vRankedVoices(), want=(VB.set.voice||{})[VL]; return (want&&vs.find(x=>x.name===want))||vs[0]||null; }
 function vSay(text){
   if(!vCanSay()) return;
-  try{ const u=new SpeechSynthesisUtterance(text), vs=speechSynthesis.getVoices(); u.lang=V_L.speech; u.rate=.9;
-    const voice=vs.find(x=>x.lang.replace('_','-').toLowerCase()===V_L.speech.toLowerCase())||vs.find(x=>x.lang.toLowerCase().startsWith(VL)); if(voice) u.voice=voice;
+  try{ if(!V_VOICES.length) vLoadVoices();
+    const u=new SpeechSynthesisUtterance(text); u.lang=V_L.speech; u.rate=.9;
+    const voice=vVoice(); if(voice){ u.voice=voice; u.lang=voice.lang; }
     speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){}
 }
 
@@ -5687,6 +5713,9 @@ function vSettingsHtml(){
   V_GROUPS.forEach(([g,name])=>{ h+=`<div class="field"><span class="fl">${name}</span><div class="chips">${V_TENSES.filter(t=>t.g===g).map(t=>`<button type="button" class="chip" data-vbtense="${t.id}" data-tc="${t.with==='ger'?'prog':vTCol(t)}" aria-pressed="${ten.indexOf(t.id)>=0}">${esc(t.name)}</button>`).join('')}</div></div>`; });
   h+=``;
   h+=`<div class="field"><span class="fl">Read the answer aloud</span><div class="chips"><button type="button" class="chip" data-vbsayset="1" aria-pressed="${!!s.say}">On</button><button type="button" class="chip" data-vbsayset="0" aria-pressed="${!s.say}">Off</button></div><div class="hint">When the answer shows, the form is spoken (without the pronoun)${vCanSay()?'':': this browser has no speech'}.</div></div>`;
+  const vs=vCanSay()?vRankedVoices():[];
+  if(vs.length){ const want=(s.voice||{})[VL]||'', auto=vs[0];
+    h+=`<div class="field"><span class="fl">Voice</span><div class="vvoice"><select data-vbvoice aria-label="Voice for ${esc(V_L.en)}"><option value="">Best available: ${esc(auto.name)}</option>${vs.map(x=>`<option value="${esc(x.name)}" ${x.name===want?'selected':''}>${esc(x.name)} · ${esc(x.lang)}</option>`).join('')}</select><button type="button" class="btn sm" data-vbvoicetest aria-label="Listen to this voice">${V_ICON.say}</button></div><div class="hint">Each device has its own voices. On a Mac the most natural ones are marked Premium or Enhanced: download them in System Settings › Accessibility › Spoken Content › System voice › Manage Voices, then reload this page.</div></div>`; }
   h+=`<div class="field"><span class="fl">Daily goal in ${esc(V_L.en)}: forms a day</span><div class="chips">${[10,20,30,50].map(n=>`<button type="button" class="chip mono" data-vbgoal="${n}" aria-pressed="${vGoal()===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="200" inputmode="numeric" data-vbgoalin value="${[10,20,30,50].indexOf(vGoal())<0?vGoal():''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">Tenses chosen here are the ones Train asks; the tables always show them all.</div></div>`;
   return h;
 }
@@ -5770,8 +5799,11 @@ function renderConj(){
   $('vjsettings').innerHTML=vSettingsHtml(); $('vjstats').innerHTML=vStatsHtml();
 }
 $('vjbody').addEventListener('click',e=>{ const l=e.target.closest('[data-vblang]'); if(l){ openVerbs(l.dataset.vblang); return; } if(VBV) vClick(e); });
-$('vjsettings').addEventListener('change',e=>{ if(!VBV||!e.target.matches('[data-vbgoalin]')||!+e.target.value) return; vSetGoal(Math.max(1,Math.min(200,Math.round(+e.target.value)))); vSave(); renderConj(); });
+$('vjsettings').addEventListener('change',e=>{
+  if(VBV&&e.target.matches('[data-vbvoice]')){ const st=VB.set; st.voice=Object.assign({},st.voice); if(e.target.value) st.voice[VL]=e.target.value; else delete st.voice[VL]; vSave(); vSay(vForm(VERBS[0],'pres',0)); return; }
+  if(!VBV||!e.target.matches('[data-vbgoalin]')||!+e.target.value) return; vSetGoal(Math.max(1,Math.min(200,Math.round(+e.target.value)))); vSave(); renderConj(); });
 $('vjsettings').addEventListener('click',e=>{
+  if(e.target.closest('[data-vbvoicetest]')){ const v=VERBS[0]; vSay(vForm(v,'pres',0)+', '+vForm(VERBS[3],'pret',2)); return; }
   const t=e.target.closest('[data-vbtense],[data-vbgoal],[data-vbtall],[data-vbsayset]'); if(!t||!VBV) return; const st=VB.set;
   if(t.dataset.vbsayset) st.say=t.dataset.vbsayset==='1';
   else if(t.dataset.vbtall) vSetTen(t.dataset.vbtall==='all'?V_TENSES.map(x=>x.id):V_L.def.slice());
