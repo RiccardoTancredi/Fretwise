@@ -283,6 +283,9 @@ select{border:1px solid var(--line);background:var(--surface-2);border-radius:8p
 #cscore .up{color:var(--good);font-weight:700;margin-left:6px} #cscore .down{color:var(--bad);font-weight:700;margin-left:6px}
 a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .btn.sm{min-height:36px;padding:6px 12px;font-size:.88rem}
+.pznav{flex-wrap:nowrap;gap:6px}
+.pznav .btn{flex:0 0 auto;padding:6px 10px}
+.pznav .counter{flex:1 1 auto;min-width:0;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.82rem}
 .fams{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .fam{position:relative;text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:8px 10px 11px;display:flex;flex-direction:column;gap:2px;overflow:hidden;font-weight:700;font-size:.9rem}
 .fam:hover{border-color:var(--accent)}
@@ -2802,7 +2805,7 @@ function pzNavHtml(){
   const f=PZ.fen.split(' '), full=+f[5]||1, h=(f[1]==='w'?0:1)+k-1, m=k?hist[k-1]:null;
   const num=m?`${full+Math.floor(h/2)}${h%2?'…':'.'} ${m.san}`:'Start';
   return `<div class="actions pznav"><button class="btn sm" data-cact="pz0" aria-label="Start" ${on&&k>0?'':'disabled'}>⏮</button><button class="btn sm" data-cact="pzprev" aria-label="Previous move" ${on&&k>0?'':'disabled'}>◀</button>`
-    +`<span class="counter">${esc(num)} · ${k}/${n}${PZ.view!=null?' · reviewing':''}</span>`
+    +`<span class="counter">${esc(num)} · ${k}/${n}</span>`
     +`<button class="btn sm" data-cact="pznext" aria-label="Next move" ${on&&k<n?'':'disabled'}>▶</button><button class="btn sm" data-cact="pzend" aria-label="Back to the last move" ${on&&k<n?'':'disabled'}>⏭</button></div>`;
 }
 function puzzleHint(){
