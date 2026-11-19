@@ -2777,6 +2777,34 @@ function puzzleSolved(){
   cFeedback(PZ.failed||PZ.hinted?'bad':'good', PZ.failed||PZ.hinted?'Solved, after a miss.':liOn()?'Solved! Sending it to Lichess…':`Solved! Rating ${PZ.delta>=0?'+':''}${PZ.delta}.`);
   rememberPuzzle(); renderChess();
 }
+// Stepping through the moves played so far: the board shows that position, read-only, and coming
+// back to the last move gives the live game back (with your turn, if it was yours).
+const pzLiveGame=()=>PZ.view!=null?PZ.live:B.game;
+const pzCanReview=()=>PZ&&(PZ.phase==='done'||(PZ.phase==='user'&&(B.canMove||PZ.view!=null)));
+function pzView(k){
+  if(!pzCanReview()) return;
+  const n=pzLiveGame().history().length;
+  if(k==null||k>=n){
+    if(PZ.view!=null){ B.game=PZ.live; B.last=PZ.liveLast; B.hint=PZ.liveHint[0]; B.hintTo=PZ.liveHint[1]; PZ.live=null; PZ.view=null; if(PZ.phase==='user') B.canMove=true; }
+    renderChess(); return;
+  }
+  k=Math.max(0,k);
+  if(PZ.view==null){ PZ.live=B.game; PZ.liveLast=B.last; PZ.liveHint=[B.hint,B.hintTo]; }
+  const hist=PZ.live.history({verbose:true}), g=new Chess(PZ.fen);
+  hist.slice(0,k).forEach(m=>g.move({from:m.from,to:m.to,promotion:m.promotion}));
+  B.game=g; PZ.view=k; B.last=k?{from:hist[k-1].from,to:hist[k-1].to}:null; B.hint=null; B.hintTo=null; B.canMove=false; select(null);
+  if(k) moveSound(hist[k-1]);
+  renderChess();
+}
+function pzNavHtml(){
+  const live=pzLiveGame(), hist=live.history({verbose:true}), n=hist.length, k=PZ.view!=null?PZ.view:n, on=pzCanReview();
+  // numbered as in the game: the position's own move number, «12.» for White, «12…» for Black
+  const f=PZ.fen.split(' '), full=+f[5]||1, h=(f[1]==='w'?0:1)+k-1, m=k?hist[k-1]:null;
+  const num=m?`${full+Math.floor(h/2)}${h%2?'…':'.'} ${m.san}`:'Start';
+  return `<div class="actions pznav"><button class="btn sm" data-cact="pz0" aria-label="Start" ${on&&k>0?'':'disabled'}>⏮</button><button class="btn sm" data-cact="pzprev" aria-label="Previous move" ${on&&k>0?'':'disabled'}>◀</button>`
+    +`<span class="counter">${esc(num)} · ${k}/${n}${PZ.view!=null?' · reviewing':''}</span>`
+    +`<button class="btn sm" data-cact="pznext" aria-label="Next move" ${on&&k<n?'':'disabled'}>▶</button><button class="btn sm" data-cact="pzend" aria-label="Back to the last move" ${on&&k<n?'':'disabled'}>⏭</button></div>`;
+}
 function puzzleHint(){
   if(!PZ||PZ.phase!=='user') return;
   const exp=PZ.moves[PZ.step];
@@ -3056,7 +3084,9 @@ function renderChess(){
     eb.textContent=`Puzzle · rated ${PZ.rating}${tm?' · '+tm:''}`;
     pr.textContent=PZ.phase==='done'?(PZ.failed||PZ.hinted?'Puzzle complete':'Solved'):PZ.phase==='opp'?'Watch the opponent’s move':`${B.user==='w'?'White':'Black'} to play`;
     sc.innerHTML=`<span class="rt">${CS.rating}</span>${PZ.delta!=null?`<span class="${PZ.delta>=0?'up':'down'}">${PZ.delta>=0?'+':''}${PZ.delta}</span>`:''}`;
-    if(PZ.phase==='user') h+=`<div class="actions"><button class="btn quiet" data-cact="hint">Hint</button><button class="btn quiet" data-cact="solution">Show solution</button><span class="spacer"></span><span class="hint">Tap or drag a piece</span></div>`;
+    if(PZ.phase==='user'||PZ.phase==='done') h+=pzNavHtml();
+    if(PZ.view!=null&&PZ.phase==='user') h+=`<div class="actions"><span class="hint">Reviewing the moves: ⏭ brings you back to your turn.</span></div>`;
+    else if(PZ.phase==='user') h+=`<div class="actions"><button class="btn quiet" data-cact="hint">Hint</button><button class="btn quiet" data-cact="solution">Show solution</button><span class="spacer"></span><span class="hint">Tap or drag a piece</span></div>`;
     else if(PZ.phase==='done') h+=`<div class="actions"><a class="btn quiet" href="https://lichess.org/training/${PZ.id}" target="_blank" rel="noopener">Open on Lichess ↗</a><span class="spacer"></span><button class="btn primary" data-cact="nextpz">Next puzzle</button></div>`;
     else h+=`<div class="actions"><span class="hint">${PZ.phase==='opp'?'The puzzle starts after the opponent’s move.':'Playing the solution…'}</span></div>`;
   }else{
@@ -3164,6 +3194,10 @@ $('canswer').addEventListener('click',e=>{
   else if(a==='cstart') coordStart();
   else if(a==='cstop'){ clearInterval(CR.timer); openCoords(); }
   else if(a==='nextpz') newPuzzle();
+  else if(a==='pz0') pzView(0);
+  else if(a==='pzprev') pzView((PZ.view!=null?PZ.view:pzLiveGame().history().length)-1);
+  else if(a==='pznext') pzView((PZ.view!=null?PZ.view:1e3)+1);
+  else if(a==='pzend') pzView(null);
   else if(a==='watch') openingsWatch(li);
   else if(a==='drill') openingsDrill(li);
   else if(a==='drillfam'){ OP.line=-1; const f=OPENINGS[OP.fam]; OP.line=f.lines.map((l,i)=>i).sort((x,y)=>lineStat(lineId(f,f.lines[x])).streak-lineStat(lineId(f,f.lines[y])).streak||lineStat(lineId(f,f.lines[x])).last-lineStat(lineId(f,f.lines[y])).last)[0]; openingsDrill(OP.line); }
@@ -3178,6 +3212,9 @@ document.addEventListener('keydown',e=>{
   if(CS.tab==='openings'&&OP.view==='watch'){
     if(e.key==='ArrowRight'){ e.preventDefault(); watchTo(OP.ply+1); renderChess(); }
     else if(e.key==='ArrowLeft'){ e.preventDefault(); watchTo(OP.ply-1); renderChess(); }
+  }
+  if(CS.tab==='puzzles'&&PZ&&pzCanReview()&&(e.key==='ArrowLeft'||e.key==='ArrowRight')&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)){
+    e.preventDefault(); const n=pzLiveGame().history().length, k=PZ.view!=null?PZ.view:n; pzView(e.key==='ArrowLeft'?k-1:k+1);
   }
   if(e.key==='Enter'&&e.target.tagName!=='BUTTON'&&e.target.tagName!=='A'){
     if(CS.tab==='puzzles'&&PZ&&PZ.phase==='done'){ e.preventDefault(); newPuzzle(); }
