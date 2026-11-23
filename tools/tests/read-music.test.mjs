@@ -5,7 +5,7 @@ import {readFile} from 'node:fs/promises';
 // the read music data block of the app is pure: run it on its own
 const src=await readFile(new URL('../../src/app.html',import.meta.url),'utf8');
 const a=src.indexOf('/* ---------- read music data'), b=src.indexOf('/* ---------- end of read music data ---------- */');
-const R=new Function(src.slice(a,b)+';return {RM_SETS,RM_KEYSET,RM_RANGE,RM_NX,RM_Y0,rmSetKeys,rmCard,rmStaffSvg,rmLayout,rmStep,rmP,rmSci,rmMidi};')();
+const R=new Function(src.slice(a,b)+';return {RM_SETS,RM_SET,RM_KEYSET,RM_RANGE,RM_NX,RM_Y0,RM_IVI,RM_QI,rmSetKeys,rmCard,rmStaffSvg,rmLayout,rmStep,rmP,rmSci,rmMidi,rmEarExample,rmGuessPitch};')();
 const json=async f=>JSON.parse(await readFile(new URL('./fixtures/'+f,import.meta.url),'utf8'));
 
 test('the chords are the 1392 of the Anki deck: same symbol, name, inversion, clef, level and pitches',async()=>{
@@ -30,7 +30,7 @@ test('the notes are the 42 of the Anki deck, with their ledger lines',async()=>{
 });
 
 test('every card fits its staff: notes inside the frame, accidentals clear of the notes and of each other',()=>{
-  const keys=[...R.RM_KEYSET.keys()];
+  const keys=[...R.RM_KEYSET.keys()].filter(k=>k[0]!=='e');
   assert.equal(keys.length,1434);
   for(const k of keys){
     const c=R.rmCard(k), L=R.rmLayout(c.ps), bottom=c.clef==='t'?30:18, [lo,hi]=R.RM_RANGE[c.kind];
@@ -63,4 +63,46 @@ test('chord spelling: double sharps and flats where the chord needs them, invers
   assert.equal(sci('c|0|maj7|3|t'),'B4 – C5 – E5 – G5');
   assert.equal(R.rmCard('c|0|maj|1|t').bass,'E');
   assert.equal(R.rmMidi(R.rmP('A4')),69); assert.equal(R.rmMidi(R.rmP('B♯3')),60); assert.equal(R.rmMidi(R.rmP('C♭5')),71);
+});
+
+// a repeatable "random": the same examples every run
+const seeded=s=>()=>((s=Math.imul(s^(s>>>15),0x2c1b3c6d)+0x6d2b79f5|0)>>>0)/4294967296;
+
+test('ear training: every interval and chord example sounds what its answer says, from any root',()=>{
+  const ear=[...R.RM_KEYSET.keys()].filter(k=>k[0]==='e');
+  assert.equal(ear.length,12*3+4+6+8+6+8);
+  const rnd=seeded(7), pcs=ps=>ps.map(p=>(R.rmMidi(p)-R.rmMidi(ps[0])+120)%12);
+  for(const k of ear) for(let i=0;i<40;i++){
+    const c=R.rmCard(k), ex=R.rmEarExample(c,rnd), m=ex.ps.map(R.rmMidi);
+    if(c.how==='up'||c.how==='together') assert.equal(m[1]-m[0],R.RM_IVI[c.ans].s,k);
+    else if(c.how==='down') assert.equal(m[0]-m[1],R.RM_IVI[c.ans].s,k);
+    else{
+      const q=c.how==='inv'?c.q:c.ans, inv=c.how==='inv'?+c.ans:0, want=R.RM_QI[q].iv.map(([,s])=>s%12);
+      assert.deepEqual([...new Set(m.map(x=>(x-m[inv?ex.ps.length-inv:0]+120)%12))].sort((a,b)=>a-b),[...new Set(want)].sort((a,b)=>a-b),k);
+      for(let j=1;j<m.length;j++) assert.ok(m[j]>m[j-1],k+' goes up');
+    }
+    assert.ok(ex.ps.every(p=>Math.abs(p.a)<2),k+': no double sharps or flats');
+    assert.ok(m.every(x=>x>=33&&x<=96),k+': inside the piano samples');
+    assert.equal(ex.clef,Math.min(...m)<57?'b':'t');
+  }
+});
+
+test('a wrong ear answer is played from the same root, so the two can be compared',()=>{
+  const rnd=seeded(3);
+  const c=R.rmCard('e|e1|M3'), ex=R.rmEarExample(c,rnd), y=R.rmEarExample(c,rnd,'m3',ex);
+  assert.equal(R.rmSci(y.ps[0]),R.rmSci(ex.ps[0])); assert.equal(R.rmMidi(y.ps[1])-R.rmMidi(y.ps[0]),3);
+  const t=R.rmCard('e|e5|maj|0'), tx=R.rmEarExample(t,rnd), ty=R.rmEarExample(t,rnd,'1',tx);
+  assert.equal(R.rmMidi(ty.ps[2]),R.rmMidi(tx.ps[0])+12);      // first inversion: the root on top
+});
+
+test('a wrong note is drawn next to the right one, in its own colour, with its own ledger lines',()=>{
+  const svg=R.rmStaffSvg('t',[R.rmP('F3')],{extra:R.rmP('A3')});
+  assert.match(svg,/class="rextra"/); assert.equal((svg.match(/stroke-width="1.6"/g)||[]).length,3+2);
+});
+
+test('a wrong note name is placed in the nearest octave that stays inside the frame',()=>{
+  assert.equal(R.rmSci(R.rmGuessPitch(R.rmP('F3'),'C','t')),'C4');     // C3 is nearer, but four ledger lines down
+  assert.equal(R.rmSci(R.rmGuessPitch(R.rmP('G4'),'A','t')),'A4');
+  for(const id of ['nt','nb']) for(const k of R.rmSetKeys(id)){ const c=R.rmCard(k);
+    for(const L of 'CDEFGAB'){ const q=R.rmGuessPitch(c.ps[0],L,c.clef), st=R.rmStep(q)-(c.clef==='t'?30:18); assert.ok(st>=-7&&st<=15,k+' '+L); } }
 });

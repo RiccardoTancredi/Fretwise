@@ -682,6 +682,28 @@ mark.v-gap::after{content:'';position:absolute;left:50%;bottom:-.3em;transform:t
 .rsettext{display:flex;flex-direction:column;gap:2px;min-width:0}
 .rsettext small{color:var(--muted)}
 .rsettext .mono{font-family:var(--font-mono);font-size:.74rem}
+.ropts{display:grid;grid-template-columns:repeat(auto-fit,minmax(74px,1fr));gap:6px;width:100%;max-width:520px}
+.ropts.many{grid-template-columns:repeat(4,1fr)}
+.ropt{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:56px;padding:6px 4px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;font:inherit}
+.ropt b{font-family:var(--font-display);font-weight:800;font-size:1.1rem;line-height:1.1}
+.ropt small{font-size:.68rem;color:var(--muted);line-height:1.15}
+.ropt:hover:not(:disabled){border-color:var(--accent)}
+.ropt:disabled{cursor:default;opacity:.55}
+.ropt.good{background:var(--good);border-color:var(--good);color:var(--on-good);opacity:1}
+.ropt.bad{background:var(--bad);border-color:var(--bad);color:var(--on-bad);opacity:1}
+.ropt.good small,.ropt.bad small{color:inherit;opacity:.85}
+.rearq{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 0 6px;font-family:var(--font-display);font-weight:700;font-size:1.15rem}
+.rearq svg{width:54px;height:54px;color:var(--accent)}
+.btn.rbad{border-color:var(--bad);color:var(--bad)}
+.btn.rgood{border-color:var(--good);color:var(--good)}
+.rstaff .rextra{color:var(--bad)}
+.rmode{flex-wrap:nowrap}
+.rmode .chip{white-space:nowrap}
+.rmode .chip svg{width:16px;height:16px;vertical-align:-3px}
+.rdue{display:inline-block;min-width:20px;padding:1px 6px;border-radius:999px;background:var(--mark);color:var(--on-mark);font-family:var(--font-mono);font-size:.72rem;line-height:1.4;text-align:center}
+.rsethead{display:flex;align-items:center;gap:8px;margin:14px 0 2px;font-family:var(--font-display);font-size:1.05rem}
+.rsetart.rsetear{display:grid;place-items:center;flex-basis:34px;height:44px;color:var(--accent)}
+.rsetear svg{width:30px;height:30px}
 .readart{display:flex;align-items:center;height:96px;color:var(--ink)}
 .readart .rstaff{width:auto;max-width:100%;height:100%}
 .vlangs{display:flex;flex-direction:column;gap:10px}
@@ -6853,7 +6875,11 @@ const RM_QI=Object.fromEntries(RM_Q.map(q=>[q.id,q]));
 const RM_INV=['root position','first inversion','second inversion','third inversion'];
 const RM_CLEF={t:{name:'Treble',bottom:30,root:4},b:{name:'Bass',bottom:18,root:2}};   // bottom line: E4 and G2
 const RM_SEV=['maj7','7','m7','m7b5','dim7','mmaj7','maj7s5','7s5'];
-// the sets, in the order they are learned: single notes, then the chord levels of the Anki deck
+// intervals: [id, name, letters, semitones]; the tritone is spelled as an augmented fourth
+const RM_IV=[['m2','minor 2nd',1,1],['M2','major 2nd',1,2],['m3','minor 3rd',2,3],['M3','major 3rd',2,4],['P4','perfect 4th',3,5],['TT','tritone',3,6],
+  ['P5','perfect 5th',4,7],['m6','minor 6th',5,8],['M6','major 6th',5,9],['m7','minor 7th',6,10],['M7','major 7th',6,11],['P8','octave',7,12]].map(([id,name,n,s])=>({id,name,n,s}));
+const RM_IVI=Object.fromEntries(RM_IV.map(x=>[x.id,x])), RM_IVS=RM_IV.map(x=>x.id);
+// the sets, in the order they are learned: single notes, then the chord levels of the Anki deck; then ear training
 const RM_SETS=[
   {id:'nt',kind:'note',clef:'t',name:'Notes on the treble clef',sub:'From F3 to E6, up to three ledger lines'},
   {id:'nb',kind:'note',clef:'b',name:'Notes on the bass clef',sub:'From A1 to G4, up to three ledger lines'},
@@ -6863,7 +6889,16 @@ const RM_SETS=[
   {id:'c4',kind:'chord',q:['dim','aug'],inv:[1,2],name:'Diminished and augmented inversions',sub:'First and second inversion'},
   {id:'c5',kind:'chord',q:RM_SEV,inv:[1,2,3],name:'Seventh chord inversions',sub:'First, second and third inversion'},
   {id:'c6',kind:'chord',q:['sus2','sus4','6','m6','add9','madd9'],inv:[0],name:'Suspended, sixth and add9 chords',sub:'sus2, sus4, 6, m6, add9, m(add9)'},
-  {id:'c7',kind:'chord',q:['9','maj9','m9','11','m11','13','maj13','m13'],inv:[0],name:'Ninths, elevenths and thirteenths',sub:'Dominant, major and minor'}
+  {id:'c7',kind:'chord',q:['9','maj9','m9','11','m11','13','maj13','m13'],inv:[0],name:'Ninths, elevenths and thirteenths',sub:'Dominant, major and minor'},
+  // ear training: hear it, then name it; each card is one answer, played from a new root every time
+  {id:'e1',kind:'ear',how:'up',opts:RM_IVS,name:'Intervals going up',sub:'Two notes, the lower one first: from the minor second to the octave'},
+  {id:'e2',kind:'ear',how:'down',opts:RM_IVS,name:'Intervals going down',sub:'Two notes, the higher one first'},
+  {id:'e3',kind:'ear',how:'together',opts:RM_IVS,name:'Intervals together',sub:'Both notes at once'},
+  {id:'e4',kind:'ear',how:'chord',opts:['maj','min','dim','aug'],name:'Triads by ear',sub:'Major, minor, diminished or augmented'},
+  {id:'e5',kind:'ear',how:'inv',opts:['0','1','2'],q:['maj','min'],name:'Inversions by ear',sub:'A major or minor triad: root position, first or second inversion?'},
+  {id:'e6',kind:'ear',how:'chord',opts:RM_SEV,name:'Seventh chords by ear',sub:'The eight sevenths of the reading cards'},
+  {id:'e7',kind:'ear',how:'chord',opts:['sus2','sus4','6','m6','add9','madd9'],name:'Sus, sixth and add9 by ear',sub:'sus2, sus4, 6, m6, add9, m(add9)'},
+  {id:'e8',kind:'ear',how:'chord',opts:['9','maj9','m9','11','m11','13','maj13','m13'],name:'Ninths to thirteenths by ear',sub:'Dominant, major and minor'}
 ];
 const RM_SET=Object.fromEntries(RM_SETS.map(s=>[s.id,s]));
 // the pitches of a chord: the root on octave 4 (treble) or 2 (bass), the rest stacked above it;
@@ -6872,10 +6907,12 @@ function rmChordPitches(root,qid,inv,clef){
   const r=rmP(RM_ROOTS[root]+RM_CLEF[clef].root), ps=RM_QI[qid].iv.map(([n,s])=>rmUp(r,n,s));
   return ps.slice(inv).concat(ps.slice(0,inv).map(p=>Object.assign({},p,{o:p.o+1})));
 }
-// keys: "n|t|F3" for a note, "c|<root 0–11>|<chord>|<inversion>|<clef>" for a chord
+// keys: "n|t|F3" for a note, "c|<root 0–11>|<chord>|<inversion>|<clef>" for a chord,
+// "e|<set>|<answer>" for ear training ("e|e5|<chord>|<inversion>" for inversions)
 function rmSetKeys(id){
   const s=RM_SET[id], out=[];
   if(s.kind==='note'){ const lo=rmStep(rmP(s.clef==='t'?'F3':'A1')); for(let st=lo;st<lo+21;st++) out.push('n|'+s.clef+'|'+RM_LET[st%7]+Math.floor(st/7)); return out; }
+  if(s.kind==='ear'){ if(s.how==='inv') s.q.forEach(q=>s.opts.forEach(i=>out.push('e|'+id+'|'+q+'|'+i))); else s.opts.forEach(o=>out.push('e|'+id+'|'+o)); return out; }
   ['t','b'].forEach(c=>s.q.forEach(q=>s.inv.forEach(i=>RM_ROOTS.forEach((_,r)=>out.push(['c',r,q,i,c].join('|'))))));
   return out;
 }
@@ -6885,9 +6922,42 @@ function rmCard(k){
   const a=k.split('|'), set=RM_KEYSET.get(k); if(!set) return null;
   if(a[0]==='n'){ const p=rmP(a[2]), clef=a[1], st=rmStep(p)-RM_CLEF[clef].bottom, ledger=st<0?Math.floor(-st/2):st>8?Math.floor((st-8)/2):0;
     return {k,set,kind:'note',clef,ps:[p],answer:RM_LET[p.l],name:rmSci(p),ledger,where:ledger?(st<0?'below':'above'):''}; }
+  if(a[0]==='e'){ const s=RM_SET[set], ans=s.how==='inv'?a[3]:a[2];
+    return {k,set,kind:'ear',how:s.how,ans,q:s.how==='inv'?a[2]:s.how==='chord'?ans:null,title:rmOptName(s,ans,a[2])}; }
   const root=+a[1], q=RM_QI[a[2]], inv=+a[3], clef=a[4], ps=rmChordPitches(root,q.id,inv,clef);
   return {k,set,kind:'chord',clef,ps,root,q:q.id,inv,sym:RM_ROOTS[root]+q.sym,name:RM_ROOTS[root]+' '+q.name,invName:RM_INV[inv],
     bass:inv?rmNm(ps[0]):'',notes:ps.map(rmNm).join(' – '),sci:ps.map(rmSci).join(' – ')};
+}
+// how an answer is named on its button and in the history
+function rmOptName(s,o,q){
+  if(s.how==='inv') return (q?(q==='maj'?'Major':'Minor')+', ':'')+RM_INV[+o];
+  if(s.kind==='ear'&&s.how!=='chord'){ const n=RM_IVI[o].name; return n[0].toUpperCase()+n.slice(1); }
+  const x=RM_QI[o]; return x.name[0].toUpperCase()+x.name.slice(1);
+}
+const rmOptShort=(s,o)=>s.how==='inv'?['Root','1st inv.','2nd inv.'][+o]:s.how==='chord'?'C'+RM_QI[o].sym:o;
+// one example of an ear card, from a random root (rnd: 0 ≤ x < 1), spelled without double sharps or flats
+// where the root allows it: intervals from a root between C3 and B4, chords from octave 3 or 4; the
+// lower ones are shown on the bass clef. "ans" can be any answer of the set, and "fix" an earlier example's
+// {root, oct}, to hear a wrong guess from the same root.
+function rmEarExample(c,rnd,ans,fix){
+  const s=RM_SET[c.set], a=ans==null?c.ans:ans, pick=x=>x[Math.floor(rnd()*x.length)];
+  const build=(root,oct)=>{ const r=rmP(RM_ROOTS[root]+oct);
+    if(s.how==='up'||s.how==='together'){ const iv=RM_IVI[a]; return [r,rmUp(r,iv.n,iv.s)]; }
+    if(s.how==='down'){ const iv=RM_IVI[a], hi=rmUp(r,iv.n,iv.s); return [hi,r]; }
+    const q=s.how==='inv'?c.q:a, inv=s.how==='inv'?+a:0, ps=RM_QI[q].iv.map(([n,t])=>rmUp(r,n,t));
+    return ps.slice(inv).concat(ps.slice(0,inv).map(p=>Object.assign({},p,{o:p.o+1}))); };
+  // chords of four notes or more sound clearer from octave 3
+  const oct=fix?fix.oct:s.how==='chord'&&RM_QI[a].iv.length>3?3:pick([3,4]), clean=RM_ROOTS.map((_,i)=>i).filter(i=>build(i,oct).every(p=>Math.abs(p.a)<2));
+  const root=fix?fix.root:pick(clean.length?clean:RM_ROOTS.map((_,i)=>i)), ps=build(root,oct);
+  const low=Math.min(...ps.map(rmMidi)), clef=low<57?'b':'t';
+  return {root,oct,ps,clef,how:s.how};
+}
+// a wrong note's name, in the octave nearest the right one: what was pressed, to hear and see next to it
+// (one that fits in the card's frame: no more than three ledger lines out)
+function rmGuessPitch(p,L,clef){
+  const l=RM_LET.indexOf(L), b=RM_CLEF[clef].bottom, fits=q=>rmStep(q)-b>=-7&&rmStep(q)-b<=15;
+  const qs=[p.o-1,p.o,p.o+1].map(o=>({l,a:0,o})), ok=qs.filter(fits);
+  return (ok.length?ok:qs).reduce((x,q)=>Math.abs(rmMidi(q)-rmMidi(p))<Math.abs(rmMidi(x)-rmMidi(p))?q:x);
 }
 // the staff as SVG: x and y in tenths of a staff space, the bottom line at y = 56 (y goes down)
 const RM_S=10/250, RM_Y0=56, RM_NX=126, RM_W=216;
@@ -6915,6 +6985,11 @@ function rmStaffSvg(clef,ps,o){
   for(let st=bottom-2;st>=lo;st-=2) g+=`<line stroke-width="1.6" x1="${x1}" x2="${x2}" y1="${rmY(clef,st)}" y2="${rmY(clef,st)}"/>`;
   for(let st=bottom+10;st<=hi;st+=2) g+=`<line stroke-width="1.6" x1="${x1}" x2="${x2}" y1="${rmY(clef,st)}" y2="${rmY(clef,st)}"/>`;
   L.notes.forEach(n=>{ const y=rmY(clef,n.st); f+=rmGlyph('whole',n.x,y); if(n.p.a) f+=rmGlyph(RM_ACCG[n.p.a+2],n.ax,y); });
+  // another note to compare, to the right (a wrong guess): its own ledger lines and colour
+  if(o.extra){ const p=o.extra, st=rmStep(p), x=RM_NX+nw*(L.wide?2:1)+22; let e='';
+    for(let s2=bottom-2;s2>=st;s2-=2) e+=`<line stroke-width="1.6" x1="${x-4}" x2="${x+nw+4}" y1="${rmY(clef,s2)}" y2="${rmY(clef,s2)}"/>`;
+    for(let s2=bottom+10;s2<=st;s2+=2) e+=`<line stroke-width="1.6" x1="${x-4}" x2="${x+nw+4}" y1="${rmY(clef,s2)}" y2="${rmY(clef,s2)}"/>`;
+    g+=`</g><g class="rextra" stroke="currentColor" stroke-width="1.3">${e}`; f+=`</g><g class="rextra" fill="currentColor">${rmGlyph('whole',x,rmY(clef,st))}`; }
   // the height: a fixed range for each kind of card, so cards don't jump; otherwise just what the notes need
   const R=o.range||[Math.min(-4,lo-bottom-2),Math.max(12,hi-bottom+2)], top=RM_Y0-R[1]*5-4, h=(R[1]-R[0])*5+8;
   // a thumbnail stops just after the notes
@@ -6925,11 +7000,12 @@ function rmStaffSvg(clef,ps,o){
 
 /* =====================================================================
    READ MUSIC: name notes and chords on the treble and bass staff, then hear
-   them as a chord and as an arpeggio. The cards are the ones of the Anki decks
-   "Music Reading — Single Notes" and "— Chords", drawn and played by the app.
+   them as a chord and as an arpeggio; and ear training, the other way round:
+   hear intervals and chords, then name them. The reading cards are the ones of
+   the Anki decks "Music Reading — Single Notes" and "— Chords".
    ===================================================================== */
-// a piano note: partials slightly sharp as on real strings (inharmonicity), struck about an eighth along the
-// string, two strings a hair apart that beat slowly, a fast first decay and a long quiet tail, a felt thump
+// a piano note made from scratch: only when the recorded piano can't load (inside Claude, or offline before
+// it was ever downloaded). Partials slightly sharp as on real strings, two strings that beat slowly.
 function synthPiano(sr,midi){
   const f0=440*Math.pow(2,(midi-69)/12), hi=Math.min(1,Math.max(0,(midi-28)/72));
   const dur=Math.max(1.4,3.8-2.4*hi), len=Math.floor(sr*dur), y=new Float32Array(len);
@@ -6940,29 +7016,29 @@ function synthPiano(sr,midi){
     if(n===1) amp*=0.55+0.45*hi;
     const t1=(0.32+1.4*(1-hi))/(1+0.13*n), t2=t1*5, d1=Math.exp(-1/(t1*sr)), d2=Math.exp(-1/(t2*sr));
     const strings=n<=6?[[1-0.0004,0.5],[1+0.0004,0.5]]:[[1,1]];
-    const end=Math.min(len,Math.floor(t2*sr*7));                 // until the tail is about −60 dB
+    const end=Math.min(len,Math.floor(t2*sr*7));
     for(const [det,w] of strings){
       const th=2*Math.PI*fn*det/sr, c=Math.cos(th), s=Math.sin(th), ph=Math.random()*6.283;
       let re=Math.cos(ph), im=Math.sin(ph), e1=0.72*amp*w, e2=0.28*amp*w;
       for(let i=0;i<end;i++){ y[i]+=im*(e1+e2); const r=re*c-im*s; im=re*s+im*c; re=r; e1*=d1; e2*=d2; }
     }
   }
-  let lp=0; const nl=Math.floor(sr*0.012), na=0.05*(1-0.5*hi);
-  for(let i=0;i<nl;i++){ lp+=0.3*((Math.random()*2-1)-lp); y[i]+=lp*na*(1-i/nl); }
   let peak=0; for(let i=0;i<len;i++) peak=Math.max(peak,Math.abs(y[i]));
   const norm=peak>0?0.7/peak:1, atk=Math.floor(sr*0.002), fade=Math.floor(sr*0.3);
   for(let i=0;i<len;i++){ let g=norm; if(i<atk) g*=i/atk; if(i>len-fade) g*=(len-i)/fade; y[i]*=g; }
   return y;
 }
 const RM_KEY='fretwise.read';
-const RM_SET_DEF={sets:['nt','nb','c1'],clefs:['t','b'],sound:'piano',auto:'block',t:0};
+const RM_SET_DEF={sets:['nt','nb','c1','e1','e4'],clefs:['t','b'],sound:'piano',auto:'block',mode:'read',ear:1,t:0};
 // RM.p: card key -> {b, due, n, ok, r, last}, the same review boxes as words and verbs; RM.days: Rome day -> {time: right or not}
 let RM={p:{},hist:[],days:{},set:Object.assign({},RM_SET_DEF),upd:0}, readDoc=null, rmWriting=false, rmAgain=false;
-// RMV: null on Train, or {tab:'sets'|'hist'} or {tab:'card', k, back}; RT: the card being asked
-let RMV=null, RT=null, rmTimer=null, RM_CONT='';
+// RMV: null on Train, or {tab:'sets'|'hist'} or {tab:'card', k, ex, back}; RT: the card being asked
+let RMV=null, RT=null, rmTimer=null, RM_CONT='', RM_CELEBRATE=false;
+// settings saved before ear training existed get its first two sets
+function rmFixSet(){ const s=RM.set; if(!s.ear){ s.sets=s.sets.concat(['e1','e4'].filter(x=>s.sets.indexOf(x)<0)); s.ear=1; } s.sets=s.sets.filter(x=>RM_SET[x]); }
 function rmLoad(){
   try{ const x=JSON.parse(LOCAL.getItem(RM_KEY)||'null'); if(x&&x.p) RM=Object.assign(RM,x); }catch(e){}
-  RM.hist=RM.hist||[]; RM.days=RM.days||{}; RM.set=Object.assign({},RM_SET_DEF,RM.set||{});
+  RM.hist=RM.hist||[]; RM.days=RM.days||{}; RM.set=Object.assign({},RM_SET_DEF,{ear:0},RM.set||{}); if(!(RM.set.sets&&RM.set.sets.length)) RM.set.sets=RM_SET_DEF.sets.slice(); rmFixSet();
 }
 function rmStore(){ try{ LOCAL.setItem(RM_KEY,JSON.stringify(RM)); }catch(e){} }
 function rmSave(){ RM.upd=Date.now(); pruneDays(RM.days); rmStore(); pushRead(); }
@@ -6977,7 +7053,7 @@ function mergeRead(x){
   const have=new Set(RM.hist.map(h=>h.t+h.k)); (x.hist||[]).forEach(h=>{ if(!have.has(h.t+h.k)) RM.hist.push(h); });
   RM.hist.sort((a,b)=>a.t-b.t); RM.hist=RM.hist.slice(-200);
   Object.entries(x.days||{}).forEach(([d,m])=>{ Object.assign(RM.days[d]||(RM.days[d]={}),m); });
-  if(x.set&&(x.set.t||0)>(RM.set.t||0)) RM.set=Object.assign({},RM_SET_DEF,x.set);
+  if(x.set&&(x.set.t||0)>(RM.set.t||0)){ RM.set=Object.assign({},RM_SET_DEF,{ear:0},x.set); rmFixSet(); }
   RM.upd=Math.max(RM.upd,x.upd||0);
 }
 async function connectRead(db,uid){
@@ -6991,11 +7067,17 @@ const rmGoal=()=>(ACT.goals||{}).read||20;
 const rmToday=()=>Object.keys(RM.days[romeDay()]||{}).length;
 const rmDayDone=d=>Object.keys(RM.days[d]||{}).length>0;
 function rmStreak(){ let n=0, t=Date.now(); if(!rmDayDone(romeDay(t))) t-=DAY; while(rmDayDone(romeDay(t))){ n++; t-=DAY; } return n; }
-// every card in training: the sets turned on, on the clefs chosen
-const rmClefOf=k=>{ const a=k.split('|'); return a[0]==='n'?a[1]:a[4]; };
-function rmItems(){ const cl=RM.set.clefs, out=[]; RM_SETS.forEach(s=>{ if(RM.set.sets.indexOf(s.id)<0) return; rmSetKeys(s.id).forEach(k=>{ if(cl.indexOf(rmClefOf(k))>=0) out.push(k); }); }); return out; }
-const rmDueCount=()=>{ const now=Date.now(); return rmItems().filter(k=>RM.p[k]&&RM.p[k].due<=now).length; };
-// the level a set belongs to: both note sets first, then the chord levels in order
+// every card in training: the sets turned on for the mode in use (reading or ear), reading cards on the clefs chosen
+const rmClefOf=k=>{ const a=k.split('|'); return a[0]==='n'?a[1]:a[0]==='c'?a[4]:null; };
+const rmEarSet=id=>RM_SET[id].kind==='ear';
+function rmItems(mode){
+  mode=mode||RM.set.mode; const cl=RM.set.clefs, out=[];
+  RM_SETS.forEach(s=>{ if(RM.set.sets.indexOf(s.id)<0||(s.kind==='ear')!==(mode==='ear')) return;
+    rmSetKeys(s.id).forEach(k=>{ const c=rmClefOf(k); if(!c||cl.indexOf(c)>=0) out.push(k); }); });
+  return out;
+}
+const rmDueCount=mode=>{ const now=Date.now(); return rmItems(mode).filter(k=>RM.p[k]&&RM.p[k].due<=now).length; };
+// the level a set belongs to: both note sets first, then the chord levels in order; ear sets in their order
 const rmLevel=id=>RM_SET[id].kind==='note'?0:+id.slice(1);
 // next card: a missed one now and then, cards due, and new ones from the lowest level still to learn
 function rmPick(){
@@ -7008,7 +7090,11 @@ function rmPick(){
   if(fresh.length){ const lv=Math.min(...fresh.map(k=>rmLevel(RM_KEYSET.get(k)))); return {k:rnd(fresh.filter(k=>rmLevel(RM_KEYSET.get(k))===lv))}; }
   const pool=items.filter(k=>recent.indexOf(k)<0); return {k:rnd(pool.length?pool:items),practice:true};
 }
-function rmNew(){ clearTimeout(rmTimer); const it=rmPick(); RT=it?{k:it.k,practice:!!it.practice,phase:'ask'}:null; if(RT) rmWarm(rmCard(RT.k).ps); }
+// a new card; an ear card gets its example (a random root) and plays it as soon as it is on screen
+function rmNew(){
+  clearTimeout(rmTimer); const it=rmPick(); RT=it?{k:it.k,practice:!!it.practice,phase:'ask'}:null; if(!RT) return;
+  const c=rmCard(RT.k); if(c.kind==='ear'){ RT.ex=rmEarExample(c,Math.random); RT.fresh=true; rmWarm(RT.ex.ps); } else rmWarm(c.ps);
+}
 function rmGrade(ok){
   const k=RT.k, now=Date.now(), had=RM.p[k];
   if(!RT.practice) RM.p[k]=vApply(had,ok,now);
@@ -7027,44 +7113,78 @@ function rmAdvance(ok){
   rmGrade(ok); if(before<goal&&rmToday()>=goal) RT.celebrate=true;
   if(first) rmToast();
 }
-function rmNext(){ const cel=RT&&RT.celebrate; rmNew(); if(cel) RM_CELEBRATE=true; renderRead(); }
-let RM_CELEBRATE=false;
+function rmNext(){ const cel=RT&&RT.celebrate; rmStop(); rmNew(); if(cel) RM_CELEBRATE=true; renderRead(); }
 function rmToast(){
   const old=document.querySelector('.vtoast'); if(old) old.remove();
   const streak=rmStreak(), el=document.createElement('div'); el.className='vtoast'; el.setAttribute('role','status');
   el.innerHTML=rmWeekHtml()+`<b>${streak>1?`${streak} days in a row: keep it going!`:'A little practice counts: keep it up!'}</b>`;
   document.body.appendChild(el); setTimeout(()=>el.classList.add('out'),2600); setTimeout(()=>el.remove(),3200);
 }
-/* ---------- sound: piano, guitar or ukulele ---------- */
+/* ---------- sound: a recorded grand piano, or the guitar and ukulele of the fretboard ---------- */
 const RM_SOUNDS=[['piano','Piano'],['guitar','Guitar'],['ukulele','Ukulele']];
-const rmBufs=new Map(); let rmSrcs=[];
-function rmBuf(midi){
+// the Salamander Grand Piano (Alexander Holm, CC-BY 3.0): one sample every minor third, A1 to C7
+const RM_PIANO=[]; for(let m=33;m<=96;m+=3) RM_PIANO.push(m);
+const rmPfile=m=>['C','Cs','D','Ds','E','F','Fs','G','Gs','A','As','B'][m%12]+(Math.floor(m/12)-1);
+const rmSamples=new Map(), rmBufs=new Map(); let rmSampling=null, rmSampled=false, rmSrcs=[], rmOut=null;
+function rmLoadPiano(){
+  if(rmSampling||!ensureAudio()) return rmSampling;
+  rmSampling=Promise.all(RM_PIANO.map(m=>fetch('sounds/piano/'+rmPfile(m)+'.mp3').then(r=>{ if(!r.ok) throw 0; return r.arrayBuffer(); })
+    .then(b=>new Promise((ok,no)=>actx.decodeAudioData(b,ok,no))).then(buf=>{ rmSamples.set(m,buf); }).catch(()=>{})));
+  return rmSampling;
+}
+// a made-up note: guitar and ukulele always, the piano only until its samples are in
+function rmSynthBuf(midi){
   const inst=RM.set.sound, k=inst+midi; if(rmBufs.has(k)) return rmBufs.get(k);
   const sr=actx.sampleRate, data=inst==='piano'?synthPiano(sr,midi):synthString(sr,midi,inst==='ukulele'?2.6:3.2,INSTRUMENTS[inst].tone);
   const b=actx.createBuffer(1,data.length,sr); b.getChannelData(0).set(data); rmBufs.set(k,b); return b;
 }
 // the next card's notes are made ahead, so its sound starts at once
-function rmWarm(ps){ if(!actx) return; setTimeout(()=>{ try{ ps.forEach(p=>rmBuf(rmMidi(p))); }catch(e){} },60); }
+function rmWarm(ps){ if(!actx) return; if(RM.set.sound==='piano') rmLoadPiano(); else setTimeout(()=>{ try{ ps.forEach(p=>rmSynthBuf(rmMidi(p))); }catch(e){} },60); }
 function rmStop(){ rmSrcs.forEach(s=>{ try{ s.stop(); }catch(e){} }); rmSrcs=[]; }
-function rmPlay(ps,how){
+// one note: from the nearest piano sample, played up to a semitone and a half faster or slower; it rings for
+// "hold" seconds, then dies away over "rel" seconds
+function rmVoice(midi,when,gain,hold,rel){
+  // the recordings peak around a quarter of full scale: louder, with a compressor so a thirteenth chord doesn't clip
+  if(!rmOut){ const k=actx.createDynamicsCompressor(); k.threshold.value=-12; k.knee.value=8; k.ratio.value=4; k.attack.value=0.003; k.release.value=0.25;
+    rmOut=actx.createGain(); rmOut.gain.value=2.4; rmOut.connect(k); k.connect(actx.destination); }
+  const src=actx.createBufferSource(), g=actx.createGain(), inst=RM.set.sound;
+  let buf=null, rate=1;
+  if(inst==='piano'){ const s=RM_PIANO.reduce((a,b)=>Math.abs(b-midi)<Math.abs(a-midi)?b:a); buf=rmSamples.get(s)||null; rate=Math.pow(2,(midi-s)/12); }
+  if(!buf){ buf=rmSynthBuf(midi); rate=1; if(inst==='piano') gain*=0.35; }   // the made-up piano is louder than the recordings
+  src.buffer=buf; src.playbackRate.value=rate; src.connect(g); g.connect(inst==='piano'?rmOut:(outs[inst]||rmOut));
+  g.gain.setValueAtTime(gain,when); g.gain.setValueAtTime(gain,when+hold); g.gain.exponentialRampToValueAtTime(0.0005,when+hold+rel);
+  src.start(when); src.stop(when+hold+rel+0.05); rmSrcs.push(src);
+}
+// how: 'block' (all at once), 'arp' (one by one, then held together), 'seq' (one after the other, for melodic
+// intervals), 'short' (a quick note, the answer to a note card); "at" delays the start
+function rmPlay(ps,how,at){
   try{
-    if(!ensureAudio()) return; rmStop();
-    if(!outs.piano) outs.piano=(()=>{ const a=eq('lowpass',6500,null,0.5), b=eq('peaking',200,2,0.9); a.connect(b);
-      const dry=actx.createGain(); dry.gain.value=0.75; b.connect(dry); dry.connect(actx.destination); return a; })();
-    const out=outs[RM.set.sound]||outs.piano, n=ps.length, arp=how==='arp', strum=RM.set.sound==='piano'?0:0.03, t0=actx.currentTime+0.03;
-    ps.forEach((p,i)=>{ const src=actx.createBufferSource(), g=actx.createGain(); src.buffer=rmBuf(rmMidi(p));
-      g.gain.value=arp?0.85:Math.min(0.85,1.5/Math.sqrt(n)); src.connect(g); g.connect(out); src.start(t0+i*(arp?0.42:strum)); rmSrcs.push(src); });
+    if(!ensureAudio()) return;
+    // the first sounds wait for the recorded piano (a moment, once); if it can't load, the made-up one plays
+    if(RM.set.sound==='piano'&&!rmSampled){ const w=rmLoadPiano(); if(w){ w.then(()=>{ rmSampled=true; rmPlay(ps,how,at); }); return; } }
+    if(!at) rmStop();
+    const n=ps.length, t0=actx.currentTime+0.04+(at||0), loud=Math.min(1,1.3/Math.sqrt(n)), strum=RM.set.sound==='piano'?0:0.03;
+    if(how==='short') ps.forEach(p=>rmVoice(rmMidi(p),t0,1,0.55,0.3));
+    else if(how==='seq') ps.forEach((p,i)=>rmVoice(rmMidi(p),t0+i*0.75,1,i===n-1?1.1:0.6,0.35));
+    else if(how==='arp') ps.forEach((p,i)=>rmVoice(rmMidi(p),t0+i*0.45,loud*1.15,(n-1-i)*0.45+1.6,0.9));
+    else ps.forEach((p,i)=>rmVoice(rmMidi(p),t0+i*strum,loud,1.9,0.9));
   }catch(e){}
 }
+// how long a play lasts, to start the next one after it
+const rmPlayLen=(ps,how)=>how==='short'?0.9:how==='seq'?0.75*(ps.length-1)+1.5:how==='arp'?0.45*(ps.length-1)+2.5:2.8;
+// an ear card's example as asked: two notes up or down one after the other, or together; chords at once
+const rmEarHow=ex=>ex.how==='up'||ex.how==='down'?'seq':'block';
 /* ---------- screens ---------- */
-const RM_ICON={note:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9 18V5l11-2v13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.6" fill="currentColor"/><circle cx="17.5" cy="16" r="2.6" fill="currentColor"/></svg>'};
+const RM_ICON={note:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9 18V5l11-2v13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.6" fill="currentColor"/><circle cx="17.5" cy="16" r="2.6" fill="currentColor"/></svg>',
+  ear:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0c0 3-2 4-3.2 5.2-1 1-1.3 2-1.8 3.3A3 3 0 0 1 8 16.5M9.5 9a2.5 2.5 0 0 1 5 0c0 1.4-1.2 2-2 2.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'};
 const rmCount=n=>n===1?'1 card':n+' cards';
 function openRead(){
   view='read'; stopClock(); clearTimeout(advTimer); clearTimeout(cTimer);
   ['home','main','chessMain','modes','chessModes','wordsMain','paintMain','conjMain'].forEach(id=>$(id).hidden=true); $('readMain').hidden=false; $('instBtn').hidden=false;
   $('instName').innerHTML=RM_ICON.note+' Read music';
   if(window.innerWidth<920) $('rmSettingsPanel').open=false;
-  RMV=null; renderRead(); scrollTo(0,0);
+  if(RM.set.sound==='piano') rmLoadPiano();
+  RMV=null; if(RT&&RT.phase==='ask'&&RT.ex) RT.fresh=true; renderRead(); scrollTo(0,0);
 }
 function rmBack(){ RMV=RMV&&RMV.back||null; renderRead(); scrollTo(0,0); }
 function rmGoTab(tab){
@@ -7072,39 +7192,74 @@ function rmGoTab(tab){
   if(tab==='train'){ navBack(()=>{ RMV=null; renderRead(); }); return; }
   if(!RMV) subPush(); RMV={tab}; renderRead(); scrollTo(0,0);
 }
-function rmOpenCard(k){ subPush(); RMV={tab:'card',k,back:RMV}; rmWarm(rmCard(k).ps); renderRead(); scrollTo(0,0); }
+function rmOpenCard(k){ const c=rmCard(k); subPush(); RMV={tab:'card',k,back:RMV,ex:c.kind==='ear'?rmEarExample(c,Math.random):null}; rmWarm(RMV.ex?RMV.ex.ps:c.ps); renderRead(); scrollTo(0,0); }
 function rmTabsHtml(){
   const cur=RMV?RMV.tab:'train';
   return `<div class="vhead"><div class="chips" role="tablist" aria-label="Read music">${[['train','Train'],['sets','Cards'],['hist','History']].map(o=>`<button type="button" class="chip" role="tab" data-rmtab="${o[0]}" aria-selected="${cur===o[0]}" aria-pressed="${cur===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
 }
 const rmClefName=c=>RM_CLEF[c].name.toLowerCase()+' clef';
-function rmAnswerHtml(c){
+const RM_DIR={up:'↑',down:'↓',together:'together'};
+// what a card is called in lists: the note, the chord symbol, or the ear answer
+const rmTitle=c=>c.kind==='note'?c.name:c.kind==='chord'?c.sym:c.title+(RM_DIR[c.how]?(c.how==='together'?' (together)':' '+RM_DIR[c.how]):'');
+const rmSub=c=>c.kind==='note'?`Note · ${rmClefName(c.clef)}`:c.kind==='chord'?`${c.invName} · ${rmClefName(c.clef)}`:RM_SET[c.set].name;
+// an ear answer's button: the short name, and the full one under it
+function rmOptHtml(s,o,cls,dis){
+  const big=s.how==='inv'?['Root','1st','2nd'][+o]:s.how==='chord'?({maj:'Major',min:'Minor',dim:'Dim',aug:'Aug'}[o]||RM_QI[o].sym):o;
+  const small=s.how==='inv'?['position','inversion','inversion'][+o]:s.how==='chord'?RM_QI[o].name:RM_IVI[o].name;
+  return `<button type="button" class="ropt${cls}" data-rmopt="${o}" ${dis?'disabled':''}><b>${esc(big)}</b><small>${esc(small)}</small></button>`;
+}
+function rmAnswerHtml(c,ex){
   if(c.kind==='note') return `<div class="rsym">${esc(c.answer)}</div><div class="rdet">${esc(c.name)} · ${rmClefName(c.clef)} · ${c.ledger?`${c.ledger} ledger ${c.ledger===1?'line':'lines'} ${c.where}`:'on the staff'}</div>`;
+  if(c.kind==='ear'){ const s=RM_SET[c.set];
+    return `<div class="rsym">${esc(s.how==='inv'?RM_INV[+c.ans][0].toUpperCase()+RM_INV[+c.ans].slice(1):c.title)}</div><div class="rdet">${s.how==='inv'?esc(RM_ROOTS[ex.root]+(c.q==='maj'?' major':' minor'))+' · ':s.how==='chord'?esc(RM_ROOTS[ex.root]+RM_QI[c.ans].sym)+' · ':''}${esc(ex.ps.map(rmNm).join(' – '))}</div><div class="rsci">${esc(ex.ps.map(rmSci).join(' – '))}</div>`; }
   return `<div class="rsym">${esc(c.sym)}</div><div class="rdet">${esc(c.name)} · ${esc(c.invName)}${c.bass?` (${esc(c.bass)} in the bass)`:''} · ${rmClefName(c.clef)}</div><div class="rnotes">${esc(c.notes)}</div><div class="rsci">${esc(c.sci)}</div>`;
 }
-function rmPlayHtml(c){
-  return `<div class="rplay">${c.kind==='note'?`<button type="button" class="btn" data-rmplay="block">▶ Note</button>`:`<button type="button" class="btn" data-rmplay="block">▶ Chord</button><button type="button" class="btn" data-rmplay="arp">▶ Arpeggio</button>`}</div>`;
+// the play buttons, on every card: the note; the chord and its arpeggio; an ear card again, and the other way
+function rmPlayHtml(c,ex){
+  const b=(how,label)=>`<button type="button" class="btn" data-rmplay="${how}">▶ ${label}</button>`;
+  if(c.kind==='note') return `<div class="rplay">${b('short','Note')}</div>`;
+  if(c.kind==='chord') return `<div class="rplay">${b('block','Chord')}${b('arp','Arpeggio')}</div>`;
+  const s=RM_SET[c.set];
+  if(s.how==='up'||s.how==='down') return `<div class="rplay">${b('seq','Again')}${b('block','Together')}</div>`;
+  if(s.how==='together') return `<div class="rplay">${b('block','Again')}${b('seq','One by one')}</div>`;
+  return `<div class="rplay">${b('block','Again')}${b('arp','Arpeggio')}</div>`;
 }
-const rmStaff=c=>rmStaffSvg(c.clef,c.ps,{range:RM_RANGE[c.kind],label:c.kind==='note'?'A note on the '+rmClefName(c.clef):'A chord on the '+rmClefName(c.clef)});
+const rmStaff=c=>rmStaffSvg(c.clef,c.ps,{range:RM_RANGE[c.kind],label:c.kind==='note'?'A note on the '+rmClefName(c.clef):'A chord on the '+rmClefName(c.clef),extra:RT&&RT.guess&&RT.k===c.k?RT.guess:null});
+function rmModeHtml(){
+  const m=RM.set.mode, n=mode=>rmDueCount(mode);
+  return `<div class="chips rmode" role="group" aria-label="What to train">${[['read','Reading',RM_ICON.note],['ear','Ear training',RM_ICON.ear]].map(([id,l,ic])=>`<button type="button" class="chip" data-rmmode="${id}" aria-pressed="${m===id}">${ic} ${l}${n(id)?` <span class="rdue" title="${n(id)} due">${n(id)}</span>`:''}</button>`).join('')}</div>`;
+}
 function rmTrainHtml(){
-  const goal=rmGoal(), n=rmToday(); let h=rmTabsHtml();
+  const goal=rmGoal(), n=rmToday(); let h=rmTabsHtml()+rmModeHtml();
   h+=`<div class="vgoal"><div class="vbar"><i style="width:${Math.min(100,Math.round(n/goal*100))}%"></i></div><div class="vgl"><span>Daily goal</span><span class="mono">${n} / ${goal}</span></div></div>`;
-  if(RM_CELEBRATE||n>=goal&&RM_CONT!==romeDay()&&!(RT&&RT.phase==='shown')) return h+rmGoalHtml(RM_CELEBRATE);
-  if(!RT) return h+`<div class="hint">Nothing to practise: turn on at least one set of cards (Cards tab) and one clef (Settings).</div>`;
+  if(RM_CELEBRATE||n>=goal&&RM_CONT!==romeDay()&&!(RT&&RT.phase==='shown')) return h+rmGoalHtml();
+  if(!RT) return h+`<div class="hint">Nothing to practise: turn on at least one set of ${RM.set.mode==='ear'?'ear training cards':'cards'} in the Cards tab${RM.set.mode==='ear'?'':', and one clef in Settings'}.</div>`;
   const c=rmCard(RT.k), shown=RT.phase==='shown', set=RM_SET[c.set];
   if(c.kind==='note'){
+    const wrong=shown&&RT.pick!==c.answer;
     h+=`<div class="wcard vcard rcard"><div class="rset">${esc(set.name)}</div>${rmStaff(c)}`
       +(shown?rmAnswerHtml(c):`<div class="hint">Which note is it?</div>`)
       +`<div class="rletters" role="group" aria-label="Note names">${'CDEFGAB'.split('').map(L=>{ const cls=shown?(L===c.answer?' good':L===RT.pick?' bad':''):'';
         return `<button type="button" class="rlet${cls}" data-rmlet="${L}" ${shown?'disabled':''}>${L}</button>`; }).join('')}</div>`
-      +(shown?`${rmPlayHtml(c)}<button type="button" class="btn primary" data-rmact="next">Next</button>`:'')+`</div>`;
+      +(wrong?`<div class="rplay"><button type="button" class="btn rbad" data-rmplay="guess">▶ Yours: ${esc(rmSci(RT.guess))}</button><button type="button" class="btn rgood" data-rmplay="short">▶ Right: ${esc(c.name)}</button></div>`:rmPlayHtml(c))
+      +(shown?`<button type="button" class="btn primary" data-rmact="next">Next</button>`:'')+`</div>`;
+  }else if(c.kind==='ear'){
+    const ex=RT.ex, wrong=shown&&RT.pick!==c.ans;
+    h+=`<div class="wcard vcard rcard"><div class="rset">${esc(set.name)}</div>`
+      +(shown?rmStaffSvg(ex.clef,ex.ps,{label:'The notes you heard'})+rmAnswerHtml(c,ex):`<div class="rearq">${RM_ICON.ear}<span>${set.how==='inv'?`Listen: a ${c.q==='maj'?'major':'minor'} triad. Which inversion?`:set.how==='chord'?'Listen: which chord is it?':'Listen: which interval is it?'}</span></div>`)
+      +rmPlayHtml(c,ex)
+      +`<div class="ropts${set.opts.length>6?' many':''}" role="group" aria-label="Answers">${set.opts.map(o=>rmOptHtml(set,o,shown?(o===c.ans?' good':o===RT.pick?' bad':''):'',shown)).join('')}</div>`
+      +(wrong?`<div class="rplay"><button type="button" class="btn rbad" data-rmplay="yours">▶ Yours: ${esc(rmOptName(set,RT.pick,c.q))}</button><button type="button" class="btn rgood" data-rmplay="right">▶ Right: ${esc(c.title)}</button></div>`:'')
+      +(shown?`<button type="button" class="btn primary" data-rmact="next">Next</button>`:'')+`</div>`;
   }else{
     h+=`<div class="wcard vcard vtap rcard" role="button" tabindex="0" data-rmtap aria-label="${shown?'Next card':'Show the answer'}"><div class="rset">${esc(set.name)}</div>${rmStaff(c)}`
-      +(shown?`${rmAnswerHtml(c)}${rmPlayHtml(c)}<div class="vcstars" title="How well you know this card">${vStarsHtml(RM.p[RT.k]?RM.p[RT.k].b:0)}</div><div class="vjudge"><button type="button" class="vno" data-rmact="missed" aria-label="I didn’t know it" title="I didn’t know it">${V_ICON.down}</button><button type="button" class="vyes" data-rmact="knew" aria-label="I knew it" title="I knew it">${V_ICON.up}</button></div>`
-        :`<div class="hint">Name the chord and its inversion, then tap to see it</div>`)+`</div>`;
+      +(shown?rmAnswerHtml(c):`<div class="hint">Name the chord and its inversion, then tap to see it</div>`)+rmPlayHtml(c)
+      +(shown?`<div class="vcstars" title="How well you know this card">${vStarsHtml(RM.p[RT.k]?RM.p[RT.k].b:0)}</div><div class="vjudge"><button type="button" class="vno" data-rmact="missed" aria-label="I didn’t know it" title="I didn’t know it">${V_ICON.down}</button><button type="button" class="vyes" data-rmact="knew" aria-label="I knew it" title="I knew it">${V_ICON.up}</button></div>`:'')+`</div>`;
   }
   if(RT.practice) h+=`<div class="hint">Nothing due right now, so this is practice: it doesn’t change your review schedule.</div>`;
-  h+=`<div class="hint">${c.kind==='note'?'Tap the note’s name, or press its letter on a keyboard.':'👎 brings the card back in a few cards; 👍, or tapping the card again, counts it as known. On a keyboard: Space shows the answer, ← and → answer.'} Each card comes back after 1, 3, 7, 30 and 90 days; new cards start from the easiest set turned on.</div>`;
+  h+=`<div class="hint">${c.kind==='note'?'Tap the note’s name, or press its letter on a keyboard. A wrong note shows up next to the right one, in red, and you hear both.'
+    :c.kind==='ear'?'Every card is played from a new note each time. Answer with the buttons, or the number keys 1–9 and 0; Space plays it again. A wrong answer lets you hear yours next to the right one.'
+    :'👎 brings the card back in a few cards; 👍, or tapping the card again, counts it as known. On a keyboard: Space shows the answer, ← and → answer.'} Each card comes back after 1, 3, 7, 30 and 90 days; new cards start from the easiest set turned on.</div>`;
   return h;
 }
 function rmWeekHtml(){
@@ -7113,25 +7268,30 @@ function rmWeekHtml(){
   return `<div class="vweek">${week.map((d,i)=>{ const done=rmDayDone(d); return `<div class="vday${done?' done':''}${d===today?' now':''}"><span>${done?(d===today?RM_ICON.note:V_TICK):''}</span><small><span class="dshort">${names[i][0]}</span><span class="dlong">${names[i][1]}</span></small></div>`; }).join('')}</div>`;
 }
 function rmTodayCounts(){ const res=Object.values(RM.days[romeDay()]||{}), hard=res.filter(x=>!x).length; return {hard,easy:res.length-hard}; }
-function rmGoalHtml(fresh){
+function rmGoalHtml(){
   const {hard,easy}=rmTodayCounts(), today=romeDay(), seen=new Map();
   RM.hist.forEach(x=>{ if(romeDay(x.t)!==today||!rmCard(x.k)) return; const o=seen.get(x.k)||{miss:false}; if(!x.ok) o.miss=true; seen.delete(x.k); seen.set(x.k,o); });
   const cards=ok=>[...seen.entries()].reverse().filter(([k,o])=>o.miss!==ok).map(([k])=>rmCard(k));
-  const list=(arr,empty)=>arr.length?`<ul>${arr.map(c=>`<li><button type="button" class="vglink" data-rmopen="${esc(c.k)}">${esc(c.kind==='note'?c.name:c.sym)}</button></li>`).join('')}</ul>`:`<p class="hint">${empty}</p>`;
+  const list=(arr,empty)=>arr.length?`<ul>${arr.map(c=>`<li><button type="button" class="vglink" data-rmopen="${esc(c.k)}">${esc(rmTitle(c))}</button></li>`).join('')}</ul>`:`<p class="hint">${empty}</p>`;
   return `<div class="vgoaldone"><div class="vgtitle">Daily goal reached!</div>${rmWeekHtml()}`
     +`<div class="vgsub">Today’s training</div><div class="vtoday"><div class="vhard"><b>${hard}</b><span>Hard</span></div><div class="veasy"><b>${easy}</b><span>Easy</span></div></div>`
     +`<div class="vglists"><div><div class="vglh no">${V_ICON.down} To review</div>${list(cards(false),'Nothing missed today.')}</div><div><div class="vglh yes">${V_ICON.up} Most solid</div>${list(cards(true),'—')}</div></div>`
     +`<button type="button" class="btn primary big vgcont" data-rmact="cont">Continue</button><div class="hint">Continue keeps training beyond the goal; the cards count for tomorrow’s reviews as usual.</div></div>`;
 }
 function rmSetStats(id){
-  const cl=RM.set.clefs, keys=rmSetKeys(id).filter(k=>cl.indexOf(rmClefOf(k))>=0), now=Date.now();
+  const cl=RM.set.clefs, keys=rmSetKeys(id).filter(k=>{ const c=rmClefOf(k); return !c||cl.indexOf(c)>=0; }), now=Date.now();
   return {n:keys.length,seen:keys.filter(k=>RM.p[k]).length,mastered:keys.filter(k=>RM.p[k]&&RM.p[k].b>=5).length,due:keys.filter(k=>RM.p[k]&&RM.p[k].due<=now).length};
+}
+function rmSetRow(s){
+  const st=rmSetStats(s.id), on=RM.set.sets.indexOf(s.id)>=0;
+  const art=s.kind==='ear'?`<span class="rsetart rsetear">${RM_ICON.ear}</span>`:(()=>{ const ex=rmCard(rmSetKeys(s.id)[s.kind==='note'?10:0]); return `<span class="rsetart">${rmStaffSvg(ex.clef,ex.ps,{thumb:true,label:s.name})}</span>`; })();
+  return `<label class="rsetrow${on?' on':''}"><input type="checkbox" data-rmset="${s.id}" ${on?'checked':''}>${art}<span class="rsettext"><b>${esc(s.name)}</b><small>${esc(s.sub)}</small><small class="mono">${rmCount(st.n)} · ${st.seen} practised · ${st.mastered} mastered${st.due?` · ${st.due} due`:''}</small></span></label>`;
 }
 function rmSetsHtml(){
   let h=rmTabsHtml();
-  h+=`<div class="hint">Turn on the sets you want to train. New cards come from the easiest set turned on: the notes first, then each chord level in turn. Cards you have started keep their reviews when a set is turned off.</div>`;
-  h+=`<div class="rsets">${RM_SETS.map(s=>{ const st=rmSetStats(s.id), on=RM.set.sets.indexOf(s.id)>=0, ex=rmCard(rmSetKeys(s.id)[s.kind==='note'?10:0]);
-    return `<label class="rsetrow${on?' on':''}"><input type="checkbox" data-rmset="${s.id}" ${on?'checked':''}><span class="rsetart">${rmStaffSvg(ex.clef,ex.ps,{thumb:true,label:s.name})}</span><span class="rsettext"><b>${esc(s.name)}</b><small>${esc(s.sub)}</small><small class="mono">${rmCount(st.n)} · ${st.seen} practised · ${st.mastered} mastered${st.due?` · ${st.due} due`:''}</small></span></label>`; }).join('')}</div>`;
+  h+=`<div class="hint">Turn on the sets you want to train. New cards come from the easiest set turned on: in reading the notes first, then each chord level in turn; in ear training, intervals before chords. Cards you have started keep their reviews when a set is turned off.</div>`;
+  h+=`<h3 class="rsethead">${RM_ICON.note} Reading</h3><div class="rsets">${RM_SETS.filter(s=>s.kind!=='ear').map(rmSetRow).join('')}</div>`;
+  h+=`<h3 class="rsethead">${RM_ICON.ear} Ear training</h3><div class="rsets">${RM_SETS.filter(s=>s.kind==='ear').map(rmSetRow).join('')}</div>`;
   return h;
 }
 function rmHistHtml(){
@@ -7141,61 +7301,86 @@ function rmHistHtml(){
   const latest=new Set(); let lastDay='';
   h+=list.map(x=>{ const c=rmCard(x.k); if(!c) return ''; const d=romeDay(x.t), head=d!==lastDay?`<h3 class="vhday">${dayLabel(d)}</h3>`:''; lastDay=d;
     const isLast=!latest.has(x.k); latest.add(x.k);
-    const title=c.kind==='note'?c.name:c.sym, sub=c.kind==='note'?`Note · ${rmClefName(c.clef)}`:`${c.invName} · ${rmClefName(c.clef)}`;
-    return head+`<div class="vhrow ${x.ok?'ok':'no'}"><button type="button" class="vhopen" data-rmopen="${esc(x.k)}"><b>${esc(title)}</b><span>${esc(sub)}</span></button>`
+    return head+`<div class="vhrow ${x.ok?'ok':'no'}"><button type="button" class="vhopen" data-rmopen="${esc(x.k)}"><b>${esc(rmTitle(c))}</b><span>${esc(rmSub(c))}</span></button>`
       +`<button type="button" class="vflip" data-rmflip="${x.t}" aria-label="Change to ${x.ok?'hard':'easy'}" title="Change to ${x.ok?'hard':'easy'}">${V_ICON.flip}</button><span class="varrow" aria-label="${x.ok?'Easy':'Hard'}">${x.ok?'▲':'▼'}</span>${isLast&&RM.p[x.k]?vStarsHtml(RM.p[x.k].b):'<span class="vst"></span>'}</div>`; }).join('');
   h+=`<div class="hint">Rated a card Easy instead of Hard, or the other way round? Tap the circled arrows to change it; on a card’s latest answer this also fixes when it comes back. Tap a card to see and hear it again.</div>`;
   return h;
 }
 function rmCardViewHtml(){
-  const c=rmCard(RMV.k), st=RM.p[c.k];
-  return `<div class="vhead"><button type="button" class="btn quiet sm" data-rmact="back">‹ Back</button></div><div class="wcard vcard rcard"><div class="rset">${esc(RM_SET[c.set].name)}</div>${rmStaff(c)}${rmAnswerHtml(c)}${rmPlayHtml(c)}`
+  const c=rmCard(RMV.k), st=RM.p[c.k], ex=RMV.ex;
+  return `<div class="vhead"><button type="button" class="btn quiet sm" data-rmact="back">‹ Back</button></div><div class="wcard vcard rcard"><div class="rset">${esc(RM_SET[c.set].name)}</div>`
+    +(ex?rmStaffSvg(ex.clef,ex.ps,{label:'The notes'})+rmAnswerHtml(c,ex):rmStaff(c)+rmAnswerHtml(c))+rmPlayHtml(c,ex)
+    +(ex?`<button type="button" class="btn quiet sm" data-rmact="another">Another root</button>`:'')
     +`<div class="vprog">${vStarsHtml(st?st.b:0)}<span class="hint">${st?`Practised ${st.n} ${st.n===1?'time':'times'}, right ${st.ok} · ${nextReviewText(st)}`:'Not practised yet'}</span></div></div>`;
 }
 function rmSettingsHtml(){
   const s=RM.set, chip=(attr,val,on,label)=>`<button type="button" class="chip" data-${attr}="${val}" aria-pressed="${on}">${label}</button>`, goal=rmGoal();
-  return `<div class="field"><span class="fl">Clefs</span><div class="chips">${chip('rmclef','t',s.clefs.indexOf('t')>=0,'Treble')}${chip('rmclef','b',s.clefs.indexOf('b')>=0,'Bass')}</div><div class="hint">Chords come on both clefs; the note sets have one each.</div></div>`
-    +`<div class="field"><span class="fl">Sound</span><div class="chips">${RM_SOUNDS.map(([id,l])=>chip('rmsound',id,s.sound===id,l)).join('')}<button type="button" class="btn sm" data-rmtest aria-label="Listen to this sound">${V_ICON.say}</button></div></div>`
-    +`<div class="field"><span class="fl">When the answer shows, play</span><div class="chips">${chip('rmauto','block',s.auto==='block','The chord')}${chip('rmauto','arp',s.auto==='arp','The arpeggio')}${chip('rmauto','off',s.auto==='off','Nothing')}</div><div class="hint">The buttons under the answer play either one at any time.</div></div>`
-    +`<div class="field"><span class="fl">Daily goal: cards a day</span><div class="chips">${[10,20,30,50].map(n=>`<button type="button" class="chip mono" data-rmgoal="${n}" aria-pressed="${goal===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="300" inputmode="numeric" data-rmgoalin value="${[10,20,30,50].indexOf(goal)<0?goal:''}" placeholder="any" aria-label="Another daily goal"></label></div></div>`;
+  return `<div class="field"><span class="fl">Clefs</span><div class="chips">${chip('rmclef','t',s.clefs.indexOf('t')>=0,'Treble')}${chip('rmclef','b',s.clefs.indexOf('b')>=0,'Bass')}</div><div class="hint">For the reading cards: chords come on both clefs, the note sets have one each.</div></div>`
+    +`<div class="field"><span class="fl">Sound</span><div class="chips">${RM_SOUNDS.map(([id,l])=>chip('rmsound',id,s.sound===id,l)).join('')}<button type="button" class="btn sm" data-rmtest aria-label="Listen to this sound">${V_ICON.say}</button></div><div class="hint">The piano is the Salamander Grand Piano, a Yamaha grand recorded note by note by Alexander Holm (CC-BY 3.0); it downloads once, about 1.4 MB.</div></div>`
+    +`<div class="field"><span class="fl">When a chord’s answer shows, play</span><div class="chips">${chip('rmauto','block',s.auto==='block','The chord')}${chip('rmauto','arp',s.auto==='arp','The arpeggio')}${chip('rmauto','off',s.auto==='off','Nothing')}</div><div class="hint">The buttons on each card play the chord or the arpeggio at any time.</div></div>`
+    +`<div class="field"><span class="fl">Daily goal: cards a day</span><div class="chips">${[10,20,30,50].map(n=>`<button type="button" class="chip mono" data-rmgoal="${n}" aria-pressed="${goal===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="300" inputmode="numeric" data-rmgoalin value="${[10,20,30,50].indexOf(goal)<0?goal:''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">Reading and ear training cards both count.</div></div>`;
 }
 function rmStatsHtml(){
-  const items=rmItems(), seen=items.filter(k=>RM.p[k]).length, mastered=items.filter(k=>RM.p[k]&&RM.p[k].b>=5).length;
-  return `<h2>Your cards</h2><div class="totals">${items.length} cards in training · ${seen} practised · ${mastered} mastered · ${rmDueCount()} due now</div><div class="hint" style="margin-top:6px">${readDoc?'Progress saved to your account':'Progress saved in this browser'}. Notes and chords come from your Anki decks, drawn and played here.</div>`;
+  const line=(mode,label)=>{ const items=rmItems(mode), seen=items.filter(k=>RM.p[k]).length, mastered=items.filter(k=>RM.p[k]&&RM.p[k].b>=5).length;
+    return `<div class="totals"><b>${label}</b>: ${items.length} cards in training · ${seen} practised · ${mastered} mastered · ${rmDueCount(mode)} due now</div>`; };
+  return `<h2>Your cards</h2>${line('read','Reading')}${line('ear','Ear training')}<div class="hint" style="margin-top:6px">${readDoc?'Progress saved to your account':'Progress saved in this browser'}. The reading cards come from your Anki decks, drawn and played here.</div>`;
 }
 function renderRead(){
   if(view!=='read') return;
   $('rmeyebrow').textContent='Read music';
   let h;
-  if(RMV&&RMV.tab==='card'){ const c=rmCard(RMV.k); $('rmprompt').textContent=c.kind==='note'?c.name:c.sym; h=rmCardViewHtml(); }
+  if(RMV&&RMV.tab==='card'){ $('rmprompt').textContent=rmTitle(rmCard(RMV.k)); h=rmCardViewHtml(); }
   else if(RMV&&RMV.tab==='sets'){ $('rmprompt').textContent='Cards'; h=rmSetsHtml(); }
   else if(RMV&&RMV.tab==='hist'){ $('rmprompt').textContent='History'; h=rmHistHtml(); }
   else{ $('rmprompt').innerHTML=RM_ICON.note+' Read music'; if(!RT||rmItems().indexOf(RT.k)<0&&RT.phase!=='shown') rmNew(); h=rmTrainHtml(); }
   $('rmbody').innerHTML=h; $('rmsettings').innerHTML=rmSettingsHtml(); $('rmstats').innerHTML=rmStatsHtml();
   if(!RMV){ const c=document.querySelector('[data-rmtap]'); if(c) c.focus({preventScroll:true}); }
+  // an ear card plays as soon as it shows
+  if(!RMV&&RT&&RT.fresh&&RT.phase==='ask'&&!(RM_CELEBRATE||rmToday()>=rmGoal()&&RM_CONT!==romeDay())){ RT.fresh=false; const ex=RT.ex; setTimeout(()=>{ if(view==='read'&&!RMV&&RT&&RT.ex===ex) rmPlay(ex.ps,rmEarHow(ex)); },300); }
 }
 function rmReveal(){
   if(!RT||RT.phase!=='ask') return; RT.phase='shown'; renderRead();
   const c=rmCard(RT.k); if(RM.set.auto!=='off') rmPlay(c.ps,RM.set.auto);
 }
+// a note card: right, a short note and on to the next; wrong, your note (in red on the staff), then the right one
 function rmLetter(L){
   if(!RT||RT.phase!=='ask') return; const c=rmCard(RT.k); if(c.kind!=='note') return;
-  const ok=L===c.answer; RT.pick=L; RT.phase='shown'; rmAdvance(ok); renderRead(); rmPlay(c.ps,'block');
-  if(ok){ const k=RT.k; rmTimer=setTimeout(()=>{ if(view==='read'&&!RMV&&RT&&RT.k===k&&RT.phase==='shown') rmNext(); },1100); }
+  const ok=L===c.answer; RT.pick=L; RT.phase='shown'; if(!ok) RT.guess=rmGuessPitch(c.ps[0],L,c.clef);
+  rmAdvance(ok); renderRead();
+  if(ok){ rmPlay(c.ps,'short'); const k=RT.k; rmTimer=setTimeout(()=>{ if(view==='read'&&!RMV&&RT&&RT.k===k&&RT.phase==='shown') rmNext(); },1100); }
+  else{ rmPlay([RT.guess],'short'); rmPlay(c.ps,'short',0.85); }
+}
+// an ear card: wrong, your answer from the same root, then the right one again
+function rmOption(o){
+  if(!RT||RT.phase!=='ask') return; const c=rmCard(RT.k); if(c.kind!=='ear') return;
+  const ok=o===c.ans; RT.pick=o; RT.phase='shown'; rmAdvance(ok); renderRead();
+  if(!ok){ const ex=RT.ex, y=rmEarExample(c,Math.random,o,ex), how=rmEarHow(ex); RT.yours=y; rmPlay(y.ps,how); rmPlay(ex.ps,how,rmPlayLen(y.ps,how)+0.3); }
 }
 function rmJudge(ok){ if(!RT||RT.phase!=='shown') return; rmAdvance(ok); rmNext(); }
+// what a play button plays, on the card in training or the one opened from the history
+function rmPlayBtn(how){
+  const open=RMV&&RMV.tab==='card', c=rmCard(open?RMV.k:RT.k), ex=open?RMV.ex:RT&&RT.ex;
+  if(how==='guess') return rmPlay([RT.guess],'short');
+  if(c.kind!=='ear') return rmPlay(c.ps,how);
+  if(how==='yours') return rmPlay(RT.yours.ps,rmEarHow(ex));
+  if(how==='right') return rmPlay(ex.ps,rmEarHow(ex));
+  rmPlay(ex.ps,how);
+}
 $('rmbody').addEventListener('click',e=>{
-  const t=e.target.closest('[data-rmtab],[data-rmact],[data-rmlet],[data-rmplay],[data-rmopen],[data-rmflip],[data-rmtap]'); if(!t) return;
+  const t=e.target.closest('[data-rmtab],[data-rmmode],[data-rmact],[data-rmlet],[data-rmopt],[data-rmplay],[data-rmopen],[data-rmflip],[data-rmtap]'); if(!t) return;
   if(t.dataset.rmtab){ rmGoTab(t.dataset.rmtab); return; }
-  if(t.dataset.rmplay){ e.stopPropagation(); const c=rmCard(RMV&&RMV.tab==='card'?RMV.k:RT.k); rmPlay(c.ps,t.dataset.rmplay); return; }
+  if(t.dataset.rmmode){ if(RM.set.mode!==t.dataset.rmmode){ RM.set.mode=t.dataset.rmmode; RM.set.t=Date.now(); rmSave(); rmStop(); rmNew(); renderRead(); } return; }
+  if(t.dataset.rmplay){ e.stopPropagation(); rmPlayBtn(t.dataset.rmplay); return; }
   if(t.dataset.rmlet){ rmLetter(t.dataset.rmlet); return; }
+  if(t.dataset.rmopt){ rmOption(t.dataset.rmopt); return; }
   if(t.dataset.rmopen){ rmOpenCard(t.dataset.rmopen); return; }
   if(t.dataset.rmflip){ rmFlip(+t.dataset.rmflip); return; }
   const a=t.dataset.rmact;
   if(a==='next'){ clearTimeout(rmTimer); rmNext(); return; }
   if(a==='missed'||a==='knew'){ e.stopPropagation(); rmJudge(a==='knew'); return; }
-  if(a==='cont'){ RM_CONT=romeDay(); RM_CELEBRATE=false; renderRead(); return; }
+  if(a==='cont'){ RM_CONT=romeDay(); RM_CELEBRATE=false; if(RT&&RT.ex) RT.fresh=true; renderRead(); return; }
   if(a==='back'){ navBack(rmBack); return; }
+  if(a==='another'){ RMV.ex=rmEarExample(rmCard(RMV.k),Math.random); renderRead(); rmPlay(RMV.ex.ps,rmEarHow(RMV.ex)); return; }
   if(t.hasAttribute('data-rmtap')){ if(RT&&RT.phase==='ask') rmReveal(); else rmJudge(true); }
 });
 $('rmbody').addEventListener('change',e=>{
@@ -7218,10 +7403,17 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){ if(RMV) navBack(rmBack); return; }
   if(RMV||!RT) return; const c=rmCard(RT.k);
   if(c.kind==='note'){ const L=e.key.toUpperCase(); if(RT.phase==='ask'&&/^[A-G]$/.test(L)){ e.preventDefault(); rmLetter(L); } else if(RT.phase==='shown'&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); clearTimeout(rmTimer); rmNext(); } return; }
+  if(c.kind==='ear'){
+    const opts=RM_SET[c.set].opts, i='1234567890'.indexOf(e.key);
+    if(RT.phase==='ask'&&i>=0&&i<opts.length){ e.preventDefault(); rmOption(opts[i]); }
+    else if(e.key===' '&&RT.phase==='ask'){ e.preventDefault(); rmPlay(RT.ex.ps,rmEarHow(RT.ex)); }
+    else if(RT.phase==='shown'&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); rmNext(); }
+    return;
+  }
   if(e.key===' '||e.key==='Enter'){ e.preventDefault(); if(RT.phase==='ask') rmReveal(); else rmJudge(true); }
   else if(RT.phase==='shown'&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){ e.preventDefault(); rmJudge(e.key==='ArrowRight'); }
 });
-function readHomeMeta(){ const due=rmDueCount(), seen=Object.keys(RM.p).filter(k=>RM_KEYSET.has(k)).length; return seen?`${seen} cards practised${due?` · ${due} due`:''}`:'Notes and chords on the treble and bass clef'; }
+function readHomeMeta(){ const due=rmDueCount('read')+rmDueCount('ear'), seen=Object.keys(RM.p).filter(k=>RM_KEYSET.has(k)).length; return seen?`${seen} cards practised${due?` · ${due} due`:''}`:'Notes and chords on the staff, and ear training'; }
 
 /* ---------- rendering ---------- */
 function wFeedback(cls,txt){ const el=$('wfeedback'); if(!el) return; el.className='feedback'+(cls?' '+cls:''); el.textContent=txt; }

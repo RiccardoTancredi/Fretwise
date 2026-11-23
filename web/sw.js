@@ -1,6 +1,6 @@
 /* Fretwise service worker: keeps the app usable offline and shows the daily reminder. */
 const VERSION='__BUILD__';
-const CACHE='fretwise-'+VERSION, RUNTIME='fretwise-runtime', PICS='fretwise-pics', FAV='fretwise-fav';
+const CACHE='fretwise-'+VERSION, RUNTIME='fretwise-runtime', PICS='fretwise-pics', FAV='fretwise-fav', SOUNDS='fretwise-sounds';
 const SHELL=['./','index.html','platform.js','account-storage.js','firebase-config.js','manifest.webmanifest','puzzles.json','paintings.json','icons/icon-192.png','icons/badge-96.png'];
 const CDN=/^https:\/\/(cdn\.jsdelivr\.net\/npm\/|fonts\.googleapis\.com\/|fonts\.gstatic\.com\/|www\.gstatic\.com\/firebasejs\/)/;
 // paintings' pictures (the card and gallery sizes, not the full-screen one): the last ones seen are kept
@@ -24,7 +24,7 @@ self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>Promise.all(SHELL.map(u=>c.add(u).catch(()=>{})))).then(()=>self.skipWaiting()));
 });
 self.addEventListener('activate',e=>{
-  e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('fretwise-')&&![CACHE,RUNTIME,PICS,FAV].includes(k)).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+  e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('fretwise-')&&![CACHE,RUNTIME,PICS,FAV,SOUNDS].includes(k)).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
 });
 // once the network has kept a file waiting 3 s, the next minute's files come straight from the saved copy
 // (each one still asks the network in the background), so a weak signal costs one wait, not one per file
@@ -33,6 +33,11 @@ async function trim(c,n=60){ const ks=await c.keys(); for(let i=0;i<ks.length-n;
 self.addEventListener('fetch',e=>{
   const req=e.request; if(req.method!=='GET') return;
   const url=new URL(req.url);
+  if(url.origin===location.origin&&/\/sounds\//.test(url.pathname)){
+    // the piano samples never change: kept on the device across updates, so they download once
+    e.respondWith(caches.open(SOUNDS).then(async c=>{ const hit=await c.match(req); if(hit) return hit; const r=await fetch(req); if(r.ok) c.put(req,r.clone()); return r; }));
+    return;
+  }
   if(url.origin===location.origin){
     // app files: network first so updates show up straight away; the saved copy when offline, or when the
     // network hasn't answered within 3 seconds (a weak signal), while the fresh copy still lands for next time
