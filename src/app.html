@@ -735,6 +735,9 @@ mark.v-gap::after{content:'';position:absolute;left:50%;bottom:-.3em;transform:t
 .rtcard .rex{width:100%;box-sizing:border-box}
 .rcof{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line);font-size:.93rem}
 .rcof span{flex:1 1 220px}
+.coflesson{display:flex;justify-content:flex-end;margin-bottom:6px}
+.coflesson .btn svg{width:15px;height:15px;vertical-align:-3px}
+.coflesson #cofBackL{margin-right:auto}
 .rdone{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:14px;border-radius:16px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--surface-2))}
 .rdone .rplay{justify-content:flex-start}
 .rdone .btn svg{width:16px;height:16px;vertical-align:-3px}
@@ -1626,14 +1629,17 @@ function cofSvg(){
   return h;
 }
 let cofBuilt='', cofDeg=null;
+// cofFrom: the Read music view the circle was opened from, to go back to it
+let cofFrom=null;
 function renderCircle(){
   const el=$('answer'), st=cofState();
+  if($('cofBackL')){ $('cofBackL').hidden=!cofFrom; $('cofToL').hidden=!!cofFrom; }
   $('eyebrow').textContent=`Circle of fifths · ${st.sig.n?`${st.sig.n}${st.sig.sharp?'♯':'♭'}: ${st.sig.names.join(' ')}`:'no sharps or flats'}`;
   $('prompt').textContent=`${st.tonicName} ${st.minor?'minor':'major'}`;
   $('dots').innerHTML=''; const sc=$('score'); sc.textContent=''; sc.classList.remove('timer'); sc.closest('.prompt-row').classList.remove('timed');
   if(!$('cofWrap')||cofBuilt!==S.acc+INST.id){
     cofBuilt=S.acc+INST.id; cofDeg=null;
-    el.innerHTML=`<div class="cofwrap" id="cofWrap">${cofSvg()}
+    el.innerHTML=`<div class="cofwrap" id="cofWrap"><div class="coflesson"><button type="button" class="btn quiet sm" data-cof="tolesson" id="cofBackL" hidden>‹ Back to the lesson</button><button type="button" class="btn quiet sm" data-cof="lesson" id="cofToL">Theory: the major scale and key signatures ›</button></div>${cofSvg()}
       <div class="actions cofnav"><button type="button" class="btn sm" data-cof="down" aria-label="Down a fifth">◀ 4th</button><div class="chips" role="group" aria-label="Key">${['Major','Minor'].map((m,j)=>`<button type="button" class="chip" data-cof="mode" data-v="${j}">${m}</button>`).join('')}</div><button type="button" class="btn sm" data-cof="up" aria-label="Up a fifth">5th ▶</button></div>
       <div class="cchords" id="cofChords"></div>
       <div class="cofinfo" id="cofInfo"></div>
@@ -2418,6 +2424,7 @@ function renderHome(){
   renderToday();
 }
 function showHome(){
+  cofFrom=null;
   if(view==='app') storeRound();
   view='home'; stopClock(); clearTimeout(advTimer); clearTimeout(cTimer);
   $('home').hidden=false; $('main').hidden=true; $('modes').hidden=true; $('instBtn').hidden=true; $('chessMain').hidden=true; $('chessModes').hidden=true; $('wordsMain').hidden=true; $('paintMain').hidden=true; $('readMain').hidden=true; $('conjMain').hidden=true;
@@ -2441,6 +2448,7 @@ window.addEventListener('popstate',()=>{
   if(view==='paint'&&PG){ pgBack(); return; }
   if(view==='conj'&&VBV){ vbBack(); return; }
   if(view==='read'&&RMV){ rmBack(); return; }
+  if(view==='app'&&cofFrom){ cofBackToLesson(); return; }
   if(view==='words'&&WV){ wvBack(); return; }
   if(view==='chess'&&CS.tab==='openings'&&OP.view!=='list'){ openingsList(); return; }
   showHome();
@@ -2586,6 +2594,8 @@ $('answer').addEventListener('click',e=>{
   else if(a==='mode'){ c.minor=b.dataset.v==='1'; c.chord=null; c.schord=null; }
   else if(a==='makekey'&&st.chord){ const ch=st.chord, m=ch.qual==='m'; c.i=FIFTHS.indexOf(m?md(ch.tones[0].pc+3,12):ch.tones[0].pc); c.minor=m; c.chord=null; }
   else if(a==='playscale'){ ensureAudio(); cofPlayScale(); return; }
+  else if(a==='tolesson'){ navBack(cofBackToLesson); return; }
+  else if(a==='lesson'){ cofFrom=null; openApp('read'); rmOpenLesson('l4'); RMV.fromCof=true; return; }
   else if(a==='playtheory'){ ensureAudio(); playTheoryChord(); return; }
   save(); renderCircle();
 });
@@ -7417,7 +7427,16 @@ function openRead(){
   if(RM.set.sound==='piano') rmLoadPiano();
   RMV=null; if(RT&&RT.phase==='ask'&&RT.ex) RT.fresh=true; renderRead(); scrollTo(0,0);
 }
-function rmBack(){ RMV=RMV&&RMV.back||null; renderRead(); scrollTo(0,0); }
+function rmBack(){
+  // a lesson opened from the circle of fifths goes back to the circle
+  if(RMV&&RMV.fromCof){ RMV=null; S.mode='circle'; openApp(INST.id); scrollTo(0,0); return; }
+  RMV=RMV&&RMV.back||null; renderRead(); scrollTo(0,0);
+}
+function rmGoCircle(){ subPush(); const v=RMV; S.mode='circle'; openApp(INST.id); cofFrom=v; render(); scrollTo(0,0); }
+function cofBackToLesson(){
+  const v=cofFrom; cofFrom=null; openApp('read'); RMV=v; renderRead();
+  setTimeout(()=>{ const el=document.querySelector('#rmbody .rcof'); if(el) el.scrollIntoView({block:'center'}); },60);
+}
 function rmGoTab(tab){
   const cur=RMV?RMV.tab:'train'; if(tab===cur) return;
   if(tab==='train'){ navBack(()=>{ RMV=null; renderRead(); }); return; }
@@ -7686,7 +7705,7 @@ $('rmbody').addEventListener('click',e=>{
   const t=e.target.closest('[data-rmtab],[data-rmmode],[data-rmact],[data-rmlet],[data-rmopt],[data-rmplay],[data-rmopen],[data-rmflip],[data-rmtap],[data-rmlesson],[data-rmans],[data-rmexp],[data-rmpractice],[data-rmcof]'); if(!t) return;
   if(t.dataset.rmtab){ rmGoTab(t.dataset.rmtab); return; }
   if(t.dataset.rmlesson){ rmOpenLesson(t.dataset.rmlesson,t.hasAttribute('data-replace')); return; }
-  if(t.hasAttribute('data-rmcof')){ S.mode='circle'; openApp(S.inst||'guitar'); return; }
+  if(t.hasAttribute('data-rmcof')){ rmGoCircle(); return; }
   if(t.dataset.rmexp){ rmPlayEx(rmExById(t.dataset.rmexp),t.dataset.how); return; }
   if(t.dataset.rmpractice){ rmPractice(t.dataset.rmpractice); return; }
   if(t.dataset.rmans){ const a=t.dataset.rmans.split('|'), i=+a.pop(), k=a.join('|'); if(RMV&&RMV.tab==='lesson') rmLessonAnswer(k,i); else rmTheory(i); return; }
