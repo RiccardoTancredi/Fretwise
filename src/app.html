@@ -733,6 +733,8 @@ mark.v-gap::after{content:'';position:absolute;left:50%;bottom:-.3em;transform:t
 .rwhy{padding:10px 12px;border-radius:12px;font-size:.93rem;line-height:1.45;text-align:left;background:color-mix(in srgb,var(--good) 12%,transparent)}
 .rwhy.no{background:color-mix(in srgb,var(--bad) 12%,transparent)}
 .rtcard .rex{width:100%;box-sizing:border-box}
+.rcof{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line);font-size:.93rem}
+.rcof span{flex:1 1 220px}
 .rdone{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:14px;border-radius:16px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--surface-2))}
 .rdone .rplay{justify-content:flex-start}
 .rdone .btn svg{width:16px;height:16px;vertical-align:-3px}
@@ -6937,6 +6939,7 @@ const RM_LESSONS=[
     'The <b>accidentals</b> (<i>alterazioni</i>) change a note by semitones: the <b>sharp</b> ♯ (<i>diesis</i>) raises it by one, the <b>flat</b> ♭ (<i>bemolle</i>) lowers it by one, the <b>natural</b> ♮ (<i>bequadro</i>) cancels them. The <b>double sharp</b> 𝄪 and the <b>double flat</b> 𝄫 raise and lower by two.',
     {clef:'t',cols:['F4','F♯4','G4','G♭4','F4'],labels:['F','F♯','G','G♭','F'],cap:'F, a semitone up to F♯, G, a semitone down to G♭: F♯ and G♭ are the same key'},
     'An accidental written before a note lasts until the end of the bar, for that line or space. Those written once at the start of every staff, the <b>key signature</b> (<i>alterazioni in chiave</i>), last for the whole piece.',
+    'A semitone between two different letters, such as C–D♭ or E–F, is a <b>diatonic semitone</b>; between two notes with the same letter, such as C–C♯, a <b>chromatic semitone</b>. On the piano they sound the same; on paper they are a minor second and an augmented unison.',
     'The same sound can have more than one name: these are <b>enharmonic</b> notes (<i>enarmonia</i>): C♯ and D♭, E♯ and F, B♯ and C, F𝄪 and G. Which name is right depends on the context. In a chord every note takes the letter of its place: the third of C♯ major is E♯, not F, because a third always spans three letter names (C, D, E).',
     {clef:'t',cols:['C♯4 E♯4 G♯4','D♭4 F4 A♭4'],labels:['C♯','D♭'],cap:'C♯ major and D♭ major: the same keys on a piano, written with different letters'}
   ],quiz:[
@@ -6970,12 +6973,31 @@ const RM_LESSONS=[
     'Sharps are always added in the same order, <b>F C G D A E B</b>, and flats in the opposite one, <b>B E A D G C F</b>. With sharps, the key is a semitone above the last sharp (F♯ C♯: D major). With flats, the key is the second-last flat (B♭ E♭ A♭: E♭ major); one flat alone is F major.',
     {clef:'t',key:2,cols:[],cap:'Two sharps: D major'},
     {clef:'t',key:-3,cols:[],cap:'Three flats: E♭ major'},
-    'Each new sharp moves the key a fifth up (C, G, D, A, E, B, F♯, C♯), each new flat a fifth down (C, F, B♭, E♭, A♭, D♭, G♭, C♭): this is the <b>circle of fifths</b> (<i>circolo delle quinte</i>).'
+    'Each new sharp moves the key a fifth up (C, G, D, A, E, B, F♯, C♯), each new flat a fifth down (C, F, B♭, E♭, A♭, D♭, G♭, C♭): this is the <b>circle of fifths</b> (<i>circolo delle quinte</i>).',
+    '<div class="rcof"><span>The circle of fifths of the guitar and ukulele section shows every key with its signature, its chords and its scale.</span><button type="button" class="btn sm" data-rmcof>Open the circle of fifths ›</button></div>'
   ],quiz:[
     {q:'Which is the pattern of the major scale?',o:['T T S T T T S','T S T T S T T','T T T S T T S','T T S T T S T'],why:'Tone, tone, semitone, tone, tone, tone, semitone: the semitones fall between III–IV and VII–I.'},
     {q:'Which major key has this key signature?',ex:{clef:'t',key:2,cols:[]},o:['D major','G major','A major','B♭ major'],why:'F♯ and C♯: the key is a semitone above the last sharp, C♯.'},
     {q:'Which major key has this key signature?',ex:{clef:'b',key:-3,cols:[]},o:['E♭ major','B♭ major','A♭ major','F major'],why:'B♭ E♭ A♭: the key is the second-last flat.'},
     {q:'What is the seventh degree of the major scale called, a semitone below the tonic?',o:['The leading tone (sensibile)','The dominant','The subdominant','The supertonic'],why:'It leads to the tonic, a semitone above it.'}
+  ]},
+  {id:'modes',title:'Modes, the minor scale and other scales',sub:'The Greek modes, natural minor, Lydian and Dorian, whole-tone and diminished',sets:[],body:[
+    'Play the C major scale on the white keys, but start from each of its seven notes in turn: you get the seven <b>Greek modes</b> (<i>scale greche</i>, <i>modi</i>). From C, <b>Ionian</b> (the major scale itself); from D, <b>Dorian</b>; from E, <b>Phrygian</b>; from F, <b>Lydian</b>; from G, <b>Mixolydian</b>; from A, <b>Aeolian</b>; from B, <b>Locrian</b>. The notes are the same, but the tones and semitones fall in different places, so each mode has its own colour.',
+    'The <b>natural minor scale</b> (<i>scala minore naturale</i>) is the Aeolian mode: <b>T S T T S T T</b>. A minor has the same notes as C major: they are <b>relative</b> keys (<i>relativa</i>), with the same key signature. The relative minor starts on the VI degree of the major, a minor third below its tonic.',
+    {clef:'t',cols:['A4','B4','C5','D5','E5','F5','G5','A5'],labels:['1','2','♭3','4','5','♭6','♭7','1'],cap:'A natural minor: the white keys from A'},
+    'From the same tonic, minor lowers the 3rd, the 6th and the 7th of major: C minor is C D E♭ F G A♭ B♭, with the three flats of E♭ major, its relative.',
+    {clef:'t',cols:['C4','D4','E♭4','F4','G4','A♭4','B♭4','C5'],labels:['1','2','♭3','4','5','♭6','♭7','1'],cap:'C natural minor'},
+    'Avena pairs each triad with a scale that sounds right over it. Over a major triad, the 4th of the major scale clashes, a semitone above the third: raise it and you get the <b>Lydian</b> scale (major with ♯4). Over a minor triad, the ♭6 of the natural minor clashes, a semitone above the fifth: raise it and you get the <b>Dorian</b> scale (minor with ♮6).',
+    {clef:'t',cols:['C4','D4','E4','F♯4','G4','A4','B4','C5'],labels:['1','2','3','♯4','5','6','7','1'],cap:'C Lydian'},
+    {clef:'t',cols:['C4','D4','E♭4','F4','G4','A4','B♭4','C5'],labels:['1','2','♭3','4','5','6','♭7','1'],cap:'C Dorian'},
+    'Two scales are built from one interval only. The <b>whole-tone scale</b> (<i>scala esatonale</i>) has six notes, all a tone apart, and holds the augmented triad: there are only two different ones. The <b>diminished scale</b> (<i>scala diminuita</i>, tone–semitone) has eight notes, a tone and a semitone in turn, and holds the diminished triad and the diminished seventh: there are only three.',
+    {clef:'t',cols:['C4','D4','E4','F♯4','G♯4','A♯4','C5'],cap:'The whole-tone scale from C'},
+    {clef:'t',cols:['C4','D4','E♭4','F4','G♭4','A♭4','A4','B4','C5'],cap:'The diminished scale from C, tone–semitone'}
+  ],quiz:[
+    {q:'Which mode do you get playing the white keys from A to A?',o:['Aeolian, the natural minor','Dorian','Phrygian','Mixolydian'],why:'A is the VI degree of C major: its mode is the Aeolian, the natural minor scale.'},
+    {q:'Which minor key is the relative of C major, with the same key signature?',o:['A minor','C minor','E minor','D minor'],why:'The relative minor starts on the VI degree, a minor third below the tonic.'},
+    {q:'Which scale is this?',ex:{clef:'t',cols:['C4','D4','E4','F♯4','G4','A4','B4','C5']},o:['C Lydian','C major','C Mixolydian','C Dorian'],why:'C major with a raised 4th, F♯: the Lydian.'},
+    {q:'Which scale holds the augmented triad?',o:['The whole-tone scale','The diminished scale','The Dorian scale','The natural minor scale'],why:'All tones: C D E F♯ G♯ A♯ holds C E G♯, a major third and another.'}
   ]},
   {id:'l5',title:'Triads',sub:'Major, minor, diminished and augmented, and their symbols',sets:['c1','e4'],body:[
     'A <b>chord</b> is three or more notes played together; played one at a time, the same notes make an <b>arpeggio</b>. The basic chord is the <b>triad</b> (<i>triade</i>): a <b>root</b> (<i>fondamentale</i>), the third above it and the fifth above it, two thirds stacked one on the other. On the staff a triad in root position is three notes all on lines or all in spaces.',
@@ -7180,7 +7202,7 @@ const rmKeyAlt=(key,l)=>key&&(key>0?'FCGDAEB':'BEADGCF').slice(0,Math.abs(key)).
 // left to right, a note or a chord each, with a label under each column
 function rmStaffRow(clef,cols,o){
   o=o||{}; const bottom=RM_CLEF[clef].bottom, key=o.key||0, nw=RM_GW.whole*RM_S, labels=o.labels||[], ledger=(x1,x2,st)=>`<line stroke-width="1.6" x1="${+x1.toFixed(2)}" x2="${+x2.toFixed(2)}" y1="${rmY(clef,st)}" y2="${rmY(clef,st)}"/>`;
-  let g='', f='', t='', x=44, lo=bottom, hi=bottom+8;
+  let g='', f='', t='', x=44, lo=bottom, hi=bottom+8, end=0;
   f+=clef==='t'?rmGlyph('gClef',12,rmY('t',bottom+2)):rmGlyph('fClef',12,rmY('b',bottom+6));
   if(key){ const gl=key>0?'sharp':'flat', w=RM_GW[gl]*RM_S+1.5;
     RM_KEYSIG[gl].slice(0,Math.abs(key)).forEach(s=>{ f+=rmGlyph(gl,x,rmY(clef,bottom+s-(clef==='b'?2:0))); x+=w; }); x+=6; }
@@ -7194,9 +7216,9 @@ function rmStaffRow(clef,cols,o){
     for(let st=bottom-2;st>=cl;st-=2) g+=ledger(RM_NX-3+dx,right+3,st);
     for(let st=bottom+10;st<=ch;st+=2) g+=ledger(RM_NX-3+dx,right+3,st);
     if(labels[i]) t+=`<text x="${+(RM_NX+dx+nw*(L.wide?1:.5)).toFixed(2)}" y="@">${labels[i]}</text>`;
-    x=right+3+(o.gap||(ps.length===1?3:18));
+    end=right+3; x=end+(o.gap||(ps.length===1?4:18));
   });
-  const W=Math.max(x+(cols.length?-8:10),110), R=[Math.min(-4,lo-bottom-2),Math.max(12,hi-bottom+2)], top=RM_Y0-R[1]*5-4, ly=RM_Y0-R[0]*5+12, h=(R[1]-R[0])*5+8+(t?14:0);
+  const W=Math.max(cols.length?end+6:x+10,110), R=[Math.min(-4,lo-bottom-2),Math.max(12,hi-bottom+2)], top=RM_Y0-R[1]*5-4, ly=RM_Y0-R[0]*5+12, h=(R[1]-R[0])*5+8+(t?14:0);
   for(let i=0;i<5;i++){ const y=RM_Y0-i*10; g=`<line x1="4" x2="${+(W-4).toFixed(2)}" y1="${y}" y2="${y}"/>`+g; }
   return `<svg class="rstaff rrow" viewBox="0 ${top} ${+W.toFixed(2)} ${h}" style="width:${Math.round(W*1.4)}px" role="img" aria-label="${o.label||'A staff'}"><g stroke="currentColor" stroke-width="1.3">${g}</g><g fill="currentColor">${f}</g>${t?`<g class="rlab" text-anchor="middle" fill="currentColor">${t.replace(/y="@"/g,`y="${ly}"`)}</g>`:''}</svg>`;
 }
@@ -7661,9 +7683,10 @@ function rmPlayBtn(how){
   rmPlay(ex.ps,how);
 }
 $('rmbody').addEventListener('click',e=>{
-  const t=e.target.closest('[data-rmtab],[data-rmmode],[data-rmact],[data-rmlet],[data-rmopt],[data-rmplay],[data-rmopen],[data-rmflip],[data-rmtap],[data-rmlesson],[data-rmans],[data-rmexp],[data-rmpractice]'); if(!t) return;
+  const t=e.target.closest('[data-rmtab],[data-rmmode],[data-rmact],[data-rmlet],[data-rmopt],[data-rmplay],[data-rmopen],[data-rmflip],[data-rmtap],[data-rmlesson],[data-rmans],[data-rmexp],[data-rmpractice],[data-rmcof]'); if(!t) return;
   if(t.dataset.rmtab){ rmGoTab(t.dataset.rmtab); return; }
   if(t.dataset.rmlesson){ rmOpenLesson(t.dataset.rmlesson,t.hasAttribute('data-replace')); return; }
+  if(t.hasAttribute('data-rmcof')){ S.mode='circle'; openApp(S.inst||'guitar'); return; }
   if(t.dataset.rmexp){ rmPlayEx(rmExById(t.dataset.rmexp),t.dataset.how); return; }
   if(t.dataset.rmpractice){ rmPractice(t.dataset.rmpractice); return; }
   if(t.dataset.rmans){ const a=t.dataset.rmans.split('|'), i=+a.pop(), k=a.join('|'); if(RMV&&RMV.tab==='lesson') rmLessonAnswer(k,i); else rmTheory(i); return; }
