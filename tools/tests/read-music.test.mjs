@@ -5,7 +5,7 @@ import {readFile} from 'node:fs/promises';
 // the read music data block of the app is pure: run it on its own
 const src=await readFile(new URL('../../src/app.html',import.meta.url),'utf8');
 const a=src.indexOf('/* ---------- read music data'), b=src.indexOf('/* ---------- end of read music data ---------- */');
-const R=new Function(src.slice(a,b)+';return {RM_SETS,RM_SET,RM_KEYSET,RM_RANGE,RM_NX,RM_Y0,RM_IVI,RM_QI,rmSetKeys,rmCard,rmStaffSvg,rmLayout,rmStep,rmP,rmSci,rmMidi,rmEarExample,rmGuessPitch};')();
+const R=new Function(src.slice(a,b)+';return {RM_SETS,RM_SET,RM_KEYSET,RM_RANGE,RM_NX,RM_Y0,RM_IVI,RM_QI,rmSetKeys,rmCard,rmStaffSvg,rmLayout,rmStep,rmP,rmSci,rmMidi,rmEarExample,rmGuessPitch,rmNm,RM_LESSONS,RM_LESSON,rmEx,rmStaffRow,rmKeyAlt};')();
 const json=async f=>JSON.parse(await readFile(new URL('./fixtures/'+f,import.meta.url),'utf8'));
 
 test('the chords are the 1392 of the Anki deck: same symbol, name, inversion, clef, level and pitches',async()=>{
@@ -30,7 +30,7 @@ test('the notes are the 42 of the Anki deck, with their ledger lines',async()=>{
 });
 
 test('every card fits its staff: notes inside the frame, accidentals clear of the notes and of each other',()=>{
-  const keys=[...R.RM_KEYSET.keys()].filter(k=>k[0]!=='e');
+  const keys=[...R.RM_KEYSET.keys()].filter(k=>k[0]==='n'||k[0]==='c');
   assert.equal(keys.length,1434);
   for(const k of keys){
     const c=R.rmCard(k), L=R.rmLayout(c.ps), bottom=c.clef==='t'?30:18, [lo,hi]=R.RM_RANGE[c.kind];
@@ -105,4 +105,44 @@ test('a wrong note name is placed in the nearest octave that stays inside the fr
   assert.equal(R.rmSci(R.rmGuessPitch(R.rmP('G4'),'A','t')),'A4');
   for(const id of ['nt','nb']) for(const k of R.rmSetKeys(id)){ const c=R.rmCard(k);
     for(const L of 'CDEFGAB'){ const q=R.rmGuessPitch(c.ps[0],L,c.clef), st=R.rmStep(q)-(c.clef==='t'?30:18); assert.ok(st>=-7&&st<=15,k+' '+L); } }
+});
+
+test('the lessons: every example and question draws, every question has four different answers, the sets exist',()=>{
+  const ids=new Set(), sets=new Set(R.RM_SETS.map(s=>s.id)); let qs=0;
+  for(const L of R.RM_LESSONS){
+    assert.ok(!ids.has(L.id)); ids.add(L.id); L.sets.forEach(id=>assert.ok(sets.has(id),L.id+' '+id));
+    const exs=L.body.filter(b=>typeof b!=='string').concat(L.quiz.filter(q=>q.ex).map(q=>q.ex));
+    for(const b of exs){ const e=R.rmEx(b), svg=R.rmStaffRow(e.clef,e.cols,{key:e.key,labels:e.labels});
+      assert.doesNotMatch(svg,/NaN|undefined|@/,L.id); assert.ok(!e.labels.length||e.labels.length===e.cols.length,L.id+' labels'); }
+    for(const q of L.quiz){ assert.equal(q.o.length,4,q.q); assert.equal(new Set(q.o).size,4,q.q); assert.ok(q.why,q.q); qs++; }
+  }
+  const keys=R.rmSetKeys('th'); assert.equal(keys.length,qs);
+  for(const k of keys){ const c=R.rmCard(k); assert.equal(c.kind,'theory'); assert.equal(c.opts[0],R.RM_LESSON[c.lesson].quiz[c.i].o[0]); }
+});
+
+test('the key signature: sharps and flats in their order, notes in the key without their accidental',()=>{
+  assert.equal(R.rmKeyAlt(2,R.rmP('C5').l),1); assert.equal(R.rmKeyAlt(2,R.rmP('G5').l),0); assert.equal(R.rmKeyAlt(-3,R.rmP('A4').l),-1); assert.equal(R.rmKeyAlt(-3,R.rmP('D4').l),0);
+  const n=svg=>(svg.match(/<path/g)||[]).length;
+  // G major on the G major key: clef, the sharp, eight notes and no accidental by them
+  assert.equal(n(R.rmStaffRow('t','G4 A4 B4 C5 D5 E5 F♯5 G5'.split(' ').map(p=>[R.rmP(p)]),{key:1})),1+1+8);
+  // an F natural in G major needs its natural sign
+  assert.equal(n(R.rmStaffRow('t',[[R.rmP('F5')]],{key:1})),1+1+2);
+});
+
+test('the lessons say what they show: chord symbols and interval names match the notes written',()=>{
+  const Q={'':'maj',m:'min',dim:'dim',aug:'aug','°':'dim','7':'7',m7:'m7','ø':'m7b5','m7♭5':'m7b5','Δ':'maj7',maj7:'maj7','°7':'dim7','−Δ':'mmaj7','+Δ':'maj7s5','+7':'7s5',
+    '6':'6',m6:'m6',sus2:'sus2',sus4:'sus4',add9:'add9','m(add9)':'madd9','9':'9',maj9:'maj9',m9:'m9','13':'13',Im:'min',IIm:'min'};
+  const IV={m3:3,M3:4,P5:7,A4:6,d5:6,m6:8};
+  let checked=0;
+  for(const L of R.RM_LESSONS) for(const b of L.body.filter(b=>typeof b!=='string')){ const e=R.rmEx(b);
+    e.labels.forEach((lab,i)=>{ const ps=e.cols[i], m=ps.map(R.rmMidi);
+      if(lab in IV&&ps.length===2){ assert.equal(m[1]-m[0],IV[lab],L.id+' '+lab); checked++; return; }
+      const x=/^([A-G][♯♭]?)(.*?)(?:\/([A-G][♯♭]?))?$/u.exec(lab); if(!x||!(x[2] in Q)||ps.length<3) return;
+      const root=R.rmMidi(R.rmP(x[1]+'4'))%12, want=new Set(R.RM_QI[Q[x[2]]].iv.map(([,s])=>(root+s)%12)), have=new Set(m.map(v=>v%12));
+      // a full thirteenth: all seven notes; a voicing as played may leave some out, but adds nothing else
+      if(ps.length<want.size) [...have].forEach(v=>assert.ok(want.has(v),L.id+' '+lab)); else assert.deepEqual([...have].sort(),[...want].sort(),L.id+' '+lab);
+      if(x[3]) assert.equal(R.rmNm(ps[0]),x[3],L.id+' '+lab+' bass'); else if(ps.length===want.size) assert.equal(m[0]%12,root,L.id+' '+lab+' root');
+      checked++; });
+  }
+  assert.ok(checked>=30,String(checked));
 });
