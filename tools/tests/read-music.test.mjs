@@ -5,7 +5,7 @@ import {readFile} from 'node:fs/promises';
 // the read music data block of the app is pure: run it on its own
 const src=await readFile(new URL('../../src/app.html',import.meta.url),'utf8');
 const a=src.indexOf('/* ---------- read music data'), b=src.indexOf('/* ---------- end of read music data ---------- */');
-const R=new Function(src.slice(a,b)+';return {RM_SETS,RM_SET,RM_KEYSET,RM_RANGE,RM_NX,RM_Y0,RM_IVI,RM_QI,rmSetKeys,rmCard,rmStaffSvg,rmLayout,rmStep,rmP,rmSci,rmMidi,rmEarExample,rmGuessPitch,rmNm,RM_LESSONS,RM_LESSON,rmEx,rmStaffRow,rmKeyAlt};')();
+const R=new Function(src.slice(a,b)+';return {RM_SETS,RM_SET,RM_KEYSET,RM_RANGE,RM_NX,RM_Y0,RM_IVI,RM_QI,rmSetKeys,rmCard,rmStaffSvg,rmLayout,rmStep,rmP,rmSci,rmMidi,rmEarExample,rmGuessPitch,rmNm,RM_LESSONS,RM_LESSON,rmEx,rmStaffRow,rmKeyAlt,RM_KEYS,RM_KSIG,RM_MAJ,RM_DIA3,RM_DIA7,RM_PROGS,RM_SCALES,rmProg,rmScale};')();
 const json=async f=>JSON.parse(await readFile(new URL('./fixtures/'+f,import.meta.url),'utf8'));
 
 test('the chords are the 1392 of the Anki deck: same symbol, name, inversion, clef, level and pitches',async()=>{
@@ -69,7 +69,7 @@ test('chord spelling: double sharps and flats where the chord needs them, invers
 const seeded=s=>()=>((s=Math.imul(s^(s>>>15),0x2c1b3c6d)+0x6d2b79f5|0)>>>0)/4294967296;
 
 test('ear training: every interval and chord example sounds what its answer says, from any root',()=>{
-  const ear=[...R.RM_KEYSET.keys()].filter(k=>k[0]==='e');
+  const ear=[...R.RM_KEYSET.keys()].filter(k=>k[0]==='e'&&['prog','scale'].indexOf(R.RM_SET[R.RM_KEYSET.get(k)].how)<0);
   assert.equal(ear.length,12*3+4+6+8+6+8);
   const rnd=seeded(7), pcs=ps=>ps.map(p=>(R.rmMidi(p)-R.rmMidi(ps[0])+120)%12);
   for(const k of ear) for(let i=0;i<40;i++){
@@ -145,4 +145,50 @@ test('the lessons say what they show: chord symbols and interval names match the
       checked++; });
   }
   assert.ok(checked>=30,String(checked));
+});
+
+const pc=p=>((R.rmMidi(p)%12)+12)%12;
+test('key cards: the chords of every major key, from the key, spelled with its key signature alone',()=>{
+  const k1=R.rmSetKeys('k1'), k2=R.rmSetKeys('k2'); assert.equal(k1.length,12*7*2); assert.equal(k2.length,24);
+  const paths=svg=>(svg.match(/<path/g)||[]).length;
+  for(const k of k1.concat(k2)){
+    const c=R.rmCard(k), a=k.split('|'), key=+a[2], tonic=R.rmP(R.RM_KEYS[key]+'4'), scale=new Set(R.RM_MAJ.map(x=>(pc(tonic)+x)%12)), ps=c.ex.cols[0];
+    assert.equal(new Set(c.opts).size,c.opts.length,k); assert.ok(c.ans>=0&&c.ans<c.opts.length,k);
+    assert.ok(ps.every(p=>scale.has(pc(p))),k+': notes of the key'); assert.ok(ps.every(p=>Math.abs(p.a)<2),k);
+    // in its key signature the chord needs no accidental: clef, signature and note heads only
+    assert.equal(paths(R.rmStaffRow('t',c.ex.cols,{key:R.RM_KSIG[key]})),1+Math.abs(R.RM_KSIG[key])+ps.length,k);
+    if(a[1]==='k1'){ const d=+a[3], q=(a[4]==='7'?R.RM_DIA7:R.RM_DIA3)[d]; assert.equal(c.ans,d);
+      assert.equal(pc(ps[0]),(pc(tonic)+R.RM_MAJ[d])%12,k); assert.deepEqual(ps.map(p=>(R.rmMidi(p)-R.rmMidi(ps[0]))),R.RM_QI[q].iv.map(([,x])=>x),k); }
+    else { assert.equal(c.ans,key); assert.equal((pc(ps[0])-pc(tonic)+12)%12,a[3]==='V'?7:11,k); }
+  }
+  assert.equal(R.rmCard('k|k1|3|5|7').opts[5],'Cm7');       // E♭ major: VIm7 is Cm7
+  assert.equal(R.rmCard('k|k2|7|V').q,'D7 is the V7 of which major key?');
+});
+
+test('progressions by ear: every chord is what its numeral says, the root in the bass, from any key',()=>{
+  const pcsOf=ps=>[...new Set(ps.map(pc))].sort((x,y)=>x-y);
+  for(const id of Object.keys(R.RM_PROGS)) for(let key=0;key<12;key++){
+    const P=R.RM_PROGS[id], p=R.rmProg(key,id);
+    assert.equal(p.cols.length,P.ch.length);
+    p.cols.forEach((col,i)=>{ const [d,q]=P.ch[i], bass=col[0], up=col.slice(1);
+      assert.ok(R.rmMidi(bass)>=40&&R.rmMidi(bass)<52,id+key); assert.ok(up.every(x=>R.rmMidi(x)>=55&&R.rmMidi(x)<67),id+key);
+      assert.deepEqual(pcsOf(up),[...new Set(R.RM_QI[q].iv.map(([,s])=>(pc(bass)+s)%12))].sort((x,y)=>x-y),id+key+i);
+      assert.ok(col.every(x=>Math.abs(x.a)<2),id+key+' spelled simply'); });
+    // in the key signature only the leading tone of a minor V7 needs an accidental
+    const svg=R.rmStaffRow('b',p.cols,{key:p.key}), heads=p.cols.flat().length;
+    assert.equal((svg.match(/<path/g)||[]).length,1+Math.abs(p.key)+heads+(P.minor?1:0),id+key);
+  }
+  const c=R.rmCard('e|e9|perf'), seeded=s=>()=>((s=Math.imul(s^(s>>>15),0x2c1b3c6d)+0x6d2b79f5|0)>>>0)/4294967296, rnd=seeded(5);
+  const ex=R.rmEarExample(c,rnd), y=R.rmEarExample(c,rnd,'dec',ex);
+  assert.equal(y.keyName,ex.keyName); assert.deepEqual(y.labels,['I','IV','V7','VIm']);
+});
+
+test('scales by ear: each scale has its steps, one letter each, from roots that need no double accidentals',()=>{
+  const seeded=s=>()=>((s=Math.imul(s^(s>>>15),0x2c1b3c6d)+0x6d2b79f5|0)>>>0)/4294967296, rnd=seeded(9);
+  for(const id of Object.keys(R.RM_SCALES)) for(let i=0;i<30;i++){
+    const ex=R.rmEarExample(R.rmCard('e|e11|'+id),rnd), m=ex.ps.map(R.rmMidi);
+    assert.deepEqual(m.slice(0,7).map(x=>x-m[0]),R.RM_SCALES[id].st,id); assert.equal(m[7]-m[0],12);
+    ex.ps.forEach((p,j)=>j&&assert.equal(R.rmStep(p)-R.rmStep(ex.ps[j-1]),1,id)); assert.ok(ex.ps.every(p=>Math.abs(p.a)<2),id+' '+R.rmSci(ex.ps[0]));
+    assert.ok(m[0]>=57&&m[7]<=96);
+  }
 });

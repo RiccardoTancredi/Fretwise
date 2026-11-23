@@ -684,6 +684,7 @@ mark.v-gap::after{content:'';position:absolute;left:50%;bottom:-.3em;transform:t
 .rsettext .mono{font-family:var(--font-mono);font-size:.74rem}
 .ropts{display:grid;grid-template-columns:repeat(auto-fit,minmax(74px,1fr));gap:6px;width:100%;max-width:520px}
 .ropts.many{grid-template-columns:repeat(4,1fr)}
+.ropts.two{grid-template-columns:repeat(2,1fr)}
 .ropt{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:56px;padding:6px 4px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;font:inherit}
 .ropt b{font-family:var(--font-display);font-weight:800;font-size:1.1rem;line-height:1.1}
 .ropt small{font-size:.68rem;color:var(--muted);line-height:1.15}
@@ -735,6 +736,12 @@ mark.v-gap::after{content:'';position:absolute;left:50%;bottom:-.3em;transform:t
 .rwhy{padding:10px 12px;border-radius:12px;font-size:.93rem;line-height:1.45;text-align:left;background:color-mix(in srgb,var(--good) 12%,transparent)}
 .rwhy.no{background:color-mix(in srgb,var(--bad) 12%,transparent)}
 .rtcard .rex{width:100%;box-sizing:border-box}
+.rqopts.rqgrid{grid-template-columns:repeat(4,1fr)}
+.rqgrid .ropt.rqopt{justify-content:center;text-align:center;padding:8px 4px;font-family:var(--font-display);font-weight:800}
+.rbars{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.rbars span{padding:10px 6px;text-align:center;font-family:var(--font-display);font-weight:700;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.rbars span:nth-child(4n){border-right:0}
+.rbars span:nth-last-child(-n+4){border-bottom:0}
 .rcof{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line);font-size:.93rem}
 .rcof span{flex:1 1 220px}
 .coflesson{display:flex;justify-content:flex-end;margin-bottom:6px}
@@ -6929,7 +6936,7 @@ const RM_IVI=Object.fromEntries(RM_IV.map(x=>[x.id,x])), RM_IVS=RM_IV.map(x=>x.i
 // Italian terms in brackets. body: paragraphs (HTML) and examples {clef, key, cols: one string of pitches per
 // column, labels, cap}; quiz: the check questions, each a theory card once answered; the first option is the right one
 const RM_LESSONS=[
-  {id:'l1',title:'The staff and the clefs',sub:'Lines, spaces, ledger lines, treble and bass clef',sets:['nt','nb'],body:[
+  {id:'l1',part:'Reading and chords',title:'The staff and the clefs',sub:'Lines, spaces, ledger lines, treble and bass clef',sets:['nt','nb'],body:[
     'Music is written on the <b>staff</b> (<i>pentagramma</i>): five lines and the four spaces between them, counted from the bottom. Every line and every space is a note, and going from a line to the space just above it is one step up the note names: C D E F G A B, then C again.',
     'The <b>clef</b> at the start of the staff says which note is where. The <b>treble clef</b> (<i>chiave di violino</i>) is a G clef: its curl wraps round the second line, which becomes G4, the G just above middle C. The <b>bass clef</b> (<i>chiave di basso</i>) is an F clef: its two dots sit either side of the fourth line, which becomes F3, the F just below middle C.',
     {clef:'t',cols:['E4','G4','B4','D5','F5'],labels:['E','G','B','D','F'],cap:'Treble clef, the five lines: E G B D F'},
@@ -7079,11 +7086,139 @@ const RM_LESSONS=[
     {q:'Which chord is this?',ex:{clef:'t',cols:['D4 F4 A4 C5 E5']},o:['Dm9','D9','Dmaj9','Dm(add9)'],why:'A minor triad, a minor 7th (C) and the ninth (E): Dm7 plus the ninth.'},
     {q:'C9 is…',o:['C7 plus the ninth, D','Cmaj7 plus the ninth','C major plus the ninth, no seventh','C7 plus the eleventh'],why:'Without “maj” the seventh is minor: C E G B♭, then D.'},
     {q:'Over a major third, which tension is usually left out or raised?',o:['The 11th','The 9th','The 13th','The 7th'],why:'The natural 11th sits a minor ninth above the major third and clashes with it.'}
+  ]},
+  {id:'harm',part:'Harmony',title:'The chords of a major key',sub:'Harmonizing the scale, triads and sevenths, finding the key',sets:['k1','k2'],body:[
+    'Build a chord on every degree of the major scale using only the notes of the scale, and you have <b>harmonized</b> it (<i>armonizzazione della scala maggiore</i>). In triads the pattern is the same in every key: <b>major</b> on I, IV and V, <b>minor</b> on II, III and VI, <b>diminished</b> on VII: I, IIm, IIIm, IV, V, VIm, VII°.',
+    'Add the seventh, still from the scale, and you get the seventh chords of the key, written as Avena writes them, the numeral and the kind of chord: <b>IΔ</b>, <b>IIm7</b>, <b>IIIm7</b>, <b>IVΔ</b>, <b>V7</b>, <b>VIm7</b>, <b>VIIø</b>. Δ is maj7, ø the half-diminished m7♭5.',
+    {clef:'t',cols:['C4 E4 G4 B4','D4 F4 A4 C5','E4 G4 B4 D5','F4 A4 C5 E5','G4 B4 D5 F5','A4 C5 E5 G5','B4 D5 F5 A5'],labels:['IΔ','IIm7','IIIm7','IVΔ','V7','VIm7','VIIø'],cap:'The seventh chords of C major'},
+    {clef:'t',key:1,cols:['G4 B4 D5 F♯5','A4 C5 E5 G5','B4 D5 F♯5 A5','C5 E5 G5 B5','D4 F♯4 A4 C5','E4 G4 B4 D5','F♯4 A4 C5 E5'],labels:['IΔ','IIm7','IIIm7','IVΔ','V7','VIm7','VIIø'],cap:'The same in G major: Gmaj7, Am7, Bm7, Cmaj7, D7, Em7, F♯m7♭5'},
+    'Going the other way, from a chord to its key: a major triad can be I, IV or V of three different keys, a maj7 I or IV, a m7 II, III or VI. But a <b>dominant seventh</b> is only on V and a <b>half-diminished</b> only on VII: each points to one key. D7 is the V of G major, since D is a fifth above G; F♯ø is the VII of G major, a semitone below it.',
+    {clef:'t',cols:['D4 F♯4 A4 C5','G4 B4 D5'],labels:['D7','G'],cap:'D7, the V7 of G major, going home'}
+  ],quiz:[
+    {q:'In D major, which seventh chord is on the IV degree?',o:['Gmaj7','G7','Gm7','Em7'],why:'The IV degree of D major is G, and the chord on IV is a major seventh: Gmaj7 (IVΔ).'},
+    {q:'A♭7 is the V7 of which major key?',o:['D♭ major','A♭ major','E♭ major','G♭ major'],why:'A♭ is a fifth above D♭.'},
+    {q:'Which degrees of a major key carry minor seventh chords?',o:['II, III and VI','I and IV','V','VII'],why:'IIm7, IIIm7 and VIm7; I and IV are major sevenths, V dominant, VII half-diminished.'},
+    {q:'Why does a dominant seventh chord tell you the key?',o:['A major key has only one, on V','It always contains the tonic','It is always in root position','It has no fifth'],why:'Only V carries a major triad with a minor seventh; the half-diminished, only on VII, works the same way.'}
+  ]},
+  {id:'cad',title:'Cadences, II–V–I and the turnaround',sub:'How phrases end, and the most used progressions',sets:['e9','e10'],body:[
+    'A <b>cadence</b> (<i>cadenza</i>) is the way a phrase ends. The <b>final cadences</b> (<i>cadenze finali</i>) close on I: the <b>perfect</b> one (<i>perfetta</i>), V – I, the strongest; the <b>plagal</b> one (<i>plagale</i>), IV – I, softer, the “amen” at the end of hymns.',
+    'The <b>suspended cadences</b> (<i>cadenze sospese</i>) leave the phrase open: in the <b>deceptive</b> cadence (<i>evitata</i>) V goes to VIm instead of I, a surprise; the <b>half cadence</b> (<i>alla dominante</i>) stops on V, like a comma.',
+    {clef:'t',cols:['G4 B4 D5 F5','C5 E5 G5'],labels:['G7','C'],cap:'Perfect: V7 – I'},
+    {clef:'t',cols:['F4 A4 C5','C5 E5 G5'],labels:['F','C'],cap:'Plagal: IV – I'},
+    {clef:'t',cols:['G4 B4 D5 F5','A4 C5 E5'],labels:['G7','Am'],cap:'Deceptive: V7 – VIm'},
+    {clef:'t',cols:['D4 F4 A4','G4 B4 D5'],labels:['Dm','G'],cap:'Half: IIm – V, and the phrase waits'},
+    'Chords sound best joined smoothly, the <b>harmonic link</b> (<i>legame armonico</i>): notes two chords share stay where they are, the others move by the shortest step.',
+    {clef:'t',cols:['C4 E4 G4','C4 F4 A4','B3 F4 G4','C4 E4 G4'],labels:['C','F/C','G7/B','C'],cap:'I – IV – V7 – I with the common notes held: C stays, then G'},
+    'The <b>II – V – I</b> (IIm7 – V7 – IΔ) is the cadence formula of jazz, the perfect cadence with its II in front: Dm7 – G7 – Cmaj7 in C, each root a fifth below the one before. In minor it becomes IIø – V7 – Im. The <b>turnaround</b>, IΔ – VIm7 – IIm7 – V7, goes round back to I, at the end of a section to start it again.',
+    {clef:'t',cols:['D4 F4 A4 C5','G4 B4 D5 F5','C4 E4 G4 B4'],labels:['Dm7','G7','Cmaj7'],cap:'II – V – I in C major'},
+    {clef:'t',cols:['C4 E4 G4 B4','A4 C5 E5 G5','D4 F4 A4 C5','G4 B4 D5 F5'],labels:['Cmaj7','Am7','Dm7','G7'],cap:'The turnaround in C major'}
+  ],quiz:[
+    {q:'What is the cadence V – VIm called?',o:['Deceptive (evitata)','Perfect (perfetta)','Plagal (plagale)','Half (alla dominante)'],why:'V leads you to expect I, and VIm takes its place.'},
+    {q:'What is the II – V – I of F major?',o:['Gm7 – C7 – Fmaj7','Dm7 – G7 – Cmaj7','Gm7 – C7 – F7','Am7 – D7 – Gmaj7'],why:'In F the II degree is G, V is C, and I carries a major seventh.'},
+    {q:'A half cadence ends on…',o:['V','I','IV','VI'],why:'It stops on the dominant and leaves the phrase open.'},
+    {q:'Which is the turnaround?',o:['I – VI – II – V','II – V – I','I – IV – V – I','IV – V – I – VI'],why:'It ends on V, so it turns back to I.'}
+  ]},
+  {id:'minor',title:'Minor keys',sub:'Natural, harmonic and melodic minor, and the V7 in minor',sets:['e11'],body:[
+    'The natural minor has no <b>leading tone</b> (<i>sensibile</i>): its VII is a tone below the tonic, not a semitone. So its V chord is minor (Em in A minor) and V – I sounds weak.',
+    'The <b>harmonic minor</b> (<i>minore armonica</i>) raises the 7th: A B C D E F G♯ A. Now V is major, E7, and its G♯ pulls up to A. Between F and G♯ there is an <b>augmented second</b>, a tone and a half: the sound of this scale.',
+    'The <b>melodic minor</b> (<i>minore melodica</i>) raises the 6th as well, to smooth that jump: A B C D E F♯ G♯ A. In classical music only going up (coming down it is natural minor); in jazz the same both ways.',
+    {clef:'t',cols:['A3','B3','C4','D4','E4','F4','G4','A4'],labels:['1','2','♭3','4','5','♭6','♭7','1'],cap:'A natural minor'},
+    {clef:'t',cols:['A3','B3','C4','D4','E4','F4','G♯4','A4'],labels:['1','2','♭3','4','5','♭6','7','1'],cap:'A harmonic minor'},
+    {clef:'t',cols:['A3','B3','C4','D4','E4','F♯4','G♯4','A4'],labels:['1','2','♭3','4','5','6','7','1'],cap:'A melodic minor'},
+    'In practice minor songs take most chords from the natural minor and borrow the V7 from the harmonic: Am – Dm – E7 – Am. The minor <b>II – V – I</b> is IIø – V7 – Im: Bø – E7 – Am.',
+    {clef:'t',cols:['B3 D4 F4 A4','E4 G♯4 B4 D5','A3 C4 E4'],labels:['Bø','E7','Am'],cap:'II – V – I in A minor'},
+    'Harmonize the harmonic minor in sevenths and the last three species appear: Im(maj7), IIø, III+Δ, IVm7, V7, VIΔ, VII°7.',
+    {clef:'t',cols:['A3 C4 E4 G♯4','B3 D4 F4 A4','C4 E4 G♯4 B4','D4 F4 A4 C5','E4 G♯4 B4 D5','F4 A4 C5 E5','G♯4 B4 D5 F5'],labels:['A−Δ','Bø','C+Δ','Dm7','E7','FΔ','G♯°7'],cap:'The seventh chords of A harmonic minor'}
+  ],quiz:[
+    {q:'What does the harmonic minor change in the natural minor?',o:['It raises the 7th','It raises the 6th and the 7th','It lowers the 3rd','It raises the 4th'],why:'The raised 7th becomes the leading tone, a semitone below the tonic.'},
+    {q:'In A minor the V chord is usually E7, not Em7. Why?',o:['The 7th degree, G, is raised to G♯','The 5th degree, E, is raised','Minor keys have no V chord','E7 has fewer notes'],why:'G♯ is the major third of E and the leading tone of A.'},
+    {q:'Which scale is this?',ex:{clef:'t',cols:['A3','B3','C4','D4','E4','F♯4','G♯4','A4']},o:['A melodic minor','A harmonic minor','A natural minor','A Dorian'],why:'Minor third, then raised 6th and 7th: F♯ and G♯.'},
+    {q:'What interval is there between the 6th and the 7th degree of the harmonic minor?',o:['An augmented 2nd','A major 2nd','A minor 3rd','A minor 2nd'],why:'F to G♯: two letters, a second, three semitones wide.'}
+  ]},
+  {id:'cs',title:'Which scale on which chord',sub:'The modes of a key, chord tones and tensions',sets:[],body:[
+    'Each chord of a key, stacked up to the thirteenth, holds all seven notes of the key; those same notes, started from the chord’s root, are its <b>mode</b>. This is the <b>chord–scale relation</b> (<i>relazione accordi-scale</i>). In C major: Cmaj7 Ionian, Dm7 Dorian, Em7 Phrygian, Fmaj7 Lydian, G7 Mixolydian, Am7 Aeolian, Bø Locrian.',
+    {clef:'t',cols:['G4 B4 D5 F5','G4','A4','B4','C5','D5','E5','F5','G5'],labels:['G7','1','2','3','4','5','6','♭7','1'],cap:'G7 and its scale, G Mixolydian: the notes of C major from G'},
+    {clef:'t',cols:['D4 F4 A4 C5','D4','E4','F4','G4','A4','B4','C5','D5'],labels:['Dm7','1','2','♭3','4','5','6','♭7','1'],cap:'Dm7 and D Dorian'},
+    'So the degree decides: a m7 is Dorian on II, Phrygian on III, Aeolian on VI; a maj7 Ionian on I, Lydian on IV; V7 is Mixolydian and VIIø Locrian.',
+    'The <b>chord tones</b> (1, 3, 5, 7) are the safe notes; the <b>tensions</b> (9, 11, 13) add colour. A note a semitone above a chord tone clashes with it: over Cmaj7 the 4th, F, rubs against the third, which is why the Lydian ♯4 sounds so good on a major seventh.',
+    'Avena’s way to remember each mode is its parent major scale: Dorian is the major scale a tone below (D Dorian = C major), Phrygian a major third below, Lydian a fourth below, Mixolydian a fifth below, Aeolian a minor third above, Locrian a semitone above.',
+    'Over a II – V – I the three chords share one parent scale: over Dm7 – G7 – Cmaj7 you can think C major all the way, or one mode per chord, D Dorian, G Mixolydian, C Ionian: the two ways Avena shows.'
+  ],quiz:[
+    {q:'Which mode goes with the IIm7 chord of a major key?',o:['Dorian','Phrygian','Aeolian','Mixolydian'],why:'The key’s notes from its II degree: in C, D to D.'},
+    {q:'Which mode goes with V7?',o:['Mixolydian','Ionian','Lydian','Dorian'],why:'The key’s notes from V: a major third and a minor seventh.'},
+    {q:'E♭ Mixolydian has the notes of which major scale?',o:['A♭ major','E♭ major','B♭ major','D♭ major'],why:'Mixolydian is the major scale a fifth below: E♭ is V of A♭.'},
+    {q:'Over Cmaj7, which note of C major clashes with the chord?',o:['F, the 4th','D, the 9th','A, the 13th','B, the 7th'],why:'F is a semitone above E, the third.'}
+  ]},
+  {id:'blues',title:'Blues, secondary dominants and tritone substitution',sub:'The 12 bars, the blues scale, V7 of other degrees, the substitute dominant',sets:[],body:[
+    'The <b>blues</b> is twelve bars on I, IV and V, almost all of them <b>dominant sevenths</b> (<i>settima di prima specie</i>), even on I and IV, which the key would not allow: that is its sound.',
+    '<div class="rbars"><span>C7</span><span>F7</span><span>C7</span><span>C7</span><span>F7</span><span>F7</span><span>C7</span><span>C7</span><span>G7</span><span>F7</span><span>C7</span><span>G7</span></div>',
+    'Jazz versions add a II – V in bars 9 and 10 (Dm7 – G7) and a turnaround in the last two. The melody often uses the <b>blues scale</b> (<i>scala blues</i>), 1 ♭3 4 ♭5 5 ♭7: a minor-sounding tune over major chords, with the <b>blue notes</b> ♭3 and ♭5.',
+    {clef:'t',cols:['C4','E♭4','F4','G♭4','G4','B♭4','C5'],labels:['1','♭3','4','♭5','5','♭7','1'],cap:'The blues scale from C'},
+    'Any chord of a key can be preceded by its own V7, borrowed from outside the key: a <b>secondary dominant</b> (<i>dominante secondaria</i>), written V7/II, V7/V and so on. In C: A7 → Dm, E7 → Am, D7 → G, C7 → F. Its third is the leading tone of the chord it goes to.',
+    {clef:'t',cols:['A4 C♯5 E5 G5','D4 F4 A4 C5'],labels:['A7','Dm7'],cap:'A7, V7 of II, going to Dm7: C♯ leads to D'},
+    'A dominant seventh can be swapped for the one a <b>tritone</b> away (<i>sostituzione di 5ª♭</i>, tritone substitution): they share the same tritone, with the third and seventh swapped. G7 has B and F, D♭7 has F and C♭, which is B. So Dm7 – G7 – Cmaj7 can become Dm7 – D♭7 – Cmaj7, with the bass going down by semitones.',
+    {clef:'t',cols:['G4 B4 D5 F5','D♭4 F4 A♭4 C♭5'],labels:['G7','D♭7'],cap:'G7 and D♭7 share B (C♭) and F'},
+    {clef:'t',cols:['D4 F4 A4 C5','D♭4 F4 A♭4 C♭5','C4 E4 G4 B4'],labels:['Dm7','D♭7','Cmaj7'],cap:'II – ♭II7 – I: the II – V – I with the dominant substituted'}
+  ],quiz:[
+    {q:'How many bars is the basic blues?',o:['Twelve','Eight','Sixteen','Thirty-two'],why:'Three lines of four bars: I, then IV, then V.'},
+    {q:'In C major, which chord is the secondary dominant of Dm (V7 of II)?',o:['A7','D7','G7','E7'],why:'A is a fifth above D, and its third, C♯, leads to D.'},
+    {q:'Which dominant can replace G7, by tritone substitution?',o:['D♭7','C7','D7','F♯7'],why:'D♭ is a tritone from G, and D♭7 shares G7’s B and F.'},
+    {q:'What kind of chord does the blues use on I, IV and V?',o:['Dominant sevenths','Major sevenths','Minor sevenths','Triads only'],why:'C7, F7 and G7: the dominant colour on every degree is the blues sound.'}
   ]}
+
 ];
 const RM_LESSON=Object.fromEntries(RM_LESSONS.map((l,i)=>[l.id,Object.assign(l,{n:i+1})]));
 // an example or a question's staff: columns of pitches
 const rmEx=e=>({clef:e.clef||'t',key:e.key||0,cols:e.cols.map(s=>s.split(' ').map(rmP)),labels:e.labels||[],cap:e.cap||''});
+// ---- keys and harmony: the chords of a key, progressions and scales (phase two of the lessons)
+// the twelve major keys as usually written, with their key signatures (sharps positive); minor tonics
+const RM_KEYS=['C','D♭','D','E♭','E','F','F♯','G','A♭','A','B♭','B'], RM_KSIG=[0,-5,2,-3,4,-1,6,1,-4,3,-2,5];
+const RM_MKEYS=['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'], RM_MKSIG=[-3,4,-1,-6,1,-4,3,-2,-7,0,-5,2];
+const RM_MAJ=[0,2,4,5,7,9,11], RM_NMIN=[0,2,3,5,7,8,10], RM_ROMAN=['I','II','III','IV','V','VI','VII'];
+// the chords on each degree of a major key, and how Avena writes them after the numeral (IΔ, IIm7, VIIø)
+const RM_DIA3=['maj','min','min','maj','maj','min','dim'], RM_DIA7=['maj7','m7','m7','maj7','7','m7','m7b5'];
+const RM_RSUF={maj:'',min:'m',dim:'°',aug:'+',maj7:'Δ',m7:'m7','7':'7',m7b5:'ø',dim7:'°7'};
+const rmChordAt=(r,q)=>RM_QI[q].iv.map(([n,s])=>rmUp(r,n,s));
+const rmSym=(r,q)=>rmNm(r)+RM_QI[q].sym;
+// a chord near the middle of the treble staff: its root no higher than B4
+const rmMid=r=>rmMidi(r)>=72?Object.assign({},r,{o:r.o-1}):r;
+// progressions: [degree, chord] in a major key (or minor, from the natural minor with V7 from the harmonic)
+const RM_PROGS={
+  perf:{name:'Perfect',sub:'ends V – I',ch:[[0,'maj'],[3,'maj'],[4,'7'],[0,'maj']]},
+  plag:{name:'Plagal',sub:'ends IV – I',ch:[[0,'maj'],[4,'maj'],[3,'maj'],[0,'maj']]},
+  dec:{name:'Deceptive',sub:'ends V – VIm',ch:[[0,'maj'],[3,'maj'],[4,'7'],[5,'min']]},
+  half:{name:'Half',sub:'ends on V',ch:[[0,'maj'],[5,'min'],[1,'min'],[4,'maj']]},
+  ii:{name:'II–V–I',sub:'IIm7 – V7 – IΔ',ch:[[1,'m7'],[4,'7'],[0,'maj7']]},
+  turn:{name:'Turnaround',sub:'IΔ – VIm7 – IIm7 – V7',ch:[[0,'maj7'],[5,'m7'],[1,'m7'],[4,'7']]},
+  mii:{name:'Minor II–V–I',sub:'IIø – V7 – Im',minor:true,ch:[[1,'m7b5'],[4,'7'],[0,'min']]},
+  pop:{name:'I–V–VI–IV',sub:'the pop progression',ch:[[0,'maj'],[4,'maj'],[5,'min'],[3,'maj']]}
+};
+const RM_SCALES={maj:{name:'Major',st:[0,2,4,5,7,9,11]},nat:{name:'Natural minor',st:[0,2,3,5,7,8,10]},harm:{name:'Harmonic minor',st:[0,2,3,5,7,8,11]},
+  mel:{name:'Melodic minor',st:[0,2,3,5,7,9,11]},dor:{name:'Dorian',st:[0,2,3,5,7,9,10]},mix:{name:'Mixolydian',st:[0,2,4,5,7,9,10]},
+  lyd:{name:'Lydian',st:[0,2,4,6,7,9,11]},phr:{name:'Phrygian',st:[0,1,3,5,7,8,10]}};
+// a progression in a key, as a pianist would play it: the root in the bass (E2 to D♯3) and the chord
+// above it between G3 and F♯4, so the notes the chords share stay put
+function rmProg(key,id){
+  const P=RM_PROGS[id], sc=P.minor?RM_NMIN:RM_MAJ, tonic=rmP((P.minor?RM_MKEYS:RM_KEYS)[key]+'3');
+  const fit=(p,lo)=>{ const o=Object.assign({},p); while(rmMidi(o)<lo) o.o++; while(rmMidi(o)>=lo+12) o.o--; return o; };
+  const cs=P.ch.map(([d,q])=>{ const r=rmUp(tonic,d,sc[d]); return {r,q,d,ps:[fit(r,40)].concat(rmChordAt(r,q).map(p=>fit(p,55)).sort((x,y)=>rmMidi(x)-rmMidi(y)))}; });
+  return {cols:cs.map(x=>x.ps),key:(P.minor?RM_MKSIG:RM_KSIG)[key],labels:cs.map(x=>RM_ROMAN[x.d]+RM_RSUF[x.q]),syms:cs.map(x=>rmSym(x.r,x.q)),keyName:(P.minor?RM_MKEYS:RM_KEYS)[key]+(P.minor?' minor':' major')};
+}
+const rmScale=(r,id)=>RM_SCALES[id].st.map((s,d)=>rmUp(r,d,s)).concat([rmUp(r,7,12)]);
+// the key cards: "k|k1|<key>|<degree>|<3 or 7>", the chord on a degree; "k|k2|<key>|V" or "|VII", the key of a V7 or a ø
+function rmKeyCard(k,set){
+  const a=k.split('|'), key=+a[2], kn=RM_KEYS[key], tonic=rmP(kn+'4');
+  if(a[1]==='k1'){ const deg=+a[3], sev=a[4]==='7', qs=sev?RM_DIA7:RM_DIA3;
+    const ch=RM_MAJ.map((s,d)=>{ const r=rmMid(rmUp(tonic,d,s)); return {r,q:qs[d],sym:rmSym(r,qs[d])}; }), x=ch[deg];
+    return {k,set,kind:'key',lesson:'harm',q:`In ${kn} major, which ${sev?'seventh chord':'triad'} is on the ${RM_ROMAN[deg]} degree?`,opts:ch.map(c=>c.sym),ans:deg,grid:true,
+      why:`The ${RM_ROMAN[deg]} degree of ${kn} major is ${rmNm(x.r)}, and with the notes of the key its ${sev?'seventh chord':'triad'} is ${RM_QI[x.q].name}: ${x.sym} (${RM_ROMAN[deg]+RM_RSUF[x.q]}).`,
+      title:`${RM_ROMAN[deg]+RM_RSUF[x.q]} in ${kn} major: ${x.sym}`,ex:{clef:'t',key:RM_KSIG[key],cols:[rmChordAt(x.r,x.q)],labels:[RM_ROMAN[deg]+RM_RSUF[x.q]],cap:''},exAfter:true}; }
+  const v=a[3]==='V', r=rmMid(v?rmUp(tonic,4,7):rmUp(tonic,6,11)), q=v?'7':'m7b5', sym=rmSym(r,q);
+  return {k,set,kind:'key',lesson:'harm',q:`${sym} is the ${v?'V7':'VIIø'} of which major key?`,opts:RM_KEYS,ans:key,grid:true,fixed:true,
+    why:v?`The dominant is a fifth above the tonic: ${rmNm(r)} is the fifth of ${kn}. A major key has only one dominant seventh, so it gives the key away.`
+      :`The VII degree is a semitone below the tonic: ${rmNm(r)}, then ${kn}. A major key has only one half-diminished chord, so it gives the key away.`,
+    title:`${sym}: ${v?'V7':'VIIø'} of ${kn} major`,ex:{clef:'t',key:RM_KSIG[key],cols:[rmChordAt(r,q)],labels:[v?'V7':'VIIø'],cap:''},exAfter:true};
+}
 // the sets, in the order they are learned: single notes, then the chord levels of the Anki deck; then ear training
 const RM_SETS=[
   {id:'nt',kind:'note',clef:'t',name:'Notes on the treble clef',sub:'From F3 to E6, up to three ledger lines'},
@@ -7104,8 +7239,14 @@ const RM_SETS=[
   {id:'e6',kind:'ear',how:'chord',opts:RM_SEV,name:'Seventh chords by ear',sub:'The eight sevenths of the reading cards'},
   {id:'e7',kind:'ear',how:'chord',opts:['sus2','sus4','6','m6','add9','madd9'],name:'Sus, sixth and add9 by ear',sub:'sus2, sus4, 6, m6, add9, m(add9)'},
   {id:'e8',kind:'ear',how:'chord',opts:['9','maj9','m9','11','m11','13','maj13','m13'],name:'Ninths to thirteenths by ear',sub:'Dominant, major and minor'},
+  {id:'e9',kind:'ear',how:'prog',opts:['perf','plag','dec','half'],name:'Cadences by ear',sub:'Four chords from I, in a new key each time: how does the phrase end?'},
+  {id:'e10',kind:'ear',how:'prog',opts:['ii','turn','mii','pop'],name:'Progressions by ear',sub:'II–V–I, turnaround, minor II–V–I, I–V–VI–IV'},
+  {id:'e11',kind:'ear',how:'scale',opts:['maj','nat','harm','mel','dor','mix','lyd','phr'],name:'Scales by ear',sub:'Major, the three minors, Dorian, Mixolydian, Lydian, Phrygian, going up'},
   // the check questions of the lessons: a lesson’s questions come into training once it has been checked
-  {id:'th',kind:'theory',name:'Theory questions',sub:'The check questions of the lessons you have done'}
+  {id:'th',kind:'theory',name:'Theory questions',sub:'The check questions of the lessons you have done'},
+  // keys: the chords of the twelve major keys, and the key of a V7 or a half-diminished chord
+  {id:'k1',kind:'key',name:'Chords of a key',sub:'Which triad or seventh chord is on each degree, in all twelve major keys'},
+  {id:'k2',kind:'key',name:'Find the key',sub:'Which major key a V7 or a half-diminished chord belongs to'}
 ];
 const RM_SET=Object.fromEntries(RM_SETS.map(s=>[s.id,s]));
 // the pitches of a chord: the root on octave 4 (treble) or 2 (bass), the rest stacked above it;
@@ -7119,6 +7260,7 @@ function rmChordPitches(root,qid,inv,clef){
 function rmSetKeys(id){
   const s=RM_SET[id], out=[];
   if(s.kind==='note'){ const lo=rmStep(rmP(s.clef==='t'?'F3':'A1')); for(let st=lo;st<lo+21;st++) out.push('n|'+s.clef+'|'+RM_LET[st%7]+Math.floor(st/7)); return out; }
+  if(s.kind==='key'){ RM_KEYS.forEach((_,key)=>{ if(id==='k1') RM_MAJ.forEach((_,d)=>['3','7'].forEach(t=>out.push(['k',id,key,d,t].join('|')))); else ['V','VII'].forEach(v=>out.push(['k',id,key,v].join('|'))); }); return out; }
   if(s.kind==='theory'){ RM_LESSONS.forEach(l=>l.quiz.forEach((_,i)=>out.push('t|'+l.id+'|'+i))); return out; }
   if(s.kind==='ear'){ if(s.how==='inv') s.q.forEach(q=>s.opts.forEach(i=>out.push('e|'+id+'|'+q+'|'+i))); else s.opts.forEach(o=>out.push('e|'+id+'|'+o)); return out; }
   ['t','b'].forEach(c=>s.q.forEach(q=>s.inv.forEach(i=>RM_ROOTS.forEach((_,r)=>out.push(['c',r,q,i,c].join('|'))))));
@@ -7131,7 +7273,8 @@ function rmCard(k){
   if(a[0]==='n'){ const p=rmP(a[2]), clef=a[1], st=rmStep(p)-RM_CLEF[clef].bottom, ledger=st<0?Math.floor(-st/2):st>8?Math.floor((st-8)/2):0;
     return {k,set,kind:'note',clef,ps:[p],answer:RM_LET[p.l],name:rmSci(p),ledger,where:ledger?(st<0?'below':'above'):''}; }
   if(a[0]==='t'){ const l=RM_LESSON[a[1]], i=+a[2], q=l.quiz[i];
-    return {k,set,kind:'theory',lesson:l.id,i,q:q.q,ex:q.ex?rmEx(q.ex):null,opts:q.o,why:q.why,title:q.q}; }
+    return {k,set,kind:'theory',lesson:l.id,i,q:q.q,ex:q.ex?rmEx(q.ex):null,opts:q.o,ans:0,why:q.why,title:q.ex?q.q.replace(/\?$/,'')+': '+q.o[0]:q.q}; }
+  if(a[0]==='k') return rmKeyCard(k,set);
   if(a[0]==='e'){ const s=RM_SET[set], ans=s.how==='inv'?a[3]:a[2];
     return {k,set,kind:'ear',how:s.how,ans,q:s.how==='inv'?a[2]:s.how==='chord'?ans:null,title:rmOptName(s,ans,a[2])}; }
   const root=+a[1], q=RM_QI[a[2]], inv=+a[3], clef=a[4], ps=rmChordPitches(root,q.id,inv,clef);
@@ -7141,6 +7284,8 @@ function rmCard(k){
 // how an answer is named on its button and in the history
 function rmOptName(s,o,q){
   if(s.how==='inv') return (q?(q==='maj'?'Major':'Minor')+', ':'')+RM_INV[+o];
+  if(s.how==='prog') return RM_PROGS[o].name+(s.id==='e9'?' cadence':'');
+  if(s.how==='scale') return RM_SCALES[o].name;
   if(s.kind==='ear'&&s.how!=='chord'){ const n=RM_IVI[o].name; return n[0].toUpperCase()+n.slice(1); }
   const x=RM_QI[o]; return x.name[0].toUpperCase()+x.name.slice(1);
 }
@@ -7151,6 +7296,13 @@ const rmOptShort=(s,o)=>s.how==='inv'?['Root','1st inv.','2nd inv.'][+o]:s.how==
 // {root, oct}, to hear a wrong guess from the same root.
 function rmEarExample(c,rnd,ans,fix){
   const s=RM_SET[c.set], a=ans==null?c.ans:ans, pick=x=>x[Math.floor(rnd()*x.length)];
+  // a progression: in a key (the same key for a wrong guess), the chords one after the other
+  if(s.how==='prog'){ const key=fix?fix.root:Math.floor(rnd()*12), p=rmProg(key,a); return Object.assign(p,{root:key,ps:p.cols.flat(),clef:'b',how:'prog'}); }
+  // a scale going up, from a root between A3 and G♯4 that spells it without double sharps or flats
+  if(s.how==='scale'){
+    const roots=[...new Set(RM_KEYS.concat(RM_MKEYS))].map(n=>{ const r=rmP(n+'3'); if(rmMidi(r)<57) r.o++; return r; });
+    const clean=roots.filter(r=>rmScale(r,a).every(p=>Math.abs(p.a)<2)), r=fix?fix.root:pick(clean.length?clean:roots), ps=rmScale(r,a);
+    return {root:r,how:'scale',ps,cols:ps.map(p=>[p]),labels:['1','','','','','','','8'],clef:'t'}; }
   const build=(root,oct)=>{ const r=rmP(RM_ROOTS[root]+oct);
     if(s.how==='up'||s.how==='together'){ const iv=RM_IVI[a]; return [r,rmUp(r,iv.n,iv.s)]; }
     if(s.how==='down'){ const iv=RM_IVI[a], hi=rmUp(r,iv.n,iv.s); return [hi,r]; }
@@ -7319,7 +7471,7 @@ function rmItems(mode){
 }
 const rmDueCount=mode=>{ const now=Date.now(); return rmItems(mode).filter(k=>RM.p[k]&&RM.p[k].due<=now).length; };
 // the level a set belongs to: both note sets first, then the chord levels in order; ear sets in their order
-const rmLevel=id=>RM_SET[id].kind==='note'||RM_SET[id].kind==='theory'?0:+id.slice(1);
+const rmLevel=id=>RM_SET[id].kind==='note'||RM_SET[id].kind==='theory'?0:RM_SET[id].kind==='key'?8:+id.slice(1);
 // next card: a missed one now and then, cards due, and new ones from the lowest level still to learn
 function rmPick(){
   const items=rmItems(); if(!items.length) return null;
@@ -7334,7 +7486,7 @@ function rmPick(){
 // a new card; an ear card gets its example (a random root) and plays it as soon as it is on screen
 function rmNew(){
   clearTimeout(rmTimer); const it=rmPick(); RT=it?{k:it.k,practice:!!it.practice,phase:'ask'}:null; if(!RT) return;
-  const c=rmCard(RT.k); if(c.kind==='ear'){ RT.ex=rmEarExample(c,Math.random); RT.fresh=true; rmWarm(RT.ex.ps); } else if(c.kind==='theory') RT.order=rmShuffle(c.opts.length); else rmWarm(c.ps);
+  const c=rmCard(RT.k); if(c.kind==='ear'){ RT.ex=rmEarExample(c,Math.random); RT.fresh=true; rmWarm(RT.ex.ps); } else if(c.kind==='theory'||c.kind==='key') RT.order=c.fixed?c.opts.map((_,i)=>i):rmShuffle(c.opts.length); else rmWarm(c.ps);
 }
 const rmShuffle=n=>{ const a=[...Array(n).keys()]; for(let i=n-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
 function rmGrade(ok,k,practice){
@@ -7419,6 +7571,7 @@ function rmPlay(ps,how,at,lit){
     const ahead=t0-actx.currentTime;
     if(how==='short') ps.forEach(p=>{ rmVoice(rmMidi(p),t0,1,0.55,0.3); rmLight(lit,p,ahead,0.7); });
     else if(how==='seq') ps.forEach((p,i)=>{ rmVoice(rmMidi(p),t0+i*0.75,1,i===n-1?1.1:0.6,0.35); rmLight(lit,p,ahead+i*0.75,i===n-1?1.1:0.7); });
+    else if(how==='prog') ps.forEach(p=>{ rmVoice(rmMidi(p),t0,loud,1.0,0.35); rmLight(lit,p,ahead,1.1); });
     else if(how==='arp') ps.forEach((p,i)=>{ rmVoice(rmMidi(p),t0+i*0.45,loud*1.15,(n-1-i)*0.45+1.6,0.9); rmLight(lit,p,ahead+i*0.45,i===n-1?1.2:0.45); });
     else ps.forEach((p,i)=>{ rmVoice(rmMidi(p),t0+i*strum,loud,1.9,0.9); rmLight(lit,p,ahead,1.5); });
   }catch(e){}
@@ -7427,6 +7580,15 @@ function rmPlay(ps,how,at,lit){
 const rmPlayLen=(ps,how)=>how==='short'?0.9:how==='seq'?0.75*(ps.length-1)+1.5:how==='arp'?0.45*(ps.length-1)+2.5:2.8;
 // an ear card's example as asked: two notes up or down one after the other, or together; chords at once
 const rmEarHow=ex=>ex.how==='up'||ex.how==='down'?'seq':'block';
+const rmEarStaff=(ex,label)=>ex.cols?rmStaffRow(ex.clef,ex.cols,{key:ex.key,labels:ex.labels,label}):rmStaffSvg(ex.clef,ex.ps,{label});
+// a progression chord by chord, a scale note by note; anything else as the card asks. Returns how long it lasts
+function rmEarPlay(ex,at,lit){
+  at=at||0;
+  if(!ex.cols){ const how=rmEarHow(ex); rmPlay(ex.ps,how,at,lit); return rmPlayLen(ex.ps,how); }
+  const step=ex.how==='prog'?1.25:0.5;
+  ex.cols.forEach((ps,i)=>rmPlay(ps,ex.how==='prog'?'prog':'short',at+i*step,lit===false?false:{root:null,col:i}));
+  return step*ex.cols.length+0.6;
+}
 /* ---------- screens ---------- */
 const RM_ICON={note:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9 18V5l11-2v13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.6" fill="currentColor"/><circle cx="17.5" cy="16" r="2.6" fill="currentColor"/></svg>',
   ear:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0c0 3-2 4-3.2 5.2-1 1-1.3 2-1.8 3.3A3 3 0 0 1 8 16.5M9.5 9a2.5 2.5 0 0 1 5 0c0 1.4-1.2 2-2 2.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'};
@@ -7463,16 +7625,19 @@ function rmTabsHtml(){
 const rmClefName=c=>RM_CLEF[c].name.toLowerCase()+' clef';
 const RM_DIR={up:'↑',down:'↓',together:'together'};
 // what a card is called in lists: the note, the chord symbol, or the ear answer
-const rmTitle=c=>c.kind==='note'?c.name:c.kind==='chord'?c.sym:c.kind==='theory'?(c.ex?c.q.replace(/\?$/,'')+': '+c.opts[0]:c.q):c.title+(RM_DIR[c.how]?(c.how==='together'?' (together)':' '+RM_DIR[c.how]):'');
-const rmSub=c=>c.kind==='note'?`Note · ${rmClefName(c.clef)}`:c.kind==='theory'?`Theory · lesson ${RM_LESSON[c.lesson].n}, ${RM_LESSON[c.lesson].title}`:c.kind==='chord'?`${c.invName} · ${rmClefName(c.clef)}`:RM_SET[c.set].name;
+const rmTitle=c=>c.kind==='note'?c.name:c.kind==='chord'?c.sym:c.kind==='theory'||c.kind==='key'?c.title:c.title+(RM_DIR[c.how]?(c.how==='together'?' (together)':' '+RM_DIR[c.how]):'');
+const rmSub=c=>c.kind==='note'?`Note · ${rmClefName(c.clef)}`:c.kind==='theory'?`Theory · lesson ${RM_LESSON[c.lesson].n}, ${RM_LESSON[c.lesson].title}`:c.kind==='key'?RM_SET[c.set].name:c.kind==='chord'?`${c.invName} · ${rmClefName(c.clef)}`:RM_SET[c.set].name;
 // an ear answer's button: the short name, and the full one under it
 function rmOptHtml(s,o,cls,dis){
+  if(s.how==='prog'||s.how==='scale'){ const x=s.how==='prog'?RM_PROGS[o]:RM_SCALES[o]; return `<button type="button" class="ropt${cls}" data-rmopt="${o}" ${dis?'disabled':''}><b>${esc(x.name)}</b>${x.sub?`<small>${esc(x.sub)}</small>`:''}</button>`; }
   const big=s.how==='inv'?['Root','1st','2nd'][+o]:s.how==='chord'?({maj:'Major',min:'Minor',dim:'Dim',aug:'Aug'}[o]||RM_QI[o].sym):o;
   const small=s.how==='inv'?['position','inversion','inversion'][+o]:s.how==='chord'?RM_QI[o].name:RM_IVI[o].name;
   return `<button type="button" class="ropt${cls}" data-rmopt="${o}" ${dis?'disabled':''}><b>${esc(big)}</b><small>${esc(small)}</small></button>`;
 }
 function rmAnswerHtml(c,ex){
   if(c.kind==='note') return `<div class="rsym">${esc(c.answer)}</div><div class="rdet">${esc(c.name)} · ${rmClefName(c.clef)} · ${c.ledger?`${c.ledger} ledger ${c.ledger===1?'line':'lines'} ${c.where}`:'on the staff'}</div>`;
+  if(c.kind==='ear'&&ex.cols){ const s=RM_SET[c.set];
+    return `<div class="rsym">${esc(c.title)}</div><div class="rdet">${s.how==='prog'?esc(ex.keyName)+' · '+esc(ex.labels.join(' – ')):esc(rmNm(ex.root)+' '+RM_SCALES[c.ans].name.toLowerCase().replace(/^(dorian|mixolydian|lydian|phrygian)$/,m=>m[0].toUpperCase()+m.slice(1)))}</div><div class="rsci">${esc(s.how==='prog'?ex.syms.join(' – '):ex.ps.map(rmNm).join(' '))}</div>`; }
   if(c.kind==='ear'){ const s=RM_SET[c.set];
     return `<div class="rsym">${esc(s.how==='inv'?RM_INV[+c.ans][0].toUpperCase()+RM_INV[+c.ans].slice(1):c.title)}</div><div class="rdet">${s.how==='inv'?esc(RM_ROOTS[ex.root]+(c.q==='maj'?' major':' minor'))+' · ':s.how==='chord'?esc(RM_ROOTS[ex.root]+RM_QI[c.ans].sym)+' · ':''}${esc(ex.ps.map(rmNm).join(' – '))}</div><div class="rsci">${esc(ex.ps.map(rmSci).join(' – '))}</div>`; }
   return `<div class="rsym">${esc(c.sym)}</div><div class="rdet">${esc(c.name)} · ${esc(c.invName)}${c.bass?` (${esc(c.bass)} in the bass)`:''} · ${rmClefName(c.clef)}</div><div class="rnotes">${esc(c.notes)}</div><div class="rsci">${esc(c.sci)}</div>`;
@@ -7483,6 +7648,7 @@ function rmPlayHtml(c,ex){
   if(c.kind==='note') return `<div class="rplay">${b('short','Note')}</div>`;
   if(c.kind==='chord') return `<div class="rplay">${b('block','Chord')}${b('arp','Arpeggio')}</div>`;
   const s=RM_SET[c.set];
+  if(s.how==='prog'||s.how==='scale') return `<div class="rplay">${b('again','Again')}</div>`;
   if(s.how==='up'||s.how==='down') return `<div class="rplay">${b('seq','Again')}${b('block','Together')}</div>`;
   if(s.how==='together') return `<div class="rplay">${b('block','Again')}${b('seq','One by one')}</div>`;
   return `<div class="rplay">${b('block','Again')}${b('arp','Arpeggio')}</div>`;
@@ -7509,14 +7675,14 @@ function rmTrainHtml(){
   }else if(c.kind==='ear'){
     const ex=RT.ex, wrong=shown&&RT.pick!==c.ans;
     h+=`<div class="wcard vcard rcard"><div class="rset">${esc(set.name)}</div>`
-      +(shown?rmStaffSvg(ex.clef,ex.ps,{label:'The notes you heard'})+rmAnswerHtml(c,ex):`<div class="rearq">${RM_ICON.ear}<span>${set.how==='inv'?`Listen: a ${c.q==='maj'?'major':'minor'} triad. Which inversion?`:set.how==='chord'?'Listen: which chord is it?':'Listen: which interval is it?'}</span></div>`)
+      +(shown?rmEarStaff(ex,'The notes you heard')+rmAnswerHtml(c,ex):`<div class="rearq">${RM_ICON.ear}<span>${set.how==='prog'?(set.id==='e9'?'Listen: how does the phrase end?':'Listen: which progression is it?'):set.how==='scale'?'Listen: which scale is it?':set.how==='inv'?`Listen: a ${c.q==='maj'?'major':'minor'} triad. Which inversion?`:set.how==='chord'?'Listen: which chord is it?':'Listen: which interval is it?'}</span></div>`)
       +rmPlayHtml(c,ex)
-      +`<div class="ropts${set.opts.length>6?' many':''}" role="group" aria-label="Answers">${set.opts.map(o=>rmOptHtml(set,o,shown?(o===c.ans?' good':o===RT.pick?' bad':''):'',shown)).join('')}</div>`
+      +`<div class="ropts${set.how==='prog'||set.how==='scale'?' two':set.opts.length>6?' many':''}" role="group" aria-label="Answers">${set.opts.map(o=>rmOptHtml(set,o,shown?(o===c.ans?' good':o===RT.pick?' bad':''):'',shown)).join('')}</div>`
       +(wrong?`<div class="rplay"><button type="button" class="btn rbad" data-rmplay="yours">▶ Yours: ${esc(rmOptName(set,RT.pick,c.q))}</button><button type="button" class="btn rgood" data-rmplay="right">▶ Right: ${esc(c.title)}</button></div>`:'')
       +(shown?`<button type="button" class="btn primary" data-rmact="next">Next</button>`:'')+`</div>`;
-  }else if(c.kind==='theory'){
+  }else if(c.kind==='theory'||c.kind==='key'){
     const L=RM_LESSON[c.lesson];
-    h+=`<div class="wcard vcard rcard rtcard"><div class="rset">${RM_ICON.book} Theory · lesson ${L.n}</div>`+rmQuizHtml(c,RT.order,shown?RT.pick:null)
+    h+=`<div class="wcard vcard rcard rtcard"><div class="rset">${RM_ICON.book} ${c.kind==='key'?esc(set.name):'Theory · lesson '+L.n}</div>`+rmQuizHtml(c,RT.order,shown?RT.pick:null)
       +(shown?rmWhyHtml(c,RT.pick)+`<div class="rplay"><button type="button" class="btn quiet sm" data-rmlesson="${L.id}">Read the lesson: ${esc(L.title)}</button></div><button type="button" class="btn primary" data-rmact="next">Next</button>`:'')+`</div>`;
   }else{
     h+=`<div class="wcard vcard vtap rcard" role="button" tabindex="0" data-rmtap aria-label="${shown?'Next card':'Show the answer'}"><div class="rset">${esc(set.name)}</div>${rmStaff(c)}`
@@ -7524,6 +7690,7 @@ function rmTrainHtml(){
       +(shown?`<div class="vcstars" title="How well you know this card">${vStarsHtml(RM.p[RT.k]?RM.p[RT.k].b:0)}</div><div class="vjudge"><button type="button" class="vno" data-rmact="missed" aria-label="I didn’t know it" title="I didn’t know it">${V_ICON.down}</button><button type="button" class="vyes" data-rmact="knew" aria-label="I knew it" title="I knew it">${V_ICON.up}</button></div>`:'')+`</div>`;
   }
   if(RT.practice) h+=`<div class="hint">Nothing due right now, so this is practice: it doesn’t change your review schedule.</div>`;
+  if(c.kind==='key') return h+`<div class="hint">${c.fixed?'Tap the key.':'Tap the chord, or press its number on a keyboard.'} After the answer the chord shows on the staff, in its key signature, to play. It comes back after 1, 3, 7, 30 and 90 days.</div>`;
   if(c.kind==='theory') return h+`<div class="hint">A question from the lessons you have done. Answer with the buttons, or the number keys 1–4; Enter goes on. It comes back after 1, 3, 7, 30 and 90 days, like the other cards.</div>`;
   h+=`<div class="hint">${c.kind==='note'?'Tap the note’s name, or press its letter on a keyboard. A wrong note shows up next to the right one, in red, and you hear both.'
     :c.kind==='ear'?'Every card is played from a new note each time. Answer with the buttons, or the number keys 1–9 and 0; Space plays it again. A wrong answer lets you hear yours next to the right one.'
@@ -7552,7 +7719,7 @@ function rmSetStats(id){
 }
 function rmSetRow(s){
   const st=rmSetStats(s.id), on=RM.set.sets.indexOf(s.id)>=0;
-  const art=s.kind==='ear'||s.kind==='theory'?`<span class="rsetart rsetear">${RM_ICON[s.kind==='ear'?'ear':'book']}</span>`:(()=>{ const ex=rmCard(rmSetKeys(s.id)[s.kind==='note'?10:0]); return `<span class="rsetart">${rmStaffSvg(ex.clef,ex.ps,{thumb:true,label:s.name})}</span>`; })();
+  const art=s.kind==='ear'||s.kind==='theory'||s.kind==='key'?`<span class="rsetart rsetear">${RM_ICON[s.kind==='ear'?'ear':'book']}</span>`:(()=>{ const ex=rmCard(rmSetKeys(s.id)[s.kind==='note'?10:0]); return `<span class="rsetart">${rmStaffSvg(ex.clef,ex.ps,{thumb:true,label:s.name})}</span>`; })();
   return `<label class="rsetrow${on?' on':''}"><input type="checkbox" data-rmset="${s.id}" ${on?'checked':''}>${art}<span class="rsettext"><b>${esc(s.name)}</b><small>${esc(s.sub)}</small><small class="mono">${rmCount(st.n)} · ${st.seen} practised · ${st.mastered} mastered${st.due?` · ${st.due} due`:''}</small></span></label>`;
 }
 function rmSetsHtml(){
@@ -7560,7 +7727,7 @@ function rmSetsHtml(){
   h+=`<div class="hint">Turn on the sets you want to train. New cards come from the easiest set turned on: in reading the notes first, then each chord level in turn; in ear training, intervals before chords. Cards you have started keep their reviews when a set is turned off.</div>`;
   h+=`<h3 class="rsethead">${RM_ICON.note} Reading</h3><div class="rsets">${RM_SETS.filter(s=>s.kind==='note'||s.kind==='chord').map(rmSetRow).join('')}</div>`;
   h+=`<h3 class="rsethead">${RM_ICON.ear} Ear training</h3><div class="rsets">${RM_SETS.filter(s=>s.kind==='ear').map(rmSetRow).join('')}</div>`;
-  h+=`<h3 class="rsethead">${RM_ICON.book} Theory</h3><div class="rsets">${rmSetRow(RM_SET.th)}</div><div class="hint">The check questions of the lessons in Learn: they come into training, together with the reading cards, once a lesson is checked.</div>`;
+  h+=`<h3 class="rsethead">${RM_ICON.book} Theory</h3><div class="rsets">${RM_SETS.filter(s=>s.kind==='theory'||s.kind==='key').map(rmSetRow).join('')}</div><div class="hint">The check questions of the lessons in Learn come into training once a lesson is checked; the key cards are trained with the reading cards.</div>`;
   return h;
 }
 function rmHistHtml(){
@@ -7577,12 +7744,12 @@ function rmHistHtml(){
 }
 function rmCardViewHtml(){
   const c=rmCard(RMV.k), st=RM.p[c.k], ex=RMV.ex;
-  if(c.kind==='theory') return `<div class="vhead"><button type="button" class="btn quiet sm" data-rmact="back">‹ Back</button></div><div class="wcard vcard rcard rtcard"><div class="rset">${RM_ICON.book} Theory · lesson ${RM_LESSON[c.lesson].n}</div>`
-    +rmQuizHtml(c,c.opts.map((_,i)=>i),0)+rmWhyHtml(c,0)+`<div class="rplay"><button type="button" class="btn quiet sm" data-rmlesson="${c.lesson}">Read the lesson: ${esc(RM_LESSON[c.lesson].title)}</button></div>`
+  if(c.kind==='theory'||c.kind==='key') return `<div class="vhead"><button type="button" class="btn quiet sm" data-rmact="back">‹ Back</button></div><div class="wcard vcard rcard rtcard"><div class="rset">${RM_ICON.book} ${c.kind==='key'?esc(RM_SET[c.set].name):'Theory · lesson '+RM_LESSON[c.lesson].n}</div>`
+    +rmQuizHtml(c,c.opts.map((_,i)=>i),c.ans)+rmWhyHtml(c,c.ans)+`<div class="rplay"><button type="button" class="btn quiet sm" data-rmlesson="${c.lesson}">Read the lesson: ${esc(RM_LESSON[c.lesson].title)}</button></div>`
     +`<div class="vprog">${vStarsHtml(st?st.b:0)}<span class="hint">${st?`Practised ${st.n} ${st.n===1?'time':'times'}, right ${st.ok} · ${nextReviewText(st)}`:'Not practised yet'}</span></div></div>`;
   return `<div class="vhead"><button type="button" class="btn quiet sm" data-rmact="back">‹ Back</button></div><div class="wcard vcard rcard"><div class="rset">${esc(RM_SET[c.set].name)}</div>`
-    +(ex?rmStaffSvg(ex.clef,ex.ps,{label:'The notes'})+rmAnswerHtml(c,ex):rmStaff(c)+rmAnswerHtml(c))+rmPlayHtml(c,ex)
-    +(ex?`<button type="button" class="btn quiet sm" data-rmact="another">Another root</button>`:'')
+    +(ex?rmEarStaff(ex,'The notes')+rmAnswerHtml(c,ex):rmStaff(c)+rmAnswerHtml(c))+rmPlayHtml(c,ex)
+    +(ex?`<button type="button" class="btn quiet sm" data-rmact="another">${ex.how==='prog'?'Another key':'Another root'}</button>`:'')
     +`<div class="vprog">${vStarsHtml(st?st.b:0)}<span class="hint">${st?`Practised ${st.n} ${st.n===1?'time':'times'}, right ${st.ok} · ${nextReviewText(st)}`:'Not practised yet'}</span></div></div>`;
 }
 /* ---------- Learn: the lessons ---------- */
@@ -7599,16 +7766,16 @@ function rmPlayEx(e,how,root){
 // a question: its staff if it has one, then the answers in the order given; once answered, the right one and yours
 function rmQuizHtml(c,order,pick,num){
   const shown=pick!=null;
-  return `<div class="rqq">${num?`<span class="rqn">${num}</span>`:''}<span>${esc(c.q)}</span></div>`+(c.ex?rmExHtml(c.ex,'q|'+c.k):'')
-    +`<div class="rqopts" role="group" aria-label="Answers">${order.map((i,j)=>`<button type="button" class="ropt rqopt${shown?(i===0?' good':i===pick?' bad':''):''}" data-rmans="${esc(c.k)}|${i}" ${shown?'disabled':''}><span class="rqk">${j+1}</span>${esc(c.opts[i])}</button>`).join('')}</div>`;
+  return `<div class="rqq">${num?`<span class="rqn">${num}</span>`:''}<span>${esc(c.q)}</span></div>`+(c.ex&&!(c.exAfter&&!shown)?rmExHtml(c.ex,'q|'+c.k):'')
+    +`<div class="rqopts${c.grid?' rqgrid':''}" role="group" aria-label="Answers">${order.map((i,j)=>`<button type="button" class="ropt rqopt${shown?(i===c.ans?' good':i===pick?' bad':''):''}" data-rmans="${esc(c.k)}|${i}" ${shown?'disabled':''}>${c.grid?'':`<span class="rqk">${j+1}</span>`}${esc(c.opts[i])}</button>`).join('')}</div>`;
 }
-const rmWhyHtml=(c,pick)=>`<div class="rwhy ${pick===0?'ok':'no'}"><b>${pick===0?'Right.':'Not quite: '+esc(c.opts[0])+'.'}</b> ${esc(c.why)}</div>`;
+const rmWhyHtml=(c,pick)=>`<div class="rwhy ${pick===c.ans?'ok':'no'}"><b>${pick===c.ans?'Right.':'Not quite: '+esc(c.opts[c.ans])+'.'}</b> ${esc(c.why)}</div>`;
 const rmNames=ids=>ids.map((id,i)=>{ const n=RM_SET[id].name; return i?n[0].toLowerCase()+n.slice(1):n; }).join(', ');
 const rmLessonKeys=L=>L.quiz.map((_,i)=>'t|'+L.id+'|'+i);
 function rmLearnHtml(){
   let h=rmTabsHtml()+`<div class="hint">Short lessons on what the cards train, in the order of Andrea Avena’s <i>Teoria &amp; Armonia</i>, with his Italian terms in brackets. Each ends with a few questions: once answered they come back in training, with the reading cards.</div><div class="rlessons">`;
   const now=Date.now(), next=RM_LESSONS.find(L=>!RM.learn[L.id]);
-  RM_LESSONS.forEach(L=>{ const done=RM.learn[L.id], due=rmLessonKeys(L).filter(k=>RM.p[k]&&RM.p[k].due<=now).length;
+  RM_LESSONS.forEach(L=>{ if(L.part) h+=`</div><h3 class="rsethead">${esc(L.part)}</h3><div class="rlessons">`; const done=RM.learn[L.id], due=rmLessonKeys(L).filter(k=>RM.p[k]&&RM.p[k].due<=now).length;
     h+=`<button type="button" class="rlrow${done?' done':''}${L===next?' next':''}" data-rmlesson="${L.id}"><span class="rlnum">${done?V_TICK:L.n}</span><span class="rsettext"><b>${esc(L.title)}</b><small>${esc(L.sub)}</small>${done||L===next?`<small class="mono">${done?'Checked'+(due?` · ${due} ${due===1?'question':'questions'} due`:''):'Next to read'}</small>`:''}</span></button>`; });
   return h+'</div>';
 }
@@ -7649,7 +7816,7 @@ function rmPractice(kind){
   if(RT&&ids.indexOf(RT.set||RM_KEYSET.get(RT.k))<0&&pool.length){
     const due=pool.filter(k=>RM.p[k]&&RM.p[k].due<=now), fresh=pool.filter(k=>!RM.p[k]);
     RT=null; const k=pick(due.length?due:fresh.length?fresh:pool); RT={k,practice:!due.length&&!fresh.length,phase:'ask'};
-    const c=rmCard(k); if(c.kind==='ear'){ RT.ex=rmEarExample(c,Math.random); RT.fresh=true; } else if(c.kind==='theory') RT.order=rmShuffle(c.opts.length);
+    const c=rmCard(k); if(c.kind==='ear'){ RT.ex=rmEarExample(c,Math.random); RT.fresh=true; } else if(c.kind==='theory'||c.kind==='key') RT.order=c.fixed?c.opts.map((_,i)=>i):rmShuffle(c.opts.length);
   }
   const n=(history.state&&history.state.sub)||0;
   if(n){ RMV={tab:'leaving',back:null}; history.go(-n); } else { RMV=null; renderRead(); }
@@ -7681,7 +7848,7 @@ function renderRead(){
   $('rmbody').innerHTML=h; $('rmsettings').innerHTML=rmSettingsHtml(); $('rmstats').innerHTML=rmStatsHtml();
   if(!RMV){ const c=document.querySelector('[data-rmtap]'); if(c) c.focus({preventScroll:true}); }
   // an ear card plays as soon as it shows
-  if(!RMV&&RT&&RT.fresh&&RT.phase==='ask'&&!(RM_CELEBRATE||rmToday()>=rmGoal()&&RM_CONT!==romeDay())){ RT.fresh=false; const ex=RT.ex; setTimeout(()=>{ if(view==='read'&&!RMV&&RT&&RT.ex===ex) rmPlay(ex.ps,rmEarHow(ex)); },300); }
+  if(!RMV&&RT&&RT.fresh&&RT.phase==='ask'&&!(RM_CELEBRATE||rmToday()>=rmGoal()&&RM_CONT!==romeDay())){ RT.fresh=false; const ex=RT.ex; setTimeout(()=>{ if(view==='read'&&!RMV&&RT&&RT.ex===ex) rmEarPlay(ex); },300); }
 }
 function rmReveal(){
   if(!RT||RT.phase!=='ask') return; RT.phase='shown'; renderRead();
@@ -7700,11 +7867,11 @@ function rmLetter(L){
 function rmOption(o){
   if(!RT||RT.phase!=='ask') return; const c=rmCard(RT.k); if(c.kind!=='ear') return;
   const ok=o===c.ans; RT.pick=o; RT.phase='shown'; rmAdvance(ok); renderRead();
-  if(!ok){ const ex=RT.ex, y=rmEarExample(c,Math.random,o,ex), how=rmEarHow(ex); RT.yours=y; rmPlay(y.ps,how,0,false); rmPlay(ex.ps,how,rmPlayLen(y.ps,how)+0.3); }
+  if(!ok){ const ex=RT.ex, y=rmEarExample(c,Math.random,o,ex); RT.yours=y; const len=rmEarPlay(y,0,false); rmEarPlay(ex,len+0.3); }
 }
 function rmTheory(i){
-  if(!RT||RT.phase!=='ask') return; const c=rmCard(RT.k); if(c.kind!=='theory') return;
-  RT.pick=i; RT.phase='shown'; rmAdvance(i===0); renderRead();
+  if(!RT||RT.phase!=='ask') return; const c=rmCard(RT.k); if(c.kind!=='theory'&&c.kind!=='key') return;
+  RT.pick=i; RT.phase='shown'; rmAdvance(i===c.ans); renderRead();
 }
 function rmJudge(ok){ if(!RT||RT.phase!=='shown') return; rmAdvance(ok); rmNext(); }
 // what a play button plays, on the card in training or the one opened from the history
@@ -7712,8 +7879,8 @@ function rmPlayBtn(how){
   const open=RMV&&RMV.tab==='card', c=rmCard(open?RMV.k:RT.k), ex=open?RMV.ex:RT&&RT.ex;
   if(how==='guess') return rmPlay([RT.guess],'short');
   if(c.kind!=='ear') return rmPlay(c.ps,how);
-  if(how==='yours') return rmPlay(RT.yours.ps,rmEarHow(ex),0,false);
-  if(how==='right') return rmPlay(ex.ps,rmEarHow(ex));
+  if(how==='yours') return rmEarPlay(RT.yours,0,false);
+  if(how==='right'||how==='again') return rmEarPlay(ex);
   rmPlay(ex.ps,how);
 }
 $('rmbody').addEventListener('click',e=>{
@@ -7735,7 +7902,7 @@ $('rmbody').addEventListener('click',e=>{
   if(a==='missed'||a==='knew'){ e.stopPropagation(); rmJudge(a==='knew'); return; }
   if(a==='cont'){ RM_CONT=romeDay(); RM_CELEBRATE=false; if(RT&&RT.ex) RT.fresh=true; renderRead(); return; }
   if(a==='back'){ navBack(rmBack); return; }
-  if(a==='another'){ RMV.ex=rmEarExample(rmCard(RMV.k),Math.random); renderRead(); rmPlay(RMV.ex.ps,rmEarHow(RMV.ex)); return; }
+  if(a==='another'){ RMV.ex=rmEarExample(rmCard(RMV.k),Math.random); renderRead(); rmEarPlay(RMV.ex); return; }
   if(t.hasAttribute('data-rmtap')){ if(RT&&RT.phase==='ask') rmReveal(); else rmJudge(true); }
 });
 $('rmbody').addEventListener('change',e=>{
@@ -7760,8 +7927,8 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){ if(RMV) navBack(rmBack); return; }
   if(RMV||!RT) return; const c=rmCard(RT.k);
   if(c.kind==='note'){ const L=e.key.toUpperCase(); if(RT.phase==='ask'&&/^[A-G]$/.test(L)){ e.preventDefault(); rmLetter(L); } else if(RT.phase==='shown'&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); clearTimeout(rmTimer); rmNext(); } return; }
-  if(c.kind==='theory'){
-    const i='1234'.indexOf(e.key);
+  if(c.kind==='theory'||c.kind==='key'){
+    const i='1234567890'.indexOf(e.key);
     if(RT.phase==='ask'&&i>=0&&i<RT.order.length){ e.preventDefault(); rmTheory(RT.order[i]); }
     else if(RT.phase==='shown'&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); rmNext(); }
     return;
@@ -7769,7 +7936,7 @@ document.addEventListener('keydown',e=>{
   if(c.kind==='ear'){
     const opts=RM_SET[c.set].opts, i='1234567890'.indexOf(e.key);
     if(RT.phase==='ask'&&i>=0&&i<opts.length){ e.preventDefault(); rmOption(opts[i]); }
-    else if(e.key===' '&&RT.phase==='ask'){ e.preventDefault(); rmPlay(RT.ex.ps,rmEarHow(RT.ex)); }
+    else if(e.key===' '&&RT.phase==='ask'){ e.preventDefault(); rmEarPlay(RT.ex); }
     else if(RT.phase==='shown'&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); rmNext(); }
     return;
   }
