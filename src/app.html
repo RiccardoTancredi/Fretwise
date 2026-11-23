@@ -697,6 +697,8 @@ mark.v-gap::after{content:'';position:absolute;left:50%;bottom:-.3em;transform:t
 .btn.rbad{border-color:var(--bad);color:var(--bad)}
 .btn.rgood{border-color:var(--good);color:var(--good)}
 .rstaff .rextra{color:var(--bad)}
+.rstaff path[data-st]{transition:fill .12s}
+.rstaff path.lit{fill:var(--good)}
 .rmode{flex-wrap:nowrap}
 .rmode .chip{white-space:nowrap}
 .rmode .chip svg{width:16px;height:16px;vertical-align:-3px}
@@ -7173,7 +7175,7 @@ const RM_S=10/250, RM_Y0=56, RM_NX=126, RM_W=216;
 // out either way, chords from a third below the staff up to the thirteenth chords four ledger lines above it
 const RM_RANGE={note:[-8,16],chord:[-5,17]};
 const rmY=(clef,st)=>RM_Y0-(st-RM_CLEF[clef].bottom)*5;
-function rmGlyph(name,x,y){ return `<path transform="translate(${+x.toFixed(2)} ${+y.toFixed(2)}) scale(${RM_S} ${-RM_S})" d="${RM_GLYPH[name]}"/>`; }
+function rmGlyph(name,x,y,at){ return `<path ${at||''}transform="translate(${+x.toFixed(2)} ${+y.toFixed(2)}) scale(${RM_S} ${-RM_S})" d="${RM_GLYPH[name]}"/>`; }
 // where each note and accidental goes: a note a second above one in the column moves to the right of it,
 // and accidentals within a seventh of each other take separate columns, the highest closest to the notes
 function rmLayout(ps){
@@ -7192,7 +7194,7 @@ function rmStaffSvg(clef,ps,o){
   const lo=Math.min(...L.notes.map(n=>n.st)), hi=Math.max(...L.notes.map(n=>n.st)), x1=RM_NX-4, x2=RM_NX+nw*(L.wide?2:1)+4;
   for(let st=bottom-2;st>=lo;st-=2) g+=`<line stroke-width="1.6" x1="${x1}" x2="${x2}" y1="${rmY(clef,st)}" y2="${rmY(clef,st)}"/>`;
   for(let st=bottom+10;st<=hi;st+=2) g+=`<line stroke-width="1.6" x1="${x1}" x2="${x2}" y1="${rmY(clef,st)}" y2="${rmY(clef,st)}"/>`;
-  L.notes.forEach(n=>{ const y=rmY(clef,n.st); f+=rmGlyph('whole',n.x,y); if(n.acc) f+=rmGlyph(n.acc,n.ax,y); });
+  L.notes.forEach(n=>{ const y=rmY(clef,n.st); f+=rmGlyph('whole',n.x,y,`data-st="${n.st}" `); if(n.acc) f+=rmGlyph(n.acc,n.ax,y); });
   // another note to compare, to the right (a wrong guess): its own ledger lines and colour
   if(o.extra){ const p=o.extra, st=rmStep(p), x=RM_NX+nw*(L.wide?2:1)+22; let e='';
     for(let s2=bottom-2;s2>=st;s2-=2) e+=`<line stroke-width="1.6" x1="${x-4}" x2="${x+nw+4}" y1="${rmY(clef,s2)}" y2="${rmY(clef,s2)}"/>`;
@@ -7221,7 +7223,7 @@ function rmStaffRow(clef,cols,o){
     // an accidental shows when it differs from the key signature; a natural when the key has one
     const L=rmLayout(ps.map(p=>{ const k=rmKeyAlt(key,p.l); return Object.assign({},p,{acc:p.a===k?null:RM_ACCG[p.a+2]}); }));
     const dx=x-Math.min(RM_NX-3,L.left+2.5), right=RM_NX+nw*(L.wide?2:1)+dx;
-    L.notes.forEach(n=>{ lo=Math.min(lo,n.st); hi=Math.max(hi,n.st); const y=rmY(clef,n.st); f+=rmGlyph('whole',n.x+dx,y); if(n.acc) f+=rmGlyph(n.acc,n.ax+dx,y); });
+    L.notes.forEach(n=>{ lo=Math.min(lo,n.st); hi=Math.max(hi,n.st); const y=rmY(clef,n.st); f+=rmGlyph('whole',n.x+dx,y,`data-st="${n.st}" data-c="${i}" `); if(n.acc) f+=rmGlyph(n.acc,n.ax+dx,y); });
     const cl=Math.min(...L.notes.map(n=>n.st)), ch=Math.max(...L.notes.map(n=>n.st));
     for(let st=bottom-2;st>=cl;st-=2) g+=ledger(RM_NX-3+dx,right+3,st);
     for(let st=bottom+10;st<=ch;st+=2) g+=ledger(RM_NX-3+dx,right+3,st);
@@ -7380,7 +7382,17 @@ function rmSynthBuf(midi){
 }
 // the next card's notes are made ahead, so its sound starts at once
 function rmWarm(ps){ if(!actx) return; if(RM.set.sound==='piano') rmLoadPiano(); else setTimeout(()=>{ try{ ps.forEach(p=>rmSynthBuf(rmMidi(p))); }catch(e){} },60); }
-function rmStop(){ rmSrcs.forEach(s=>{ try{ s.stop(); }catch(e){} }); rmSrcs=[]; }
+function rmStop(){ rmSrcs.forEach(s=>{ try{ s.stop(); }catch(e){} }); rmSrcs=[]; rmLitT.forEach(clearTimeout); rmLitT=[]; document.querySelectorAll('.rstaff .lit').forEach(e=>e.classList.remove('lit')); }
+// lit: where the notes are drawn ({root, col}): the card on screen unless said; false for notes not on the staff
+let rmLitT=[];
+function rmLight(lit,p,from,dur){
+  if(lit===false) return; const st=rmStep(p);
+  rmLitT.push(setTimeout(()=>{
+    const root=lit&&lit.root||document.querySelector('#rmbody .rcard'); if(!root||!root.isConnected) return;
+    const els=[...root.querySelectorAll(`.rstaff [data-st="${st}"]${lit&&lit.col!=null?`[data-c="${lit.col}"]`:''}`)];
+    els.forEach(e=>e.classList.add('lit')); rmLitT.push(setTimeout(()=>els.forEach(e=>e.classList.remove('lit')),dur*1000));
+  },Math.max(0,from*1000)));
+}
 // one note: from the nearest piano sample, played up to a semitone and a half faster or slower; it rings for
 // "hold" seconds, then dies away over "rel" seconds
 function rmVoice(midi,when,gain,hold,rel){
@@ -7397,17 +7409,18 @@ function rmVoice(midi,when,gain,hold,rel){
 }
 // how: 'block' (all at once), 'arp' (one by one, then held together), 'seq' (one after the other, for melodic
 // intervals), 'short' (a quick note, the answer to a note card); "at" delays the start
-function rmPlay(ps,how,at){
+function rmPlay(ps,how,at,lit){
   try{
     if(!ensureAudio()) return;
     // the first sounds wait for the recorded piano (a moment, once); if it can't load, the made-up one plays
-    if(RM.set.sound==='piano'&&!rmSampled){ const w=rmLoadPiano(); if(w){ w.then(()=>{ rmSampled=true; rmPlay(ps,how,at); }); return; } }
+    if(RM.set.sound==='piano'&&!rmSampled){ const w=rmLoadPiano(); if(w){ w.then(()=>{ rmSampled=true; rmPlay(ps,how,at,lit); }); return; } }
     if(!at) rmStop();
     const n=ps.length, t0=actx.currentTime+0.04+(at||0), loud=Math.min(1,1.3/Math.sqrt(n)), strum=RM.set.sound==='piano'?0:0.03;
-    if(how==='short') ps.forEach(p=>rmVoice(rmMidi(p),t0,1,0.55,0.3));
-    else if(how==='seq') ps.forEach((p,i)=>rmVoice(rmMidi(p),t0+i*0.75,1,i===n-1?1.1:0.6,0.35));
-    else if(how==='arp') ps.forEach((p,i)=>rmVoice(rmMidi(p),t0+i*0.45,loud*1.15,(n-1-i)*0.45+1.6,0.9));
-    else ps.forEach((p,i)=>rmVoice(rmMidi(p),t0+i*strum,loud,1.9,0.9));
+    const ahead=t0-actx.currentTime;
+    if(how==='short') ps.forEach(p=>{ rmVoice(rmMidi(p),t0,1,0.55,0.3); rmLight(lit,p,ahead,0.7); });
+    else if(how==='seq') ps.forEach((p,i)=>{ rmVoice(rmMidi(p),t0+i*0.75,1,i===n-1?1.1:0.6,0.35); rmLight(lit,p,ahead+i*0.75,i===n-1?1.1:0.7); });
+    else if(how==='arp') ps.forEach((p,i)=>{ rmVoice(rmMidi(p),t0+i*0.45,loud*1.15,(n-1-i)*0.45+1.6,0.9); rmLight(lit,p,ahead+i*0.45,i===n-1?1.2:0.45); });
+    else ps.forEach((p,i)=>{ rmVoice(rmMidi(p),t0+i*strum,loud,1.9,0.9); rmLight(lit,p,ahead,1.5); });
   }catch(e){}
 }
 // how long a play lasts, to start the next one after it
@@ -7580,8 +7593,8 @@ function rmExHtml(e,id){
 }
 const rmExById=id=>id[0]==='b'?rmEx(RM_LESSON[id.split('|')[1]].body[+id.split('|')[2]]):rmCard(id.slice(2)).ex;
 // the columns one after the other: single notes short, chords together or as arpeggios
-function rmPlayEx(e,how){
-  let t=0; e.cols.forEach(ps=>{ const one=ps.length===1; rmPlay(ps,one?'short':how,t); t+=one?0.55:how==='arp'?0.45*(ps.length-1)+1.4:1.6; });
+function rmPlayEx(e,how,root){
+  let t=0; e.cols.forEach((ps,col)=>{ const one=ps.length===1; rmPlay(ps,one?'short':how,t,{root,col}); t+=one?0.55:how==='arp'?0.45*(ps.length-1)+1.4:1.6; });
 }
 // a question: its staff if it has one, then the answers in the order given; once answered, the right one and yours
 function rmQuizHtml(c,order,pick,num){
@@ -7642,11 +7655,12 @@ function rmPractice(kind){
   if(n){ RMV={tab:'leaving',back:null}; history.go(-n); } else { RMV=null; renderRead(); }
   scrollTo(0,0);
 }
+const RM_AUTO=[['block','The chord'],['arp','The arpeggio'],['both','The chord, then the arpeggio'],['arpblock','The arpeggio, then the chord'],['off','Nothing']];
 function rmSettingsHtml(){
   const s=RM.set, chip=(attr,val,on,label)=>`<button type="button" class="chip" data-${attr}="${val}" aria-pressed="${on}">${label}</button>`, goal=rmGoal();
   return `<div class="field"><span class="fl">Clefs</span><div class="chips">${chip('rmclef','t',s.clefs.indexOf('t')>=0,'Treble')}${chip('rmclef','b',s.clefs.indexOf('b')>=0,'Bass')}</div><div class="hint">For the reading cards: chords come on both clefs, the note sets have one each.</div></div>`
     +`<div class="field"><span class="fl">Sound</span><div class="chips">${RM_SOUNDS.map(([id,l])=>chip('rmsound',id,s.sound===id,l)).join('')}<button type="button" class="btn sm" data-rmtest aria-label="Listen to this sound">${V_ICON.say}</button></div><div class="hint">The piano is the Salamander Grand Piano, a Yamaha grand recorded note by note by Alexander Holm (CC-BY 3.0); it downloads once, about 1.4 MB.</div></div>`
-    +`<div class="field"><span class="fl">When a chord’s answer shows, play</span><div class="chips">${chip('rmauto','block',s.auto==='block','The chord')}${chip('rmauto','arp',s.auto==='arp','The arpeggio')}${chip('rmauto','both',s.auto==='both','Both')}${chip('rmauto','off',s.auto==='off','Nothing')}</div><div class="hint">Both plays the chord, then its arpeggio. The buttons on each card play the chord or the arpeggio at any time.</div></div>`
+    +`<div class="field"><span class="fl">When a chord’s answer shows, play</span><select data-rmautosel aria-label="When a chord’s answer shows, play">${RM_AUTO.map(([v,l])=>`<option value="${v}" ${s.auto===v?'selected':''}>${l}</option>`).join('')}</select><div class="hint">The buttons on each card play the chord or the arpeggio at any time; the notes light up on the staff as they sound.</div></div>`
     +`<div class="field"><span class="fl">Daily goal: cards a day</span><div class="chips">${[10,20,30,50].map(n=>`<button type="button" class="chip mono" data-rmgoal="${n}" aria-pressed="${goal===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="300" inputmode="numeric" data-rmgoalin value="${[10,20,30,50].indexOf(goal)<0?goal:''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">Reading and ear training cards both count.</div></div>`;
 }
 function rmStatsHtml(){
@@ -7672,7 +7686,7 @@ function renderRead(){
 function rmReveal(){
   if(!RT||RT.phase!=='ask') return; RT.phase='shown'; renderRead();
   const c=rmCard(RT.k), a=RM.set.auto;
-  if(a==='both'){ rmPlay(c.ps,'block'); rmPlay(c.ps,'arp',1.7); } else if(a!=='off') rmPlay(c.ps,a);
+  if(a==='both'){ rmPlay(c.ps,'block'); rmPlay(c.ps,'arp',1.7); } else if(a==='arpblock'){ rmPlay(c.ps,'arp'); rmPlay(c.ps,'block',rmPlayLen(c.ps,'arp')-0.6); } else if(a!=='off') rmPlay(c.ps,a);
 }
 // a note card: right, a short note and on to the next; wrong, your note (in red on the staff), then the right one
 function rmLetter(L){
@@ -7686,7 +7700,7 @@ function rmLetter(L){
 function rmOption(o){
   if(!RT||RT.phase!=='ask') return; const c=rmCard(RT.k); if(c.kind!=='ear') return;
   const ok=o===c.ans; RT.pick=o; RT.phase='shown'; rmAdvance(ok); renderRead();
-  if(!ok){ const ex=RT.ex, y=rmEarExample(c,Math.random,o,ex), how=rmEarHow(ex); RT.yours=y; rmPlay(y.ps,how); rmPlay(ex.ps,how,rmPlayLen(y.ps,how)+0.3); }
+  if(!ok){ const ex=RT.ex, y=rmEarExample(c,Math.random,o,ex), how=rmEarHow(ex); RT.yours=y; rmPlay(y.ps,how,0,false); rmPlay(ex.ps,how,rmPlayLen(y.ps,how)+0.3); }
 }
 function rmTheory(i){
   if(!RT||RT.phase!=='ask') return; const c=rmCard(RT.k); if(c.kind!=='theory') return;
@@ -7698,7 +7712,7 @@ function rmPlayBtn(how){
   const open=RMV&&RMV.tab==='card', c=rmCard(open?RMV.k:RT.k), ex=open?RMV.ex:RT&&RT.ex;
   if(how==='guess') return rmPlay([RT.guess],'short');
   if(c.kind!=='ear') return rmPlay(c.ps,how);
-  if(how==='yours') return rmPlay(RT.yours.ps,rmEarHow(ex));
+  if(how==='yours') return rmPlay(RT.yours.ps,rmEarHow(ex),0,false);
   if(how==='right') return rmPlay(ex.ps,rmEarHow(ex));
   rmPlay(ex.ps,how);
 }
@@ -7707,7 +7721,7 @@ $('rmbody').addEventListener('click',e=>{
   if(t.dataset.rmtab){ rmGoTab(t.dataset.rmtab); return; }
   if(t.dataset.rmlesson){ rmOpenLesson(t.dataset.rmlesson,t.hasAttribute('data-replace')); return; }
   if(t.hasAttribute('data-rmcof')){ rmGoCircle(); return; }
-  if(t.dataset.rmexp){ rmPlayEx(rmExById(t.dataset.rmexp),t.dataset.how); return; }
+  if(t.dataset.rmexp){ rmPlayEx(rmExById(t.dataset.rmexp),t.dataset.how,t.closest('.rex')); return; }
   if(t.dataset.rmpractice){ rmPractice(t.dataset.rmpractice); return; }
   if(t.dataset.rmans){ const a=t.dataset.rmans.split('|'), i=+a.pop(), k=a.join('|'); if(RMV&&RMV.tab==='lesson') rmLessonAnswer(k,i); else rmTheory(i); return; }
   if(t.dataset.rmmode){ if(RM.set.mode!==t.dataset.rmmode){ RM.set.mode=t.dataset.rmmode; RM.set.t=Date.now(); rmSave(); rmStop(); rmNew(); renderRead(); } return; }
@@ -7738,7 +7752,9 @@ $('rmsettings').addEventListener('click',e=>{
   else if(t.dataset.rmgoal){ setGoal('read',+t.dataset.rmgoal); }
   s.t=Date.now(); rmSave(); renderRead();
 });
-$('rmsettings').addEventListener('change',e=>{ if(!e.target.matches('[data-rmgoalin]')||!+e.target.value) return; setGoal('read',Math.max(1,Math.min(300,Math.round(+e.target.value)))); renderRead(); });
+$('rmsettings').addEventListener('change',e=>{
+  if(e.target.matches('[data-rmautosel]')){ RM.set.auto=e.target.value; RM.set.t=Date.now(); rmSave(); return; }
+  if(!e.target.matches('[data-rmgoalin]')||!+e.target.value) return; setGoal('read',Math.max(1,Math.min(300,Math.round(+e.target.value)))); renderRead(); });
 document.addEventListener('keydown',e=>{
   if(view!=='read'||review||e.metaKey||e.ctrlKey||e.altKey) return; const tg=e.target&&e.target.tagName; if(tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT') return;
   if(e.key==='Escape'){ if(RMV) navBack(rmBack); return; }
