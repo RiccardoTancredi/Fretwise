@@ -7646,7 +7646,7 @@ function rmSettingsHtml(){
   const s=RM.set, chip=(attr,val,on,label)=>`<button type="button" class="chip" data-${attr}="${val}" aria-pressed="${on}">${label}</button>`, goal=rmGoal();
   return `<div class="field"><span class="fl">Clefs</span><div class="chips">${chip('rmclef','t',s.clefs.indexOf('t')>=0,'Treble')}${chip('rmclef','b',s.clefs.indexOf('b')>=0,'Bass')}</div><div class="hint">For the reading cards: chords come on both clefs, the note sets have one each.</div></div>`
     +`<div class="field"><span class="fl">Sound</span><div class="chips">${RM_SOUNDS.map(([id,l])=>chip('rmsound',id,s.sound===id,l)).join('')}<button type="button" class="btn sm" data-rmtest aria-label="Listen to this sound">${V_ICON.say}</button></div><div class="hint">The piano is the Salamander Grand Piano, a Yamaha grand recorded note by note by Alexander Holm (CC-BY 3.0); it downloads once, about 1.4 MB.</div></div>`
-    +`<div class="field"><span class="fl">When a chord’s answer shows, play</span><div class="chips">${chip('rmauto','block',s.auto==='block','The chord')}${chip('rmauto','arp',s.auto==='arp','The arpeggio')}${chip('rmauto','off',s.auto==='off','Nothing')}</div><div class="hint">The buttons on each card play the chord or the arpeggio at any time.</div></div>`
+    +`<div class="field"><span class="fl">When a chord’s answer shows, play</span><div class="chips">${chip('rmauto','block',s.auto==='block','The chord')}${chip('rmauto','arp',s.auto==='arp','The arpeggio')}${chip('rmauto','both',s.auto==='both','Both')}${chip('rmauto','off',s.auto==='off','Nothing')}</div><div class="hint">Both plays the chord, then its arpeggio. The buttons on each card play the chord or the arpeggio at any time.</div></div>`
     +`<div class="field"><span class="fl">Daily goal: cards a day</span><div class="chips">${[10,20,30,50].map(n=>`<button type="button" class="chip mono" data-rmgoal="${n}" aria-pressed="${goal===n}">${n}</button>`).join('')}<label class="goalin">or<input type="number" min="1" max="300" inputmode="numeric" data-rmgoalin value="${[10,20,30,50].indexOf(goal)<0?goal:''}" placeholder="any" aria-label="Another daily goal"></label></div><div class="hint">Reading and ear training cards both count.</div></div>`;
 }
 function rmStatsHtml(){
@@ -7671,7 +7671,8 @@ function renderRead(){
 }
 function rmReveal(){
   if(!RT||RT.phase!=='ask') return; RT.phase='shown'; renderRead();
-  const c=rmCard(RT.k); if(RM.set.auto!=='off') rmPlay(c.ps,RM.set.auto);
+  const c=rmCard(RT.k), a=RM.set.auto;
+  if(a==='both'){ rmPlay(c.ps,'block'); rmPlay(c.ps,'arp',1.7); } else if(a!=='off') rmPlay(c.ps,a);
 }
 // a note card: right, a short note and on to the next; wrong, your note (in red on the staff), then the right one
 function rmLetter(L){
