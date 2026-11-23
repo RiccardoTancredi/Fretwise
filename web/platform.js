@@ -8,7 +8,7 @@
 const CFG=self.FIREBASE_CONFIG||{};
 const CONFIGURED=!!(CFG.apiKey&&!/^REPLACE/.test(CFG.apiKey)&&CFG.projectId);
 const SDK='https://www.gstatic.com/firebasejs/12.19.0/';
-const ITEMS=[['guitar','Guitar'],['ukulele','Ukulele'],['chess','Chess'],['words','Words'],['paintings','Paintings']];
+const ITEMS=[['guitar','Guitar'],['ukulele','Ukulele'],['chess','Chess'],['words','Words'],['paintings','Paintings'],['read','Read music']];
 window.FW_WEB=true;
 
 let F=null, authKnown=!CONFIGURED, sessionUid, active=false, LOCAL;
@@ -114,8 +114,9 @@ async function afterSignIn(u){
 /* ---------- daily reminders (Firebase Cloud Messaging) ---------- */
 const pushRef=()=>F.D.doc(F.db,'users',requireUser().uid,'state','push');
 const tz=()=>{ try{ return Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/Madrid'; }catch(e){ return 'Europe/Madrid'; } };
-let PUSH={hour:19,items:{guitar:true,ukulele:true,chess:true,words:true,paintings:false},tokens:{}};
-async function loadPush(){ try{ const s=await F.D.getDoc(pushRef()); if(s.exists()) PUSH=Object.assign(PUSH,s.data()); return true; }catch(e){ return false; } }
+let PUSH={hour:19,items:{guitar:true,ukulele:true,chess:true,words:true,paintings:false,read:true},tokens:{}};
+// sections added later (Read music) start switched on for devices that saved their choices before
+async function loadPush(){ try{ const s=await F.D.getDoc(pushRef()); if(s.exists()){ const d=s.data(), items=Object.assign({},PUSH.items,d.items||{}); PUSH=Object.assign(PUSH,d); PUSH.items=items; } return true; }catch(e){ return false; } }
 const pushSupported=()=>'Notification' in window&&'serviceWorker' in navigator&&'PushManager' in window;
 let messagingReady=null;
 async function messagingRuntime(){

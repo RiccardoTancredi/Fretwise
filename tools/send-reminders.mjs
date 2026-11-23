@@ -1,5 +1,5 @@
 // Sends each signed-up device one reminder a day, at the hour chosen in the app, listing the sections
-// not done yet today (one exercise, or the daily goal for words and paintings), plus the number of
+// not done yet today (one exercise, or the daily goal for words, paintings and read music), plus the number of
 // words due. Runs hourly in GitHub Actions.
 //   FIREBASE_SERVICE_ACCOUNT  service-account key JSON (repository secret)
 //   APP_URL                   where the app lives, opened when the notification is tapped
@@ -13,7 +13,7 @@ const { FIREBASE_SERVICE_ACCOUNT, OWNER_UID, APP_URL = './', FORCE } = process.e
 if (!FIREBASE_SERVICE_ACCOUNT) { console.log('Skipping: set the FIREBASE_SERVICE_ACCOUNT secret to send reminders.'); process.exit(0); }
 initializeApp({ credential: cert(JSON.parse(FIREBASE_SERVICE_ACCOUNT)) });
 const db = getFirestore(), fcm = getMessaging();
-const NAMES = { guitar: 'Guitar', ukulele: 'Ukulele', chess: 'Chess', words: 'Words', paintings: 'Paintings' };
+const NAMES = { guitar: 'Guitar', ukulele: 'Ukulele', chess: 'Chess', words: 'Words', paintings: 'Paintings', read: 'Read music' };
 
 // date and hour where the person is, e.g. ['2026-10-20', 19]
 function localNow(tz) {
@@ -25,7 +25,8 @@ function localNow(tz) {
 // 21 October 2026 was wiped in the app (chess excepted): that day only counters written after it count
 const done = (act, day, k) => Object.entries(((act.x || {})[day] || {})[k] || {})
   .filter(([dev]) => !(day === '2026-10-21' && k !== 'chess') || dev.endsWith('~')).reduce((a, [, n]) => a + n, 0);
-const goalFor = (act, k) => (k === 'words' || k === 'paintings') ? ((act.goals || {})[k] || 1) : 1;
+// Read music counts cards against its goal, 20 unless set in the app
+const goalFor = (act, k) => k === 'read' ? ((act.goals || {}).read || 20) : (k === 'words' || k === 'paintings') ? ((act.goals || {})[k] || 1) : 1;
 
 let sent = 0, checked = 0, failed = 0;
 for (const user of await db.collection('users').listDocuments()) {
@@ -39,7 +40,8 @@ for (const user of await db.collection('users').listDocuments()) {
   if (!FORCE && (h < hour || push.lastSent === day)) continue;
 
   const act = (await state.doc('activity').get()).data() || {};
-  const items = Object.entries(push.items || {}).filter(([, on]) => on).map(([k]) => k);
+  // Read music came later: on unless the person turned it off
+  const items = Object.entries({ read: true, ...(push.items || {}) }).filter(([, on]) => on).map(([k]) => k);
   const todo = items.filter(k => done(act, day, k) < goalFor(act, k));
   let due = 0;
   if (items.includes('words')) {
