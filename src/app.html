@@ -8217,7 +8217,7 @@ function mergeAct(x){
   Object.entries(x.x||{}).forEach(([day,secs])=>{ const X=ACT.x||(ACT.x={}), mine=X[day]||(X[day]={});
     Object.entries(secs||{}).forEach(([k,devs])=>{ const m=mine[k]||(mine[k]={}); Object.entries(devs||{}).forEach(([dv,n])=>{ m[dv]=Math.max(m[dv]||0,n||0); }); }); });
   if(x.goals&&(x.goalsT||0)>(ACT.goalsT||0)){ ACT.goals=x.goals; ACT.goalsT=x.goalsT; }
-  if(x.theme&&(x.themeT||0)>(ACT.themeT||0)){ ACT.theme=x.theme; ACT.themeT=x.themeT; applyTheme(x.theme); }
+  if(x.theme&&(x.themeT||0)>(ACT.themeT||0)){ ACT.theme=x.theme; ACT.themeT=x.themeT; applyTheme(x.theme); if(x.theme==='sun') sunLocate(false); }
   ACT.upd=Math.max(ACT.upd||0,x.upd||0); actPrune();
 }
 // exercises done per day, section and device (x), and the daily goals for words and paintings
@@ -8239,9 +8239,45 @@ function bump(k,n){
   m[dv]=(m[dv]||0)+(n||1); ACT.upd=Date.now(); actStore(); actDirty=true;
 }
 // the look: 'auto' follows the device, or always light or always dark; kept with the activity, so it syncs
-function applyTheme(t){ const r=document.documentElement; if(t==='light'||t==='dark') r.dataset.theme=t; else delete r.dataset.theme; }
+// 'sun': light from sunrise to sunset, dark the rest of the day
+function applyTheme(t){
+  const r=document.documentElement; clearTimeout(sunTimer);
+  if(t==='sun'){ const now=Date.now(), s=sunNow(now); r.dataset.theme=s.dark?'dark':'light'; sunTimer=setTimeout(()=>applyTheme(themeNow()),Math.min(Math.max(s.next-now+5000,60000),6*3600e3)); return; }
+  if(t==='light'||t==='dark') r.dataset.theme=t; else delete r.dataset.theme;
+}
 const themeNow=()=>ACT.theme||'auto';
-function setTheme(t){ ACT.theme=t; ACT.themeT=Date.now(); ACT.upd=Date.now(); applyTheme(t); actStore(); actDirty=true; pushAct(); }
+function setTheme(t){ ACT.theme=t; ACT.themeT=Date.now(); ACT.upd=Date.now(); applyTheme(t); actStore(); actDirty=true; pushAct(); if(t==='sun') sunLocate(true); }
+// sunrise and sunset for a day (the sunrise equation, to a minute or two): times in ms; a polar day or night has none
+function sunTimes(t,lat,lon){
+  const rad=Math.PI/180, d=new Date(t), n=Math.round(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())/864e5+2440587.5-2451545+0.0008);
+  const Js=n-lon/360, M=((357.5291+0.98560028*Js)%360+360)%360, C=1.9148*Math.sin(M*rad)+0.02*Math.sin(2*M*rad)+0.0003*Math.sin(3*M*rad);
+  const L=(M+C+180+102.9372)%360, Jt=2451545+Js+0.0053*Math.sin(M*rad)-0.0069*Math.sin(2*L*rad);
+  const dec=Math.asin(Math.sin(L*rad)*Math.sin(23.44*rad)), cw=(Math.sin(-0.833*rad)-Math.sin(lat*rad)*Math.sin(dec))/(Math.cos(lat*rad)*Math.cos(dec));
+  if(cw>1) return {night:true}; if(cw<-1) return {day:true};
+  const w=Math.acos(cw)/rad/360, ms=j=>(j-2440587.5)*864e5;
+  return {rise:ms(Jt-w), set:ms(Jt+w)};
+}
+// where this device is, roughly (a tenth of a degree, kept on this device only); until it is known, a guess
+// from the time zone's offset, at the latitude of southern Europe
+const SUN_AT='fretwise.sunAt';
+let sunTimer=null;
+function sunPlace(){ try{ const x=JSON.parse(LOCAL.getItem(SUN_AT)||'null'); if(x&&isFinite(x.lat)) return x; }catch(e){} return {lat:41,lon:-new Date().getTimezoneOffset()/4,guess:true}; }
+function sunNow(now){
+  const P=sunPlace(), a=sunTimes(now,P.lat,P.lon);
+  if(a.night||a.day) return {dark:!!a.night,next:now+3600e3};
+  if(now<a.rise) return {dark:true,next:a.rise};
+  if(now<a.set) return {dark:false,next:a.set};
+  const b=sunTimes(now+864e5,P.lat,P.lon); return {dark:true,next:b.rise||now+3600e3};
+}
+// the location is asked for when the choice is made here; elsewhere only if the browser already allows it
+async function sunLocate(ask){
+  if(!navigator.geolocation) return;
+  if(!ask){ try{ const st=await navigator.permissions.query({name:'geolocation'}); if(st.state!=='granted') return; }catch(e){ return; } }
+  navigator.geolocation.getCurrentPosition(p=>{ const r=x=>Math.round(x*10)/10;
+    try{ LOCAL.setItem(SUN_AT,JSON.stringify({lat:r(p.coords.latitude),lon:r(p.coords.longitude),t:Date.now()})); }catch(e){}
+    if(themeNow()==='sun') applyTheme('sun'); },()=>{},{enableHighAccuracy:false,maximumAge:864e5,timeout:20000});
+}
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&themeNow()==='sun') applyTheme('sun'); });
 function setGoal(k,n){ ACT.goals=Object.assign({},ACT.goals,{[k]:n}); ACT.goalsT=Date.now(); ACT.upd=Date.now(); actStore(); actDirty=true; pushAct(); }
 const actSection=()=>view==='app'?S.inst:view==='chess'?'chess':view==='words'?'words':view==='paint'?'paintings':view==='read'?'read':null;
 ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,()=>{ lastInput=Date.now(); },true));
@@ -9358,7 +9394,7 @@ window.fretwiseApp={
   theme:{ get:themeNow, set:setTheme }
 };
 
-load(); loadLocalRuns(); loadChess(); liLoad(); wLoad(); vLoad(); rmLoad(); actLoad(); pLoad(); setInst(S.inst); applyTheme(themeNow());
+load(); loadLocalRuns(); loadChess(); liLoad(); wLoad(); vLoad(); rmLoad(); actLoad(); pLoad(); setInst(S.inst); applyTheme(themeNow()); if(themeNow()==='sun') sunLocate(false);
 if(window.innerWidth<920) $('settingsPanel').open=false;
 // a reload inside a section starts on the start page: make that the base step again
 try{ if(history.state&&history.state.fwSection) history.replaceState(null,''); }catch(e){}

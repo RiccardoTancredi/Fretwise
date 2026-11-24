@@ -266,7 +266,7 @@ function renderDialog(){
 function themeHtml(){
   const T=window.fretwiseApp&&window.fretwiseApp.theme; if(!T) return '';
   const now=T.get();
-  return `<section><h3>Appearance</h3><div class="row">${[['auto','Like the device'],['light','Light'],['dark','Dark']].map(([v,l])=>`<label><input type="radio" name="fwtheme" data-fw="theme" value="${v}" ${now===v?'checked':''}> ${l}</label>`).join('')}</div><div class="muted" style="margin-top:6px">“Like the device” follows the phone’s or computer’s dark mode; if the app stays light, choose Dark.</div></section>`;
+  return `<section><h3>Appearance</h3><div class="row">${[['auto','Like the device'],['sun','Light by day, dark at night'],['light','Light'],['dark','Dark']].map(([v,l])=>`<label><input type="radio" name="fwtheme" data-fw="theme" value="${v}" ${now===v?'checked':''}> ${l}</label>`).join('')}</div><div class="muted" style="margin-top:6px">“Like the device” follows the phone’s or computer’s dark mode; if the app stays light, choose Dark. “Light by day” turns dark at sunset and light at sunrise where you are: it asks for this device’s location once, kept roughly and only on the device.</div></section>`;
 }
 function onDlgClick(e){
   const b=e.target.closest('[data-fw]'); if(!b||b.tagName==='INPUT'||b.tagName==='SELECT') return;
