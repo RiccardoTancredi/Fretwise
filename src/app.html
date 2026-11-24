@@ -7390,13 +7390,17 @@ function rmStaffSvg(clef,ps,o){
   for(let st=bottom-2;st>=lo;st-=2) g+=`<line stroke-width="1.6" x1="${x1}" x2="${x2}" y1="${rmY(clef,st)}" y2="${rmY(clef,st)}"/>`;
   for(let st=bottom+10;st<=hi;st+=2) g+=`<line stroke-width="1.6" x1="${x1}" x2="${x2}" y1="${rmY(clef,st)}" y2="${rmY(clef,st)}"/>`;
   L.notes.forEach(n=>{ const y=rmY(clef,n.st); f+=rmGlyph('whole',n.x,y,`data-st="${n.st}" `); if(n.acc) f+=rmGlyph(n.acc,n.ax,y); });
-  // another note to compare, to the right (a wrong guess): its own ledger lines and colour
-  if(o.extra){ const p=o.extra, st=rmStep(p), x=RM_NX+nw*(L.wide?2:1)+22; let e='';
-    for(let s2=bottom-2;s2>=st;s2-=2) e+=`<line stroke-width="1.6" x1="${x-4}" x2="${x+nw+4}" y1="${rmY(clef,s2)}" y2="${rmY(clef,s2)}"/>`;
-    for(let s2=bottom+10;s2<=st;s2+=2) e+=`<line stroke-width="1.6" x1="${x-4}" x2="${x+nw+4}" y1="${rmY(clef,s2)}" y2="${rmY(clef,s2)}"/>`;
-    g+=`</g><g class="rextra" stroke="currentColor" stroke-width="1.3">${e}`; f+=`</g><g class="rextra" fill="currentColor">${rmGlyph('whole',x,rmY(clef,st))}`; }
+  // other notes to compare, to the right (a wrong guess): their own ledger lines, accidentals and colour
+  const ex=o.extra?[].concat(o.extra):[]; let elo=lo, ehi=hi;
+  if(ex.length){ const E=rmLayout(ex), dx=RM_NX+nw*(L.wide?2:1)+16-E.left, ex1=RM_NX+dx-4, ex2=RM_NX+dx+nw*(E.wide?2:1)+4; let e='', h2='';
+    elo=Math.min(lo,...E.notes.map(n=>n.st)); ehi=Math.max(hi,...E.notes.map(n=>n.st));
+    const elo2=Math.min(...E.notes.map(n=>n.st)), ehi2=Math.max(...E.notes.map(n=>n.st));
+    for(let s2=bottom-2;s2>=elo2;s2-=2) e+=`<line stroke-width="1.6" x1="${ex1}" x2="${ex2}" y1="${rmY(clef,s2)}" y2="${rmY(clef,s2)}"/>`;
+    for(let s2=bottom+10;s2<=ehi2;s2+=2) e+=`<line stroke-width="1.6" x1="${ex1}" x2="${ex2}" y1="${rmY(clef,s2)}" y2="${rmY(clef,s2)}"/>`;
+    E.notes.forEach(n=>{ const y=rmY(clef,n.st); h2+=rmGlyph('whole',n.x+dx,y); if(n.acc) h2+=rmGlyph(n.acc,n.ax+dx,y); });
+    g+=`</g><g class="rextra" stroke="currentColor" stroke-width="1.3">${e}`; f+=`</g><g class="rextra" fill="currentColor">${h2}`; }
   // the height: a fixed range for each kind of card, so cards don't jump; otherwise just what the notes need
-  const R=o.range||[Math.min(-4,lo-bottom-2),Math.max(12,hi-bottom+2)], top=RM_Y0-R[1]*5-4, h=(R[1]-R[0])*5+8;
+  const R=o.range||[Math.min(-4,elo-bottom-2),Math.max(12,ehi-bottom+2)], top=RM_Y0-R[1]*5-4, h=(R[1]-R[0])*5+8;
   // a thumbnail stops just after the notes
   const W=o.thumb?Math.ceil(x2+10):RM_W;
   return `<svg class="rstaff${o.cls?' '+o.cls:''}" viewBox="0 ${top} ${W} ${h}" role="img" aria-label="${o.label||'A staff'}"><g stroke="currentColor" stroke-width="1.3">${g}</g><g fill="currentColor">${f}</g></svg>`;
@@ -7630,7 +7634,10 @@ function rmPlay(ps,how,at,lit){
 const rmPlayLen=(ps,how)=>how==='short'?2.0:how==='step'?0.9:how==='seq'?0.75*(ps.length-1)+1.5:how==='arp'?0.45*(ps.length-1)+2.5:2.8;
 // an ear card's example as asked: two notes up or down one after the other, or together; chords at once
 const rmEarHow=ex=>ex.how==='up'||ex.how==='down'?'seq':'block';
-const rmEarStaff=(ex,label)=>ex.cols?rmStaffRow(ex.clef,ex.cols,{key:ex.key,labels:ex.labels,label}):rmStaffSvg(ex.clef,ex.ps,{label});
+const rmEarStaff=(ex,label,extra)=>ex.cols?rmStaffRow(ex.clef,ex.cols,{key:ex.key,labels:ex.labels,label}):rmStaffSvg(ex.clef,ex.ps,{label,extra});
+// after a wrong answer: the notes the answer given would have changed, drawn in red next to the ones heard
+const rmSameP=(p,q)=>p.l===q.l&&p.a===q.a&&p.o===q.o;
+const rmEarYours=()=>RT&&RT.yours&&!RT.yours.cols?RT.yours.ps.filter(p=>!RT.ex.ps.some(q=>rmSameP(p,q))):null;
 // a progression chord by chord, a scale note by note; anything else as the card asks. Returns how long it lasts
 function rmEarPlay(ex,at,lit){
   at=at||0;
@@ -7725,7 +7732,7 @@ function rmTrainHtml(){
   }else if(c.kind==='ear'){
     const ex=RT.ex, wrong=shown&&RT.pick!==c.ans;
     h+=`<div class="wcard vcard rcard"><div class="rset">${esc(set.name)}</div>`
-      +(shown?rmEarStaff(ex,'The notes you heard')+rmAnswerHtml(c,ex):`<div class="rearq">${RM_ICON.ear}<span>${set.how==='prog'?(set.id==='e9'?'Listen: how does the phrase end?':'Listen: which progression is it?'):set.how==='scale'?'Listen: which scale is it?':set.how==='inv'?`Listen: a ${c.q==='maj'?'major':'minor'} triad. Which inversion?`:set.how==='chord'?'Listen: which chord is it?':'Listen: which interval is it?'}</span></div>`)
+      +(shown?rmEarStaff(ex,'The notes you heard',wrong?rmEarYours():null)+rmAnswerHtml(c,ex):`<div class="rearq">${RM_ICON.ear}<span>${set.how==='prog'?(set.id==='e9'?'Listen: how does the phrase end?':'Listen: which progression is it?'):set.how==='scale'?'Listen: which scale is it?':set.how==='inv'?`Listen: a ${c.q==='maj'?'major':'minor'} triad. Which inversion?`:set.how==='chord'?'Listen: which chord is it?':'Listen: which interval is it?'}</span></div>`)
       +rmPlayHtml(c,ex)
       +`<div class="ropts${set.how==='prog'||set.how==='scale'?' two':set.opts.length>6?' many':''}" role="group" aria-label="Answers">${set.opts.map(o=>rmOptHtml(set,o,shown?(o===c.ans?' good':o===RT.pick?' bad':''):'',shown)).join('')}</div>`
       +(wrong?`<div class="rplay"><button type="button" class="btn rbad" data-rmplay="yours">▶ Yours: ${esc(rmOptName(set,RT.pick,c.q))}</button><button type="button" class="btn rgood" data-rmplay="right">▶ Right: ${esc(c.title)}</button></div>`:'')
@@ -7916,8 +7923,8 @@ function rmLetter(L){
 // an ear card: wrong, your answer from the same root, then the right one again
 function rmOption(o){
   if(!RT||RT.phase!=='ask') return; const c=rmCard(RT.k); if(c.kind!=='ear') return;
-  const ok=o===c.ans; RT.pick=o; RT.phase='shown'; rmAdvance(ok); renderRead();
-  if(!ok){ const ex=RT.ex, y=rmEarExample(c,Math.random,o,ex); RT.yours=y; const len=rmEarPlay(y,0,false); rmEarPlay(ex,len+0.3); }
+  const ok=o===c.ans; RT.pick=o; RT.phase='shown'; if(!ok) RT.yours=rmEarExample(c,Math.random,o,RT.ex); rmAdvance(ok); renderRead();
+  if(!ok){ const len=rmEarPlay(RT.yours,0,false); rmEarPlay(RT.ex,len+0.3); }
 }
 function rmTheory(i){
   if(!RT||RT.phase!=='ask') return; const c=rmCard(RT.k); if(c.kind!=='theory'&&c.kind!=='key') return;
