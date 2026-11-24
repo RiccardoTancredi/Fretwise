@@ -1186,7 +1186,7 @@ function load(){
     const st=d.settings||{};
     // older versions kept a single (guitar) range and string list at the top level
     if(st.fretStart!=null&&!st.by){ S.by.guitar.fretStart=st.fretStart; S.by.guitar.fretEnd=st.fretEnd; if(Array.isArray(st.strings)&&st.strings.length===6) S.by.guitar.strings=st.strings; }
-    ['mode','lastView','acc','naturalsOnly','allPc','ivMode','ivAll','intervals','scales','scaleRootPcs','scaleArea','scalePos','circle','library','tuner','fit','roundLen','sound','chordShapes','inst'].forEach(k=>{ if(st[k]!=null) S[k]=st[k]; });
+    ['mode','lastView','acc','naturalsOnly','allPc','ivMode','ivAll','intervals','scales','scaleRootPcs','scaleArea','scalePos','circle','library','tuner','fit','roundLen','sound','chordShapes','inst','setT'].forEach(k=>{ if(st[k]!=null) S[k]=st[k]; });
     // scales used to live under Intervals
     if(S.mode==='iv'&&S.ivMode==='scale'){ S.mode='scale'; S.ivMode='interval'; }
     S.roundLen=validRoundLength(S.roundLen)||10;
@@ -1202,8 +1202,19 @@ function load(){
 }
 function save(){ try{ LOCAL.setItem(STORE, JSON.stringify({settings:S, statsAll})); }catch(e){} pushFretboard(); }
 // the accuracy map and totals are saved to the account too, so they survive this browser's storage
-let fbDoc=null, fbT=null;
-function writeFretboard(){ fbT=null; if(fbDoc) fbDoc.set({statsAll,upd:Date.now(),v:1}).catch(()=>{}); }
+let fbDoc=null, fbT=null, fbSettingsIn=false;
+// the practice settings go with it, so every device trains the same way; setT says when they last changed
+const S_SYNC=['acc','naturalsOnly','ivAll','intervals','scales','scaleRootPcs','scaleArea','scalePos','roundLen','sound','chordShapes','chordGroupsBy','rootBass','by'];
+const syncedSettings=()=>JSON.parse(JSON.stringify(Object.fromEntries(S_SYNC.map(k=>[k,S[k]]))));
+function applySettings(st){
+  S_SYNC.forEach(k=>{ const v=st[k]; if(v==null) return;
+    if(k==='by') ['guitar','ukulele'].forEach(i=>{ if(v[i]) Object.assign(S.by[i],JSON.parse(JSON.stringify(v[i]))); });
+    else if(k==='rootBass'||k==='chordGroupsBy') Object.assign(S[k],JSON.parse(JSON.stringify(v)));
+    else S[k]=JSON.parse(JSON.stringify(v)); });
+  S.roundLen=validRoundLength(S.roundLen)||10;
+  S.scales=S.scales.filter(id=>SCALES.some(x=>x.id===id)); if(!S.scales.length) S.scales=['maj'];
+}
+function writeFretboard(){ fbT=null; if(fbDoc) fbDoc.set({statsAll,settings:syncedSettings(),setT:S.setT||0,upd:Date.now(),v:1}).catch(()=>{}); }
 function pushFretboard(){ if(!fbDoc) return; clearTimeout(fbT); fbT=setTimeout(writeFretboard,2500); }
 // closing the app or switching away right after an answer: save it now rather than in 2.5 s
 document.addEventListener('visibilitychange',()=>{ if(document.hidden&&fbT){ clearTimeout(fbT); writeFretboard(); } });
@@ -1214,18 +1225,25 @@ function mergeFretboard(x){
     if(!r){ if(l.total||l.reset) mine=true; return; }
     if((r.reset||0)>(l.reset||0)||((r.reset||0)===(l.reset||0)&&(r.total||0)>(l.total||0))) statsAll[i]=Object.assign(freshStats(),r);
     else if((l.reset||0)>(r.reset||0)||(l.total||0)>(r.total||0)) mine=true; });
+  // the settings changed last win
+  if(x&&x.settings&&(x.setT||0)>(S.setT||0)){ applySettings(x.settings); S.setT=x.setT; fbSettingsIn=true; }
+  else if((S.setT||0)>((x&&x.setT)||0)) mine=true;
   return mine;
 }
 async function connectFretboard(db,uid){
   try{
     const ref=db.doc('data/users/'+uid+'/fretboard'), s=await ref.get();
-    const mine=mergeFretboard(s.exists?s.data():null); fbDoc=ref;
+    const mine=mergeFretboard(s.exists?s.data():null); fbDoc=ref; fbSettingsCame();
     try{ LOCAL.setItem(STORE, JSON.stringify({settings:S, statsAll})); }catch(e){}
     if(mine) pushFretboard();
     if(view==='app') renderHeat(); else if(view==='home') renderHome();
-    ref.onSnapshot(sn=>{ const x=sn.exists?sn.data():null; if(!x) return; mergeFretboard(x); if(view==='app') renderHeat(); },()=>{});
+    ref.onSnapshot(sn=>{ const x=sn.exists?sn.data():null; if(!x) return; mergeFretboard(x); fbSettingsCame(); if(view==='app') renderHeat(); },()=>{});
   }catch(e){}
 }
+// settings from another device: kept here, and shown if the settings are on screen
+function fbSettingsCame(){ if(!fbSettingsIn) return; fbSettingsIn=false;
+  try{ LOCAL.setItem(STORE, JSON.stringify({settings:S, statsAll})); }catch(e){}
+  if(view==='app'){ renderSettings(); if(!round||!Q) render(); } }
 function setInst(id){ S.inst=id; INST=INSTRUMENTS[id]; STRINGS=INST.strings; NS=STRINGS.length; }
 
 let view='home', Q=null, phase='ask', round=null, qStart=0, advTimer=null;
@@ -1961,7 +1979,7 @@ function newRound(fresh){
   nextQuestion();
 }
 function practiceSettingsChanged(){
-  clearTimeout(advTimer); save(); renderSettings();
+  clearTimeout(advTimer); S.setT=Date.now(); save(); renderSettings();
   if(!round||!Q||['library','circle','tuner','fit'].includes(S.mode)){ render(); return; }
   if(S.mode!=='all'&&round.results.length>=S.roundLen) return showSummary();
   if(phase==='summary') return nextQuestion();
@@ -6248,6 +6266,9 @@ const vDayKey=(lang,t)=>(lang==='es'?'':lang+':')+t;
 const vDayKeys=(d,lang)=>Object.keys(VB.days[d]||{}).filter(k=>lang==null||(lang==='es'?k.indexOf(':')<0:k.indexOf(lang+':')===0));
 const vToday=(lang=VL)=>vDayKeys(romeDay(),lang).length;
 const vGoal=(lang=VL)=>lang==='es'?VB.set.goal:((VB.set.lg||{})[lang]||V_SET_DEF.goal);
+// reading the answer aloud, per language: Spanish keeps the setting from before languages had their own
+const vSayOn=(lang=VL)=>lang==='es'?!!VB.set.say:!!((VB.set.ls||{})[lang]??VB.set.say);
+function vSetSay(on){ if(VL==='es') VB.set.say=on; else VB.set.ls=Object.assign({},VB.set.ls,{[VL]:on}); }
 function vSetGoal(n){ if(VL==='es') VB.set.goal=n; else VB.set.lg=Object.assign({},VB.set.lg,{[VL]:n}); VB.set.t=Date.now(); }
 // every form in training: active verbs, chosen tenses, all persons (vosotros if wanted)
 function vItems(){
@@ -6303,7 +6324,7 @@ const vLoose=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 const V_CONT={};
 function vTap(){
   if(!VT) return;
-  if(VT.phase==='ask'){ VT.phase='shown'; renderConj(); if(VB.set.say){ const {v,tid,p}=vParse(VT.k); vSay(vForm(v,tid,p)); } }
+  if(VT.phase==='ask'){ VT.phase='shown'; renderConj(); if(vSayOn()){ const {v,tid,p}=vParse(VT.k); vSay(vForm(v,tid,p)); } }
   else vAdvance(true);
 }
 function vAdvance(ok){
@@ -6827,7 +6848,7 @@ function vSettingsHtml(){
   h+=`<div class="field"><span class="fl">Tenses to practise</span><div class="chips"><button type="button" class="chip" data-vbtall="all" aria-pressed="${all}">All tenses</button><button type="button" class="chip" data-vbtall="def" aria-pressed="${def}">The usual six</button></div></div>`;
   V_GROUPS.forEach(([g,name])=>{ h+=`<div class="field"><span class="fl">${name}</span><div class="chips">${V_TENSES.filter(t=>t.g===g).map(t=>`<button type="button" class="chip" data-vbtense="${t.id}" data-tc="${t.with==='ger'?'prog':vTCol(t)}" aria-pressed="${ten.indexOf(t.id)>=0}">${esc(t.name)}</button>`).join('')}</div></div>`; });
   h+=``;
-  h+=`<div class="field"><span class="fl">Read the answer aloud</span><div class="chips"><button type="button" class="chip" data-vbsayset="1" aria-pressed="${!!s.say}">On</button><button type="button" class="chip" data-vbsayset="0" aria-pressed="${!s.say}">Off</button></div><div class="hint">When the answer shows, the form is spoken (without the pronoun)${vCanSay()?'':': this browser has no speech'}.</div></div>`;
+  h+=`<div class="field"><span class="fl">Read the answer aloud</span><div class="chips"><button type="button" class="chip" data-vbsayset="1" aria-pressed="${vSayOn()}">On</button><button type="button" class="chip" data-vbsayset="0" aria-pressed="${!vSayOn()}">Off</button></div><div class="hint">When the answer shows, the form is spoken (without the pronoun)${vCanSay()?'':': this browser has no speech'}.</div></div>`;
   const vs=vCanSay()?vRankedVoices():[];
   if(vs.length){ const want=(s.voice||{})[VL]||'', auto=vs[0];
     h+=`<div class="field"><span class="fl">Voice</span><div class="vvoice"><select data-vbvoice aria-label="Voice for ${esc(V_L.en)}"><option value="">Best available: ${esc(auto.name)}</option>${vs.map(x=>`<option value="${esc(x.name)}" ${x.name===want?'selected':''}>${esc(x.name)} · ${esc(x.lang)}</option>`).join('')}</select><button type="button" class="btn sm" data-vbvoicetest aria-label="Listen to this voice">${V_ICON.say}</button></div><div class="hint">Each device has its own voices. On a Mac the most natural ones are marked Premium or Enhanced: download them in System Settings › Accessibility › Spoken Content › System voice › Manage Voices, then reload this page.</div></div>`; }
@@ -6920,7 +6941,7 @@ $('vjsettings').addEventListener('change',e=>{
 $('vjsettings').addEventListener('click',e=>{
   if(e.target.closest('[data-vbvoicetest]')){ const v=VERBS[0]; vSay(vForm(v,'pres',0)+', '+vForm(VERBS[3],'pret',2)); return; }
   const t=e.target.closest('[data-vbtense],[data-vbgoal],[data-vbtall],[data-vbsayset]'); if(!t||!VBV) return; const st=VB.set;
-  if(t.dataset.vbsayset) st.say=t.dataset.vbsayset==='1';
+  if(t.dataset.vbsayset) vSetSay(t.dataset.vbsayset==='1');
   else if(t.dataset.vbtall) vSetTen(t.dataset.vbtall==='all'?V_TENSES.map(x=>x.id):V_L.def.slice());
   else if(t.dataset.vbtense){ const ten=vTen().slice(), i=ten.indexOf(t.dataset.vbtense); if(i>=0) ten.splice(i,1); else ten.push(t.dataset.vbtense); vSetTen(ten); }
   else vSetGoal(+t.dataset.vbgoal);
