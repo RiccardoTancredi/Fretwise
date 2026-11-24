@@ -1947,12 +1947,36 @@ function questionReplacer(k,v){
 function questionReviver(k,v){ return v&&v.fwCollection==='Map'?new Map(v.values):v&&v.fwCollection==='Set'?new Set(v.values):v; }
 function storeRound(){
   if(!round||(!Q&&phase!=='summary')||['circle','library','tuner','fit'].includes(S.mode)||Q&&Q.practice&&Q.practice.mode!==S.mode) return;
-  const a=roundsAll(); a[roundKey()]={results:round.results,n:S.roundLen,counted:!!round.counted,t:Date.now(),phase,
+  const a=roundsAll(), prev=a[roundKey()], rec={results:round.results,n:S.roundLen,counted:!!round.counted,t:Date.now(),phase,
     feedback:$('feedback').textContent,feedbackClass:($('feedback').className.split(' ').find(c=>['good','bad','info'].includes(c))||''),
     question:Q?JSON.stringify(Q,questionReplacer):null,elapsed:phase==='ask'?Math.max(0,performance.now()-qStart):Q&&Q.elapsed||0};
-  try{ LOCAL.setItem(ROUNDS_KEY,JSON.stringify(a)); }catch(e){}
+  // nothing new (only the clock moved): the time stays, so a stale copy here never wins over another device's
+  const same=x=>JSON.stringify(Object.assign({},x,{t:0,elapsed:0}));
+  if(prev&&same(prev)===same(rec)){ if(Math.abs((prev.elapsed||0)-rec.elapsed)<1000) return; rec.t=prev.t; }
+  a[roundKey()]=rec; roundsSave(a,rec.t!==(prev&&prev.t));
 }
-function dropRound(){ const a=roundsAll(); if(!a[roundKey()]) return; delete a[roundKey()]; try{ LOCAL.setItem(ROUNDS_KEY,JSON.stringify(a)); }catch(e){} }
+// a finished round leaves a dated empty mark, so the other devices drop it too
+function dropRound(){ const a=roundsAll(); if(!a[roundKey()]||!a[roundKey()].results) return; a[roundKey()]={t:Date.now()}; roundsSave(a,true); }
+// the rounds in progress go to the account as JSON text; each mode's newest copy wins on every device
+let rdDoc=null, rdTimer=null;
+function roundsSave(a,changed){ try{ LOCAL.setItem(ROUNDS_KEY,JSON.stringify(a)); }catch(e){} if(changed) roundsPush(); }
+function roundsPush(){ if(!rdDoc) return; clearTimeout(rdTimer); if(document.hidden) roundsWrite(); else rdTimer=setTimeout(roundsWrite,1200); }
+function roundsWrite(){ clearTimeout(rdTimer); rdTimer=null; if(rdDoc) rdDoc.set({j:JSON.stringify(roundsAll()),upd:Date.now(),v:1}).catch(()=>{}); }
+document.addEventListener('visibilitychange',()=>{ if(document.hidden&&rdTimer) roundsWrite(); });
+function roundsTake(d){
+  let r={}; try{ r=d&&d.j?JSON.parse(d.j)||{}:{}; }catch(e){}
+  const a=roundsAll(); let here=false, mine=false;
+  Object.entries(r).forEach(([k,v])=>{ if(v&&v.t&&(!a[k]||(a[k].t||0)<v.t)){ a[k]=v; if(k===roundKey()) here=true; } });
+  Object.entries(a).forEach(([k,v])=>{ if(v&&(!r[k]||(r[k].t||0)<(v.t||0))) mine=true; });
+  try{ LOCAL.setItem(ROUNDS_KEY,JSON.stringify(a)); }catch(e){}
+  if(mine) roundsPush();
+  // the round on screen moved on elsewhere: show it as it is there (not in the middle of a timed run)
+  if(here&&view==='app'&&!['circle','library','tuner','fit'].includes(S.mode)&&!(S.mode==='all'&&phase==='ask')) newRound(false);
+}
+async function connectRounds(db,uid){
+  try{ const ref=db.doc('data/users/'+uid+'/rounds'), sn=await ref.get(); rdDoc=ref; roundsTake(sn.exists?sn.data():null);
+    ref.onSnapshot(x=>{ if(x.exists) roundsTake(x.data()); },()=>{}); }catch(e){}
+}
 function newRound(fresh){
   clearTimeout(advTimer); stopClock();
   let saved=fresh?null:roundsAll()[roundKey()];
@@ -2085,7 +2109,7 @@ async function connectRuns(){
     if(!db||!user) return;
     const uid=await user.id(); if(!uid||connectedUid===uid) return;
     connectedUid=uid;
-    connectChess(db,uid); connectWords(db,uid); connectVerbs(db,uid); connectRead(db,uid); connectActivity(db,uid); connectPaint(db,uid); connectFretboard(db,uid); connectLichess(db,uid); connectExHistory(db,uid);
+    connectChess(db,uid); connectWords(db,uid); connectVerbs(db,uid); connectRead(db,uid); connectActivity(db,uid); connectPaint(db,uid); connectFretboard(db,uid); connectLichess(db,uid); connectExHistory(db,uid); connectRounds(db,uid);
     const ref=db.doc('data/users/'+uid+'/fretwise');
     const snap=await ref.get();
     const d=snap.exists?snap.data():null;
@@ -8193,6 +8217,7 @@ function mergeAct(x){
   Object.entries(x.x||{}).forEach(([day,secs])=>{ const X=ACT.x||(ACT.x={}), mine=X[day]||(X[day]={});
     Object.entries(secs||{}).forEach(([k,devs])=>{ const m=mine[k]||(mine[k]={}); Object.entries(devs||{}).forEach(([dv,n])=>{ m[dv]=Math.max(m[dv]||0,n||0); }); }); });
   if(x.goals&&(x.goalsT||0)>(ACT.goalsT||0)){ ACT.goals=x.goals; ACT.goalsT=x.goalsT; }
+  if(x.theme&&(x.themeT||0)>(ACT.themeT||0)){ ACT.theme=x.theme; ACT.themeT=x.themeT; applyTheme(x.theme); }
   ACT.upd=Math.max(ACT.upd||0,x.upd||0); actPrune();
 }
 // exercises done per day, section and device (x), and the daily goals for words and paintings
@@ -8213,6 +8238,10 @@ function bump(k,n){
   const day=dayKey(), X=ACT.x||(ACT.x={}), e=X[day]||(X[day]={}), m=e[k]||(e[k]={}), dv=DEV+(day===CLEAR_DAY&&Date.now()>CLEAR_TO?CLEAR_TAG:'');
   m[dv]=(m[dv]||0)+(n||1); ACT.upd=Date.now(); actStore(); actDirty=true;
 }
+// the look: 'auto' follows the device, or always light or always dark; kept with the activity, so it syncs
+function applyTheme(t){ const r=document.documentElement; if(t==='light'||t==='dark') r.dataset.theme=t; else delete r.dataset.theme; }
+const themeNow=()=>ACT.theme||'auto';
+function setTheme(t){ ACT.theme=t; ACT.themeT=Date.now(); ACT.upd=Date.now(); applyTheme(t); actStore(); actDirty=true; pushAct(); }
 function setGoal(k,n){ ACT.goals=Object.assign({},ACT.goals,{[k]:n}); ACT.goalsT=Date.now(); ACT.upd=Date.now(); actStore(); actDirty=true; pushAct(); }
 const actSection=()=>view==='app'?S.inst:view==='chess'?'chess':view==='words'?'words':view==='paint'?'paintings':view==='read'?'read':null;
 ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,()=>{ lastInput=Date.now(); },true));
@@ -8221,7 +8250,7 @@ setInterval(()=>{
   const day=dayKey(), e=ACT.d[day]||(ACT.d[day]={}), m=e[k]||(e[k]={});
   m[DEV]=(m[DEV]||0)+TICK; ACT.upd=Date.now(); actStore(); actDirty=true;
 },TICK);
-async function pushAct(){ if(!actDoc||!actDirty) return; actDirty=false; try{ await actDoc.set({d:ACT.d,x:ACT.x||{},goals:ACT.goals||{},goalsT:ACT.goalsT||0,upd:ACT.upd,v:2}); }catch(e){ actDirty=true; } }
+async function pushAct(){ if(!actDoc||!actDirty) return; actDirty=false; try{ await actDoc.set({d:ACT.d,x:ACT.x||{},goals:ACT.goals||{},goalsT:ACT.goalsT||0,theme:ACT.theme||'auto',themeT:ACT.themeT||0,upd:ACT.upd,v:2}); }catch(e){ actDirty=true; } }
 setInterval(pushAct,60000);
 document.addEventListener('visibilitychange',()=>{ if(document.hidden) pushAct(); });
 async function connectActivity(db,uid){
@@ -9325,10 +9354,11 @@ window.fretwiseApp={
   reconnect:connectRuns,
   wordsChanged(){ if(view==='words') renderWords(); else if(view==='home') renderHome(); },
   refreshWords(){ return refreshWords(); },
-  clearWords(){ WD={}; wSaveData(); if(view==='words') renderWords(); }
+  clearWords(){ WD={}; wSaveData(); if(view==='words') renderWords(); },
+  theme:{ get:themeNow, set:setTheme }
 };
 
-load(); loadLocalRuns(); loadChess(); liLoad(); wLoad(); vLoad(); rmLoad(); actLoad(); pLoad(); setInst(S.inst);
+load(); loadLocalRuns(); loadChess(); liLoad(); wLoad(); vLoad(); rmLoad(); actLoad(); pLoad(); setInst(S.inst); applyTheme(themeNow());
 if(window.innerWidth<920) $('settingsPanel').open=false;
 // a reload inside a section starts on the start page: make that the base step again
 try{ if(history.state&&history.state.fwSection) history.replaceState(null,''); }catch(e){}

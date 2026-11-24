@@ -253,13 +253,20 @@ function renderDialog(){
       else h+=`<div class="muted" style="margin-bottom:8px">Link your Lichess account: chess puzzles then come from it, at your Lichess rating, and every result is sent back. You approve it on lichess.org; Fretwise never sees your password. Sign out any time: your rating stays and nothing more is sent.</div>${li.error?`<div class="muted" style="color:var(--bad);margin-bottom:8px">${esc(li.error)}</div>`:''}<div class="row"><button type="button" class="btn" data-fw="li-connect">Connect Lichess</button></div>`;
       h+=`</section>`;
     }
+    h+=themeHtml();
     if(installEvt) h+=`<section><h3>Install</h3><div class="row"><span class="muted">Add Fretwise to your home screen, with its own window and icon.</span><button type="button" class="btn" data-fw="install">Install</button></div></section>`;
     h+=`<section><h3>Account ID</h3><div class="muted" style="margin-bottom:6px">Share this ID with the app owner to receive dictionaries.</div><div class="row"><code>${esc(u.uid)}</code><button type="button" class="btn quiet" data-fw="copy">Copy</button></div></section>`;
     h+=`<div class="row"><button type="button" class="btn quiet" data-fw="signout">Sign out</button><span style="flex:1"></span><button type="button" class="btn primary" data-fw="close">Done</button></div>`;
   }
-  if(!u) h+='<div class="row"><span style="flex:1"></span><button type="button" class="btn" data-fw="close">Close</button></div>';
+  if(!u) h+=themeHtml()+'<div class="row"><span style="flex:1"></span><button type="button" class="btn" data-fw="close">Close</button></div>';
   h+=`<div class="muted" data-msg aria-live="polite">${esc(msg)}</div></div>`;
   dlg.innerHTML=h;
+}
+// the look of the app: following the device, or always light or dark (synced with the account)
+function themeHtml(){
+  const T=window.fretwiseApp&&window.fretwiseApp.theme; if(!T) return '';
+  const now=T.get();
+  return `<section><h3>Appearance</h3><div class="row">${[['auto','Like the device'],['light','Light'],['dark','Dark']].map(([v,l])=>`<label><input type="radio" name="fwtheme" data-fw="theme" value="${v}" ${now===v?'checked':''}> ${l}</label>`).join('')}</div><div class="muted" style="margin-top:6px">“Like the device” follows the phone’s or computer’s dark mode; if the browser keeps a light theme of its own, choose Dark here.</div></section>`;
 }
 function onDlgClick(e){
   const b=e.target.closest('[data-fw]'); if(!b||b.tagName==='INPUT'||b.tagName==='SELECT') return;
@@ -278,6 +285,7 @@ function onDlgChange(e){
   if(a==='pushon') (t.checked?enablePush:disablePush)();
   else if(a==='hour'){ PUSH.hour=+t.value; savePushSettings(); }
   else if(a==='item'){ PUSH.items[t.value]=t.checked; savePushSettings(); }
+  else if(a==='theme'&&t.checked&&window.fretwiseApp&&window.fretwiseApp.theme) window.fretwiseApp.theme.set(t.value);
 }
 document.addEventListener('click',e=>{
   const b=e.target.closest('#acct [data-fw]'); if(!b) return;
