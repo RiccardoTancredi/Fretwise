@@ -924,7 +924,7 @@ mark.v-gap::after{content:'';position:absolute;left:50%;bottom:-.3em;transform:t
       <div class="board-wrap" id="boardWrap"><svg id="board" role="img" aria-label="Fretboard"></svg></div>
       <div class="answer" id="answer"></div>
       <div class="feedback" id="feedback" aria-live="polite"></div>
-      <div class="review-bar"><button class="btn quiet sm" type="button" data-review="music">Previous exercises</button><span class="hint">Recent exercises on this device</span></div>
+      <div class="review-bar"><button class="btn quiet sm" type="button" data-review="music">Previous exercises</button><span class="hint">Recent exercises, from all your devices</span></div>
     </section>
 
     <aside class="side">
@@ -955,7 +955,7 @@ mark.v-gap::after{content:'';position:absolute;left:50%;bottom:-.3em;transform:t
       </div>
       <div class="answer" id="wbody"></div>
       <div class="feedback" id="wfeedback" aria-live="polite"></div>
-      <div class="review-bar"><button class="btn quiet sm" type="button" data-review="words">Previous exercises</button><span class="hint">Recent exercises on this device</span></div>
+      <div class="review-bar"><button class="btn quiet sm" type="button" data-review="words">Previous exercises</button><span class="hint">Recent exercises, from all your devices</span></div>
     </section>
     <aside class="side">
       <details class="panel" id="wSettingsPanel" open><summary>Settings</summary><div class="settings" id="wsettings"></div></details>
@@ -971,7 +971,7 @@ mark.v-gap::after{content:'';position:absolute;left:50%;bottom:-.3em;transform:t
       </div>
       <div class="answer" id="pbody"></div>
       <div class="feedback" id="pfeedback" aria-live="polite"></div>
-      <div class="review-bar"><button class="btn quiet sm" type="button" data-review="paintings">Previous exercises</button><span class="hint">Recent exercises on this device</span></div>
+      <div class="review-bar"><button class="btn quiet sm" type="button" data-review="paintings">Previous exercises</button><span class="hint">Recent exercises, from all your devices</span></div>
     </section>
     <aside class="side">
       <details class="panel" id="pSettingsPanel" open><summary>Settings</summary><div class="settings" id="psettings"></div></details>
@@ -1015,7 +1015,7 @@ mark.v-gap::after{content:'';position:absolute;left:50%;bottom:-.3em;transform:t
       <div class="cboard-wrap"><div class="cboard" id="cboard" aria-label="Chessboard"></div></div>
       <div class="answer" id="canswer"></div>
       <div class="feedback" id="cfeedback" aria-live="polite"></div>
-      <div class="review-bar"><button class="btn quiet sm" type="button" data-review="chess">Previous exercises</button><span class="hint">Recent exercises on this device</span></div>
+      <div class="review-bar"><button class="btn quiet sm" type="button" data-review="chess">Previous exercises</button><span class="hint">Recent exercises, from all your devices</span></div>
     </section>
     <aside class="side">
       <details class="panel" id="cSettingsPanel" open><summary>Settings</summary><div class="settings" id="csettings"></div></details>
@@ -1027,7 +1027,7 @@ mark.v-gap::after{content:'';position:absolute;left:50%;bottom:-.3em;transform:t
   <div class="review-top"><div><div class="eyebrow" id="reviewMeta"></div><h2 id="reviewTitle">Previous exercises</h2></div><button class="btn quiet sm" type="button" data-ract="close" aria-label="Close review">✕</button></div>
   <div id="reviewBody" class="answer"></div>
   <div class="actions review-nav"><button class="btn" type="button" id="reviewPrev" data-ract="prev">← Previous</button><button class="btn" type="button" id="reviewNext" data-ract="next">Next →</button><span class="spacer"></span><button class="btn primary" type="button" data-ract="close">Back to exercise</button></div>
-  <p class="hint">Read-only review · up to 100 recent exercises per section, on this device and for this account. Reviewing does not change scores or review schedules.</p>
+  <p class="hint">Read-only review · up to 100 recent exercises per section for this account, from every device you are signed in on. Reviewing does not change scores or review schedules.</p>
 </dialog>
 
 <dialog id="chordExplorer" class="exercise-review" aria-labelledby="exploreTitle">
@@ -2085,7 +2085,7 @@ async function connectRuns(){
     if(!db||!user) return;
     const uid=await user.id(); if(!uid||connectedUid===uid) return;
     connectedUid=uid;
-    connectChess(db,uid); connectWords(db,uid); connectVerbs(db,uid); connectRead(db,uid); connectActivity(db,uid); connectPaint(db,uid); connectFretboard(db,uid); connectLichess(db,uid);
+    connectChess(db,uid); connectWords(db,uid); connectVerbs(db,uid); connectRead(db,uid); connectActivity(db,uid); connectPaint(db,uid); connectFretboard(db,uid); connectLichess(db,uid); connectExHistory(db,uid);
     const ref=db.doc('data/users/'+uid+'/fretwise');
     const snap=await ref.get();
     const d=snap.exists?snap.data():null;
@@ -9161,7 +9161,7 @@ document.addEventListener('keydown',ev=>{
 },true);
 document.addEventListener('visibilitychange',()=>{ if(document.hidden&&view==='app') storeRound(); });
 
-/* ---------- read-only, account-scoped exercise history on this device ---------- */
+/* ---------- read-only, account-scoped exercise history, kept here and synced through the account ---------- */
 const EXERCISE_HISTORY='fretwise.exercise-history.v1';
 let review=null;
 function exerciseHistory(){
@@ -9172,7 +9172,42 @@ function rememberExercise(section,data){
   // Copy snapshots: later edits, another question, or another board must not change past exercises.
   list.push(JSON.parse(JSON.stringify({...data,t:Date.now()}))); all[section]=list.slice(-100);
   try{ LOCAL.setItem(EXERCISE_HISTORY,JSON.stringify(all)); }catch(e){}
+  updateReviewButtons(); exhPush(section);
+}
+// each section's list is one document of the account, written as JSON text (boards and shapes hold nested
+// lists, which documents can't store); devices merge by time, an exercise is its time and title
+const EXH_SECTIONS=['guitar','ukulele','chess','words','paintings'];
+let exhDb=null, exhUid=null; const exhT={};
+const exhKey=e=>e.t+'|'+(e.title||'');
+const exhRef=sec=>exhDb.doc('data/users/'+exhUid+'/exhist-'+sec);
+function exhMerge(sec,remote){
+  const all=exerciseHistory(), mine=Array.isArray(all[sec])?all[sec]:[], seen=new Set(mine.map(exhKey));
+  (remote||[]).forEach(e=>{ if(e&&e.t&&!seen.has(exhKey(e))){ mine.push(e); seen.add(exhKey(e)); } });
+  mine.sort((a,b)=>a.t-b.t); all[sec]=mine.slice(-100);
+  try{ LOCAL.setItem(EXERCISE_HISTORY,JSON.stringify(all)); }catch(e){}
+  return all[sec];
+}
+function exhWrite(sec){
+  clearTimeout(exhT[sec]); delete exhT[sec]; if(!exhDb) return;
+  // a document holds up to a megabyte: the oldest exercises give way if a section ever gets that big
+  let l=exerciseHistory()[sec]||[], j=JSON.stringify(l); while(j.length>900000&&l.length>1){ l=l.slice(Math.ceil(l.length/10)); j=JSON.stringify(l); }
+  exhRef(sec).set({j,upd:Date.now(),v:1}).catch(()=>{});
+}
+function exhPush(sec){ if(!exhDb||EXH_SECTIONS.indexOf(sec)<0) return; clearTimeout(exhT[sec]); exhT[sec]=setTimeout(()=>exhWrite(sec),2000); }
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) Object.keys(exhT).forEach(exhWrite); });
+// what the account has, merged into what this device has; anything only here goes up
+function exhTake(sec,d){
+  let remote=[]; try{ remote=d&&d.j?JSON.parse(d.j):[]; }catch(e){}
+  const keys=new Set(remote.map(exhKey)), list=exhMerge(sec,remote);
+  if(list.some(e=>!keys.has(exhKey(e)))) exhPush(sec);
   updateReviewButtons();
+}
+async function connectExHistory(db,uid){
+  exhDb=db; exhUid=uid;
+  for(const sec of EXH_SECTIONS){
+    try{ const ref=exhRef(sec), sn=await ref.get(); exhTake(sec,sn.exists?sn.data():null);
+      ref.onSnapshot(x=>{ if(x.exists) exhTake(sec,x.data()); },()=>{}); }catch(e){}
+  }
 }
 function rememberMusic(ok,label){
   const d={kind:'music',inst:S.inst,title:label,ok,mode:S.mode,text:$('feedback').textContent,range:[questionRange().fretStart,questionRange().fretEnd],marks:markers()};
