@@ -27,12 +27,12 @@ def fetch(words):
     for w in words:
         p=page(w)
         if os.path.exists(p) and os.path.getsize(p)>1000: continue
-        req=urllib.request.Request('https://en.wiktionary.org/api/rest_v1/page/html/'+urllib.parse.quote(w),headers={'User-Agent':'Fretwise/1.0 (https://github.com/RiccardoTancredi/Fretwise; verb tables)'})
+        req=urllib.request.Request('https://en.wiktionary.org/api/rest_v1/page/html/'+urllib.parse.quote(w),headers={'User-Agent':'verb-tables/1.0 (personal study script)'})
         for attempt in range(3):
             try: data=urllib.request.urlopen(req,timeout=30).read(); open(p,'wb').write(data); break
             except Exception as e:
                 if attempt==2:   # large pages sometimes arrive cut short through a proxy: curl copes better
-                    subprocess.run(['curl','-s','--retry','3','-A','Fretwise/1.0 (verb tables)','-o',p,req.full_url])
+                    subprocess.run(['curl','-s','--retry','3','-A','verb-tables/1.0 (personal study script)','-o',p,req.full_url])
                     if not (os.path.exists(p) and os.path.getsize(p)>1000): print('FAILED',w,e)
                 time.sleep(3)
         time.sleep(1.5)
