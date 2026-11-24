@@ -17,12 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.retry1.outputs.page_url || steps.retry2.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: main
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - run: node --test tools/tests/*.test.mjs
@@ -31,5 +31,19 @@ jobs:
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
+      # GitHub sometimes can't find the artifact it was just given, for a few seconds.
+      # Waiting and trying again keeps those hiccups from failing the run (and sending an email).
       - id: deployment
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+      - if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+      - id: retry1
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+      - if: steps.retry1.outcome == 'failure'
+        run: sleep 90
+      - id: retry2
+        if: steps.retry1.outcome == 'failure'
         uses: actions/deploy-pages@v5
