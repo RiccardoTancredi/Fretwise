@@ -7550,7 +7550,7 @@ function rmAdvance(ok){
   rmGrade(ok); if(before<goal&&rmToday()>=goal) RT.celebrate=true;
   if(first) rmToast();
 }
-function rmNext(){ const cel=RT&&RT.celebrate; rmStop(); rmNew(); if(cel) RM_CELEBRATE=true; renderRead(); }
+function rmNext(){ const cel=RT&&RT.celebrate; rmStop(0.35); rmNew(); if(cel) RM_CELEBRATE=true; renderRead(); }
 function rmToast(){
   const old=document.querySelector('.vtoast'); if(old) old.remove();
   const streak=rmStreak(), el=document.createElement('div'); el.className='vtoast'; el.setAttribute('role','status');
@@ -7580,8 +7580,9 @@ function rmWarm(ps){ if(!actx) return; if(RM.set.sound==='piano') rmLoadPiano();
 // freezes a fading gain where it is now: dropping its scheduled fade alone would bring it back to full, as if
 // the note were struck again
 function rmHold(p,now){ if(p.cancelAndHoldAtTime) p.cancelAndHoldAtTime(now); else { const v=p.value; p.cancelScheduledValues(now); p.setValueAtTime(v,now); } }
-function rmStop(){ const now=actx?actx.currentTime:0;
-  rmSrcs.forEach(s=>{ try{ if(s._g){ rmHold(s._g.gain,now); s._g.gain.setTargetAtTime(0,now,0.04); s.stop(now+0.25); } else s.stop(); }catch(e){} }); rmSrcs=[]; rmLitT.forEach(clearTimeout); rmLitT=[]; document.querySelectorAll('.rstaff .lit').forEach(e=>e.classList.remove('lit')); }
+// fade: how gently what is playing dies away (a time constant in seconds); quick unless said
+function rmStop(fade){ const now=actx?actx.currentTime:0, tc=fade||0.04;
+  rmSrcs.forEach(s=>{ try{ if(s._g){ rmHold(s._g.gain,now); s._g.gain.setTargetAtTime(0,now,tc); s.stop(now+tc*6); } else s.stop(); }catch(e){} }); rmSrcs=[]; rmLitT.forEach(clearTimeout); rmLitT=[]; document.querySelectorAll('.rstaff .lit').forEach(e=>e.classList.remove('lit')); }
 // lit: where the notes are drawn ({root, col}): the card on screen unless said; false for notes not on the staff
 let rmLitT=[];
 function rmLight(lit,p,from,dur){
@@ -7617,7 +7618,7 @@ function rmPlay(ps,how,at,lit){
     if(!at) rmStop();
     const n=ps.length, t0=actx.currentTime+0.04+(at||0), loud=Math.min(1,1.3/Math.sqrt(n)), strum=RM.set.sound==='piano'?0:0.03;
     const ahead=t0-actx.currentTime;
-    if(how==='short') ps.forEach(p=>{ rmVoice(rmMidi(p),t0,1,0.9,1.0); rmLight(lit,p,ahead,1.0); });
+    if(how==='short') ps.forEach(p=>{ rmVoice(rmMidi(p),t0,1,1.3,1.6); rmLight(lit,p,ahead,1.3); });
     else if(how==='step') ps.forEach(p=>{ rmVoice(rmMidi(p),t0,1,0.55,0.3); rmLight(lit,p,ahead,0.7); });
     else if(how==='seq') ps.forEach((p,i)=>{ rmVoice(rmMidi(p),t0+i*0.75,1,i===n-1?1.1:0.6,0.35); rmLight(lit,p,ahead+i*0.75,i===n-1?1.1:0.7); });
     else if(how==='prog') ps.forEach(p=>{ rmVoice(rmMidi(p),t0,loud,1.0,0.35); rmLight(lit,p,ahead,1.1); });
@@ -7626,7 +7627,7 @@ function rmPlay(ps,how,at,lit){
   }catch(e){}
 }
 // how long a play lasts, to start the next one after it
-const rmPlayLen=(ps,how)=>how==='short'?1.4:how==='step'?0.9:how==='seq'?0.75*(ps.length-1)+1.5:how==='arp'?0.45*(ps.length-1)+2.5:2.8;
+const rmPlayLen=(ps,how)=>how==='short'?2.0:how==='step'?0.9:how==='seq'?0.75*(ps.length-1)+1.5:how==='arp'?0.45*(ps.length-1)+2.5:2.8;
 // an ear card's example as asked: two notes up or down one after the other, or together; chords at once
 const rmEarHow=ex=>ex.how==='up'||ex.how==='down'?'seq':'block';
 const rmEarStaff=(ex,label)=>ex.cols?rmStaffRow(ex.clef,ex.cols,{key:ex.key,labels:ex.labels,label}):rmStaffSvg(ex.clef,ex.ps,{label});
@@ -7910,7 +7911,7 @@ function rmLetter(L){
   const ok=L===c.answer; RT.pick=L; RT.phase='shown'; if(!ok) RT.guess=rmGuessPitch(c.ps[0],L,c.clef);
   rmAdvance(ok); renderRead();
   if(ok){ rmPlay(c.ps,'short'); const k=RT.k; rmTimer=setTimeout(()=>{ if(view==='read'&&!RMV&&RT&&RT.k===k&&RT.phase==='shown') rmNext(); },1300); }
-  else{ rmPlay([RT.guess],'short'); rmPlay(c.ps,'short',1.0); }
+  else{ rmPlay([RT.guess],'short'); rmPlay(c.ps,'short',1.1); }
 }
 // an ear card: wrong, your answer from the same root, then the right one again
 function rmOption(o){
