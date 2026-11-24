@@ -7577,8 +7577,11 @@ function rmSynthBuf(midi){
 }
 // the next card's notes are made ahead, so its sound starts at once
 function rmWarm(ps){ if(!actx) return; if(RM.set.sound==='piano') rmLoadPiano(); else setTimeout(()=>{ try{ ps.forEach(p=>rmSynthBuf(rmMidi(p))); }catch(e){} },60); }
+// freezes a fading gain where it is now: dropping its scheduled fade alone would bring it back to full, as if
+// the note were struck again
+function rmHold(p,now){ if(p.cancelAndHoldAtTime) p.cancelAndHoldAtTime(now); else { const v=p.value; p.cancelScheduledValues(now); p.setValueAtTime(v,now); } }
 function rmStop(){ const now=actx?actx.currentTime:0;
-  rmSrcs.forEach(s=>{ try{ if(s._g){ s._g.gain.cancelScheduledValues(now); s._g.gain.setTargetAtTime(0,now,0.04); s.stop(now+0.25); } else s.stop(); }catch(e){} }); rmSrcs=[]; rmLitT.forEach(clearTimeout); rmLitT=[]; document.querySelectorAll('.rstaff .lit').forEach(e=>e.classList.remove('lit')); }
+  rmSrcs.forEach(s=>{ try{ if(s._g){ rmHold(s._g.gain,now); s._g.gain.setTargetAtTime(0,now,0.04); s.stop(now+0.25); } else s.stop(); }catch(e){} }); rmSrcs=[]; rmLitT.forEach(clearTimeout); rmLitT=[]; document.querySelectorAll('.rstaff .lit').forEach(e=>e.classList.remove('lit')); }
 // lit: where the notes are drawn ({root, col}): the card on screen unless said; false for notes not on the staff
 let rmLitT=[];
 function rmLight(lit,p,from,dur){
