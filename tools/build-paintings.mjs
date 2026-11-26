@@ -9,7 +9,10 @@
 import { readFile, writeFile } from 'node:fs/promises';
 
 const ENDPOINT = 'https://query.wikidata.org/sparql?format=json&query=';
-const UA = { Accept: 'application/sparql-results+json', 'User-Agent': 'Fretwise/1.0 (https://github.com/RiccardoTancredi/Fretwise)' };
+const UA = { Accept: 'application/sparql-results+json', 'User-Agent': 'paintings-list/1.0 (personal study script)' };
+// what counts as a painting: canvases and panels, and the frescoes and wall paintings (the School of Athens,
+// the Sistine Chapel, the Last Supper are frescoes on Wikidata, not paintings)
+const KINDS = 'VALUES ?kind { wd:Q3305213 wd:Q22669139 wd:Q134194 wd:Q99516640 wd:Q219423 }';
 const MAX = 900, PER_ARTIST = 12, TOP = 6, FAME_MIN = 6, PAINTER_MIN = 40;
 const DIED_BEFORE = new Date().getUTCFullYear() - 70;   // 2026: died in 1955 or earlier
 const EXCLUDE = new Set(['Q334138', 'Q326503']);        // explicit works, left out of a learning app
@@ -36,8 +39,8 @@ const painters = (await sparql(`SELECT ?a WHERE { ?a wdt:P106 wd:Q1028181; wikib
 // 2) their paintings that have a picture, with how many Wikipedias cover each (small batches stay fast)
 const works = new Map();
 for (const group of chunks(painters, 80)) {
-  const rows = await sparql(`SELECT ?p ?a ?img ?links WHERE { VALUES ?a { ${group.map(a => 'wd:' + a).join(' ')} }
-    ?p wdt:P170 ?a; wdt:P31 wd:Q3305213; wdt:P18 ?img; wikibase:sitelinks ?links. FILTER(?links >= ${FAME_MIN}) }`);
+  const rows = await sparql(`SELECT DISTINCT ?p ?a ?img ?links WHERE { VALUES ?a { ${group.map(a => 'wd:' + a).join(' ')} } ${KINDS}
+    ?p wdt:P170 ?a; wdt:P31 ?kind; wdt:P18 ?img; wikibase:sitelinks ?links. FILTER(?links >= ${FAME_MIN}) }`);
   for (const b of rows) {
     const id = qid(b.p.value);
     if (!works.has(id) && !EXCLUDE.has(id)) works.set(id, { id, a: qid(b.a.value), image: decodeURIComponent(qid(b.img.value)), links: +b.links.value });
@@ -62,19 +65,19 @@ const MUSEUMS = ['Uffizi Gallery', 'Vatican Museums', 'Pinacoteca Vaticana', 'Ga
   'Galleria Doria Pamphilj', 'Capitoline Museums', 'Galleria Sabauda', 'Galleria Nazionale delle Marche', 'Louvre', "Musée d'Orsay",
   'Museo del Prado', 'Thyssen-Bornemisza Museum', 'National Gallery', 'Rijksmuseum', 'Mauritshuis', 'Kunsthistorisches Museum',
   'Alte Pinakothek', 'Gemäldegalerie Alte Meister', 'Hermitage Museum', 'Royal Museums of Fine Arts of Belgium', 'Musée Condé', 'Louvre Museum', 'Galleria Palatina', 'Palazzo Pitti'];
-const PER_MUSEUM = 15;
+const PER_MUSEUM = 15, PER_MUSEUM_OF = { 'Vatican Museums': 40 };   // the Vatican: the Raphael Rooms and the Sistine Chapel too
 const inSet = new Set(picked.map(o => o.id));
 const museums = await sparql(`SELECT DISTINCT ?m ?ml WHERE { VALUES ?ml { ${MUSEUMS.map(m => JSON.stringify(m) + '@en').join(' ')} } ?m rdfs:label ?ml; wdt:P17 []. }`);
 for (const b of museums) {
   const m = qid(b.m.value);
-  const rows = await sparql(`SELECT ?p ?a ?img ?links WHERE { ?p wdt:P195 wd:${m}; wdt:P31 wd:Q3305213; wdt:P170 ?a; wdt:P18 ?img; wikibase:sitelinks ?links.
-    FILTER(?links >= ${FAME_MIN}) ?a wdt:P570 ?d. FILTER(YEAR(?d) < ${DIED_BEFORE}) } ORDER BY DESC(?links) LIMIT 60`);
+  const rows = await sparql(`SELECT DISTINCT ?p ?a ?img ?links WHERE { ${KINDS} ?p wdt:P195 wd:${m}; wdt:P31 ?kind; wdt:P170 ?a; wdt:P18 ?img; wikibase:sitelinks ?links.
+    FILTER(?links >= ${FAME_MIN}) ?a wdt:P570 ?d. FILTER(YEAR(?d) < ${DIED_BEFORE}) } ORDER BY DESC(?links) LIMIT 100`);
   let added = 0;
   for (const r of rows) {
     const id = qid(r.p.value);
     if (inSet.has(id) || EXCLUDE.has(id)) continue;
     picked.push({ id, a: qid(r.a.value), image: decodeURIComponent(qid(r.img.value)), links: +r.links.value }); inSet.add(id);
-    if (++added >= PER_MUSEUM) break;
+    if (++added >= (PER_MUSEUM_OF[b.ml.value] || PER_MUSEUM)) break;
   }
   console.log(`${b.ml.value}: +${added}`);
 }

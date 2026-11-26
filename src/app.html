@@ -351,7 +351,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .wempty{display:flex;flex-direction:column;gap:12px;align-items:flex-start;max-width:60ch}
 .wempty p{margin:0;color:var(--muted)}
 .wcard{position:relative;background:var(--surface-2);border:1px solid var(--line);border-radius:16px;padding:22px 22px 18px;display:flex;flex-direction:column;gap:12px;min-height:200px}
-.wcard.q{min-height:0}
+.wcard.q{min-height:0;padding-right:50px}   /* room for the star from the start, so answering doesn't rewrap the text */
 .ww{font-family:var(--font-display);font-weight:800;font-size:clamp(1.9rem,6vw,2.8rem);letter-spacing:-.02em;line-height:1.05;overflow-wrap:anywhere}
 .wd{font-size:1.08rem;line-height:1.5;max-width:65ch}
 .wd.big{font-size:1.2rem}
@@ -671,6 +671,11 @@ mark.v-gap::after{content:'';position:absolute;left:50%;bottom:-.3em;transform:t
 .rlet.bad{background:var(--bad);border-color:var(--bad);color:var(--on-bad);opacity:1}
 .rsym{font-family:var(--font-display);font-weight:800;font-size:clamp(2.2rem,8vw,3rem);line-height:1.05}
 .rdet{color:var(--muted)}
+.rsong{margin-top:6px;font-size:.92rem;color:var(--muted)} .rsong b{color:var(--ink);font-weight:700}
+.rsongs{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.rsongrow{border:1px solid var(--line);border-radius:14px;background:var(--surface-2);padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.rsonghead{font-family:var(--font-display);font-size:1.02rem} .rsonghead b{font-family:var(--font-mono);margin-right:4px}
+.rsongdir{display:flex;align-items:baseline;gap:10px} .rsongdir .btn{flex:none;min-width:84px} .rsongdir span{font-size:.92rem;color:var(--muted);line-height:1.4} .rsongdir span b{color:var(--ink);font-weight:700}
 .rnotes{font-family:var(--font-display);font-weight:700;font-size:1.25rem}
 .rsci{font-family:var(--font-mono);font-size:.82rem;color:var(--muted)}
 .rplay{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
@@ -7323,6 +7328,22 @@ const RM_SEV=['maj7','7','m7','m7b5','dim7','mmaj7','maj7s5','7s5'];
 const RM_IV=[['m2','minor 2nd',1,1],['M2','major 2nd',1,2],['m3','minor 3rd',2,3],['M3','major 3rd',2,4],['P4','perfect 4th',3,5],['TT','tritone',3,6],
   ['P5','perfect 5th',4,7],['m6','minor 6th',5,8],['M6','major 6th',5,9],['m7','minor 7th',6,10],['M7','major 7th',6,11],['P8','octave',7,12]].map(([id,name,n,s])=>({id,name,n,s}));
 const RM_IVI=Object.fromEntries(RM_IV.map(x=>[x.id,x])), RM_IVS=RM_IV.map(x=>x.id);
+// songs that start (or have a famous moment) on each interval, going up and going down: taken from the reference
+// tables of Wikipedia ("Interval recognition") and Musicca ("Interval song chart"), mostly ones both list
+const RM_IV_SONGS={
+  m2:{up:[['Jaws','John Williams, the theme'],['Isn’t She Lovely','Stevie Wonder'],['As Time Goes By','Casablanca']],down:[['Für Elise','Beethoven'],['Joy to the World','Christmas carol']]},
+  M2:{up:[['Frère Jacques','Fra Martino'],['Happy Birthday',''],['Silent Night','Astro del ciel']],down:[['Yesterday','The Beatles'],['Mary Had a Little Lamb',''],['The First Noel','Christmas carol']]},
+  m3:{up:[['Greensleeves','folk song'],['Axel F','Beverly Hills Cop'],['Smoke on the Water','Deep Purple']],down:[['Hey Jude','The Beatles'],['Frosty the Snowman',''],['The Star-Spangled Banner','']]},
+  M3:{up:[['When the Saints Go Marching In',''],['Spring','Vivaldi, The Four Seasons'],['O mio babbino caro','Puccini']],down:[['Symphony No. 5','Beethoven, the opening'],['Summertime','Gershwin'],['Swing Low, Sweet Chariot','spiritual']]},
+  P4:{up:[['Here Comes the Bride','Wagner, Bridal Chorus'],['Amazing Grace',''],['Auld Lang Syne','']],down:[['Eine kleine Nachtmusik','Mozart'],['O Come, All Ye Faithful','Adeste fideles']]},
+  TT:{up:[['The Simpsons','the theme'],['Maria','West Side Story']],down:[['YYZ','Rush'],['Even Flow','Pearl Jam']]},
+  P5:{up:[['Star Wars','John Williams, the main theme'],['Twinkle, Twinkle, Little Star','from the first “twinkle” to the second'],['Scarborough Fair','folk song']],down:[['The Flintstones','the theme'],['Halloween','John Carpenter, the theme']]},
+  m6:{up:[['The Entertainer','Scott Joplin, the leap after the pick-up'],['In My Life','The Beatles, the intro'],['Go Down Moses','spiritual']],down:[['Love Story','Francis Lai, the theme: “Where do I begin”'],['You’re Everything','Chick Corea']]},
+  M6:{up:[['My Bonnie Lies over the Ocean','folk song'],['Libiamo ne’ lieti calici','Verdi, La traviata'],['My Way','Frank Sinatra'],['NBC chimes','']],down:[['Nobody Knows the Trouble I’ve Seen','spiritual'],['Man in the Mirror','Michael Jackson, the chorus'],['The Music of the Night','The Phantom of the Opera']]},
+  m7:{up:[['Star Trek','the original theme'],['Somewhere','West Side Story'],['The Winner Takes It All','ABBA, the chorus']],down:[['Watermelon Man','Herbie Hancock'],['An American in Paris','Gershwin']]},
+  M7:{up:[['Take On Me','a-ha, the chorus'],['Fantasy Island','the theme']],down:[['I Love You','Cole Porter']]},
+  P8:{up:[['Over the Rainbow','“Some-where”'],['Singin’ in the Rain',''],['The Christmas Song','']],down:[['Willow Weep for Me','']]}
+};
 // the lessons of the Learn tab, after the order of Andrea Avena's "Teoria & Armonia" (volumes 1 and 2), with his
 // Italian terms in brackets. body: paragraphs (HTML) and examples {clef, key, cols: one string of pitches per
 // column, labels, cap}; quiz: the check questions, each a theory card once answered; the first option is the right one
@@ -8039,12 +8060,15 @@ function rmOptHtml(s,o,cls,dis){
   const small=s.how==='inv'?['position','inversion','inversion'][+o]:s.how==='chord'?RM_QI[o].name:RM_IVI[o].name;
   return `<button type="button" class="ropt${cls}" data-rmopt="${o}" ${dis?'disabled':''}><b>${esc(big)}</b><small>${esc(small)}</small></button>`;
 }
+// songs for an interval, going up or down: "Like …" under an interval card's answer
+const rmSongName=([t,by])=>`<b>${esc(t)}</b>${by?` <span>(${esc(by)})</span>`:''}`;
+function rmSongLine(id,dir){ const l=(RM_IV_SONGS[id]||{})[dir]; return l&&l.length?`<div class="rsong">${dir==='up'?'Going up':'Going down'}, like ${l.slice(0,2).map(rmSongName).join(' or ')}</div>`:''; }
 function rmAnswerHtml(c,ex){
   if(c.kind==='note') return `<div class="rsym">${esc(c.answer)}</div><div class="rdet">${esc(c.name)} · ${rmClefName(c.clef)} · ${c.ledger?`${c.ledger} ledger ${c.ledger===1?'line':'lines'} ${c.where}`:'on the staff'}</div>`;
   if(c.kind==='ear'&&ex.cols){ const s=RM_SET[c.set];
     return `<div class="rsym">${esc(c.title)}</div><div class="rdet">${s.how==='prog'?esc(ex.keyName)+' · '+esc(ex.labels.join(' – ')):esc(rmNm(ex.root)+' '+RM_SCALES[c.ans].name.toLowerCase().replace(/^(dorian|mixolydian|lydian|phrygian)$/,m=>m[0].toUpperCase()+m.slice(1)))}</div><div class="rsci">${esc(s.how==='prog'?ex.syms.join(' – '):ex.ps.map(rmNm).join(' '))}</div>`; }
   if(c.kind==='ear'){ const s=RM_SET[c.set];
-    return `<div class="rsym">${esc(s.how==='inv'?RM_INV[+c.ans][0].toUpperCase()+RM_INV[+c.ans].slice(1):c.title)}</div><div class="rdet">${s.how==='inv'?esc(RM_ROOTS[ex.root]+(c.q==='maj'?' major':' minor'))+' · ':s.how==='chord'?esc(RM_ROOTS[ex.root]+RM_QI[c.ans].sym)+' · ':''}${esc(ex.ps.map(rmNm).join(' – '))}</div><div class="rsci">${esc(ex.ps.map(rmSci).join(' – '))}</div>`; }
+    return `<div class="rsym">${esc(s.how==='inv'?RM_INV[+c.ans][0].toUpperCase()+RM_INV[+c.ans].slice(1):c.title)}</div><div class="rdet">${s.how==='inv'?esc(RM_ROOTS[ex.root]+(c.q==='maj'?' major':' minor'))+' · ':s.how==='chord'?esc(RM_ROOTS[ex.root]+RM_QI[c.ans].sym)+' · ':''}${esc(ex.ps.map(rmNm).join(' – '))}</div><div class="rsci">${esc(ex.ps.map(rmSci).join(' – '))}</div>`+(['up','down','together'].includes(s.how)?rmSongLine(c.ans,s.how==='down'?'down':'up'):''); }
   return `<div class="rsym">${esc(c.sym)}</div><div class="rdet">${esc(c.name)} · ${esc(c.invName)}${c.bass?` (${esc(c.bass)} in the bass)`:''} · ${rmClefName(c.clef)}</div><div class="rnotes">${esc(c.notes)}</div><div class="rsci">${esc(c.sci)}</div>`;
 }
 // the play buttons, on every card: the note; the chord and its arpeggio; an ear card again, and the other way
@@ -8182,8 +8206,19 @@ function rmLearnHtml(){
   const now=Date.now(), next=RM_LESSONS.find(L=>!RM.learn[L.id]);
   RM_LESSONS.forEach(L=>{ if(L.part) h+=`</div><h3 class="rsethead">${esc(L.part)}</h3><div class="rlessons">`; const done=RM.learn[L.id], due=rmLessonKeys(L).filter(k=>RM.p[k]&&RM.p[k].due<=now).length;
     h+=`<button type="button" class="rlrow${done?' done':''}${L===next?' next':''}" data-rmlesson="${L.id}"><span class="rlnum">${done?V_TICK:L.n}</span><span class="rsettext"><b>${esc(L.title)}</b><small>${esc(L.sub)}</small>${done||L===next?`<small class="mono">${done?'Checked'+(due?` · ${due} ${due===1?'question':'questions'} due`:''):'Next to read'}</small>`:''}</span></button>`; });
+  h+=`</div><h3 class="rsethead">Ear training</h3><div class="rlessons"><button type="button" class="rlrow" data-rmsongs><span class="rlnum">${RM_ICON.ear}</span><span class="rsettext"><b>Songs for each interval</b><small>A tune that starts with each interval, going up and going down, to hear it in your head</small></span></button>`;
   return h+'</div>';
 }
+function rmOpenSongs(){ subPush(); RMV={tab:'songs',back:RMV}; renderRead(); scrollTo(0,0); }
+function rmSongsHtml(){
+  let h=`<div class="hint">Think of the start of a tune you know: its first two notes are the interval. Play each one from C and sing the song over it. From the reference tables of Wikipedia and Musicca.</div><div class="rsongs">`;
+  RM_IV.forEach(iv=>{ const S=RM_IV_SONGS[iv.id]||{};
+    h+=`<div class="rsongrow"><div class="rsonghead"><b>${esc(iv.id)}</b> ${esc(iv.name)}</div>`
+      +['up','down'].map(d=>`<div class="rsongdir"><button type="button" class="btn sm" data-rmivplay="${iv.id}|${d}">▶ ${d==='up'?'Up':'Down'}</button><span>${(S[d]||[]).map(rmSongName).join(' · ')||'<i>—</i>'}</span></div>`).join('')+`</div>`; });
+  return h+'</div>';
+}
+// an interval from C4 going up, or from C5 going down
+function rmIvPlay(id,dir){ const iv=RM_IVI[id]; if(!iv) return; const c=rmP(dir==='up'?'C4':'C5'), o=rmUp(c,dir==='up'?iv.n:-iv.n,dir==='up'?iv.s:-iv.s); rmPlay([c,o],'seq',0,false); }
 function rmOpenLesson(id,replace){
   const L=RM_LESSON[id], v={tab:'lesson',id,ans:{},order:L.quiz.map(q=>rmShuffle(q.o.length))};
   if(replace) v.back=RMV.back; else{ subPush(); v.back=RMV; }
@@ -8247,6 +8282,7 @@ function renderRead(){
   if(RMV&&RMV.tab==='card'){ $('rmprompt').textContent=rmTitle(rmCard(RMV.k)); h=rmCardViewHtml(); }
   else if(RMV&&RMV.tab==='lesson'){ $('rmprompt').textContent=RM_LESSON[RMV.id].title; h=rmLessonHtml(); }
   else if(RMV&&RMV.tab==='learn'){ $('rmprompt').textContent='Learn'; h=rmLearnHtml(); }
+  else if(RMV&&RMV.tab==='songs'){ $('rmprompt').textContent='Songs for each interval'; h=rmSongsHtml(); }
   else if(RMV&&RMV.tab==='sets'){ $('rmprompt').textContent='Cards'; h=rmSetsHtml(); }
   else if(RMV&&RMV.tab==='hist'){ $('rmprompt').textContent='History'; h=rmHistHtml(); }
   else{ $('rmprompt').innerHTML=RM_ICON.note+' Read music'; if(!RT||rmItems().indexOf(RT.k)<0&&RT.phase!=='shown') rmNew(); h=rmTrainHtml(); }
@@ -8289,7 +8325,9 @@ function rmPlayBtn(how){
   rmPlay(ex.ps,how);
 }
 $('rmbody').addEventListener('click',e=>{
-  const t=e.target.closest('[data-rmtab],[data-rmmode],[data-rmact],[data-rmlet],[data-rmopt],[data-rmplay],[data-rmopen],[data-rmflip],[data-rmtap],[data-rmlesson],[data-rmans],[data-rmexp],[data-rmpractice],[data-rmcof]'); if(!t) return;
+  const t=e.target.closest('[data-rmtab],[data-rmmode],[data-rmact],[data-rmlet],[data-rmopt],[data-rmplay],[data-rmopen],[data-rmflip],[data-rmtap],[data-rmlesson],[data-rmans],[data-rmexp],[data-rmpractice],[data-rmcof],[data-rmsongs],[data-rmivplay]'); if(!t) return;
+  if(t.hasAttribute('data-rmsongs')){ rmOpenSongs(); return; }
+  if(t.dataset.rmivplay){ const [id,d]=t.dataset.rmivplay.split('|'); rmIvPlay(id,d); return; }
   if(t.dataset.rmtab){ rmGoTab(t.dataset.rmtab); return; }
   if(t.dataset.rmlesson){ rmOpenLesson(t.dataset.rmlesson,t.hasAttribute('data-replace')); return; }
   if(t.hasAttribute('data-rmcof')){ rmGoCircle(); return; }

@@ -131,7 +131,7 @@ If an older installation stops receiving reminders, reload it, then check **Remi
 | Workflow | When | What |
 |---|---|---|
 | Deploy the app | every push | builds `dist/` and publishes it |
-| Build paintings | 1st of every month | rebuilds `data/paintings.json` from Wikidata (the painters' best-known works, the best-known works of the great museums, and every work already in the collection), commits it, redeploys |
+| Build paintings | 1st of every month | rebuilds `data/paintings.json` from Wikidata (the painters' best-known works, frescoes and wall paintings included, such as the Raphael Rooms, the Sistine Chapel and the Last Supper; the best-known works of the great museums, up to 40 from the Vatican; and every work already in the collection), commits it, redeploys |
 | Sync words from Notion | once a day, 06:23 UTC | Notion → your private Firestore space |
 | Daily reminders | every 10 minutes | one notification a day per device, from the hour you picked (GitHub delays and drops scheduled runs, so it asks often; the first run after that hour sends) |
 
