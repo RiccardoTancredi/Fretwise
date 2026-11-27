@@ -17,15 +17,18 @@ const MAX = 900, PER_ARTIST = 12, TOP = 6, FAME_MIN = 6, PAINTER_MIN = 40;
 const DIED_BEFORE = new Date().getUTCFullYear() - 70;   // 2026: died in 1955 or earlier
 const EXCLUDE = new Set(['Q334138', 'Q326503']);        // explicit works, left out of a learning app
 
-async function sparql(q, tries = 3) {
+// too many queries in a row get a 429: wait as long as Wikidata asks (or longer each time), then try again
+async function sparql(q, tries = 6) {
   for (let i = 1; ; i++) {
+    let wait = 5000 * i;
     try {
       const r = await fetch(ENDPOINT + encodeURIComponent(q), { headers: UA });
+      if (r.status === 429) wait = Math.max(wait, 1000 * (+r.headers.get('retry-after') || 30));
       if (!r.ok) throw new Error('Wikidata ' + r.status);
       return JSON.parse(await r.text()).results.bindings; // a timed-out query comes back as broken JSON
     } catch (e) {
       if (i >= tries) throw e;
-      await new Promise(res => setTimeout(res, 5000 * i));
+      await new Promise(res => setTimeout(res, wait));
     }
   }
 }
@@ -89,6 +92,37 @@ for (const [a, m] of periodWorks) {
 }
 console.log(`periods: ${picked.length} works by ${periodWorks.size} painters`);
 
+// 2c) beyond paintings, for a few artists: Michelangelo's sculptures and drawings, Leonardo's drawings and
+//     sculptures, and Alphonse Mucha's posters and lithographs with his paintings (none of which a few
+//     Wikipedias cover, so no fame floor for him). kind: what the app calls the work; none for a painting
+// (the classes listed one by one: walking Wikidata's whole tree under "drawing" times out)
+const SCULPTURE = ['Q860861', 'Q179700', 'Q837249', 'Q2793709', 'Q29168168', 'Q14562306', 'Q241045', 'Q848330'];
+const DRAWING = ['Q93184', 'Q2647254', 'Q217106', 'Q1416517', 'Q5078274'];
+const PRINT = ['Q429785', 'Q15123870', 'Q11060274'];
+const LOST = 'wd:Q26883973 wd:Q4140840 wd:Q104438958';
+const EXTRA = [
+  { a: 'Q5592', kind: 'sculpture', classes: SCULPTURE, min: 3, cap: 60 },
+  { a: 'Q5592', kind: 'drawing', classes: DRAWING, min: 0, cap: 35 },
+  { a: 'Q762', kind: 'drawing', classes: DRAWING, min: 2, cap: 40 },
+  { a: 'Q762', kind: 'sculpture', classes: SCULPTURE, min: 0, cap: 5 },
+  { a: 'Q146691', kind: null, min: 0, cap: 50 },
+  { a: 'Q146691', kind: 'print', classes: PRINT, min: 0, cap: 30 },
+];
+for (const e of EXTRA) {
+  const what = e.classes ? `VALUES ?t { ${e.classes.map(c => 'wd:' + c).join(' ')} } ?p wdt:P31 ?t.` : `${KINDS} ?p wdt:P31 ?kind.`;
+  const rows = await sparql(`SELECT DISTINCT ?p ?img ?links WHERE { ${what} ?p wdt:P170 wd:${e.a}; wdt:P18 ?img; wikibase:sitelinks ?links.
+    FILTER(?links >= ${e.min}) ${e.classes ? 'FILTER NOT EXISTS { ?p wdt:P31 wd:Q3305213 }' : ''}
+    FILTER NOT EXISTS { VALUES ?lost { ${LOST} } ?p wdt:P31 ?lost } }`);
+  const seen = new Set(); let n = 0;
+  for (const b of rows.sort((x, y) => +y.links.value - +x.links.value)) {
+    const id = qid(b.p.value); if (seen.has(id)) continue; seen.add(id);
+    if (EXCLUDE.has(id) || inSet.has(id)) continue;
+    picked.push({ id, a: e.a, image: decodeURIComponent(qid(b.img.value)), links: +b.links.value, ...(e.kind ? { kind: e.kind } : {}) }); inSet.add(id);
+    if (++n >= e.cap) break;
+  }
+  console.log(`${e.a} ${e.kind || 'painting'}: +${n}`);
+}
+
 // 3) per painter: their best-known works, plus some much less covered ones (the "deep cuts")
 const byPainter = new Map();
 for (const o of works.values()) { if (!byPainter.has(o.a)) byPainter.set(o.a, []); byPainter.get(o.a).push(o); }
@@ -109,7 +143,7 @@ const MUSEUMS = ['Uffizi Gallery', 'Vatican Museums', 'Pinacoteca Vaticana', 'Ga
   'Alte Pinakothek', 'Gemäldegalerie Alte Meister', 'Hermitage Museum', 'Royal Museums of Fine Arts of Belgium', 'Musée Condé', 'Louvre Museum', 'Galleria Palatina', 'Palazzo Pitti',
   "Musée de l'Orangerie", 'Musée Marmottan Monet', 'Metropolitan Museum of Art', 'Art Institute of Chicago', 'National Gallery of Art', 'Courtauld Gallery',
   'Museum of Fine Arts, Boston', 'Tate Britain', 'Alte Nationalgalerie', 'Hamburger Kunsthalle', 'Städel Museum', 'Gemäldegalerie, Berlin'];
-const PER_MUSEUM = 15, PER_MUSEUM_OF = { 'Vatican Museums': 40 };   // the Vatican: the Raphael Rooms and the Sistine Chapel too
+const PER_MUSEUM = 15, PER_MUSEUM_OF = { 'Vatican Museums': 40, "Musée d'Orsay": 60, 'Pinacoteca di Brera': 50, 'National Gallery': 60 };   // the Vatican: the Raphael Rooms and the Sistine Chapel too
 // museums whose great works have no Wikipedia pages of their own (Monet's Water Lilies panels at the Orangerie):
 // every painting there by a painter already in the collection, however little covered
 const ANY_FAME = { "Musée de l'Orangerie": 0, 'Musée Marmottan Monet': 0 };
@@ -130,14 +164,14 @@ for (const b of museums) {
 
 // 3c) works already in the collection stay (while still out of copyright, with a picture), so a rebuild
 //     never takes away a painting someone has been learning
-let previous = [];
-try { previous = JSON.parse(await readFile(new URL('../data/paintings.json', import.meta.url), 'utf8')).paintings.map(x => x.id); } catch (e) {}
+let previous = []; const previousKind = new Map();
+try { previous = JSON.parse(await readFile(new URL('../data/paintings.json', import.meta.url), 'utf8')).paintings.map(x => { if (x.kind) previousKind.set(x.id, x.kind); return x.id; }); } catch (e) {}
 for (const group of chunks(previous.filter(id => !inSet.has(id) && !EXCLUDE.has(id)), 150)) {
   const rows = await sparql(`SELECT ?p ?a ?img ?links WHERE { VALUES ?p { ${group.map(id => 'wd:' + id).join(' ')} }
     ?p wdt:P170 ?a; wdt:P18 ?img; wikibase:sitelinks ?links. ?a wdt:P570 ?d. FILTER(YEAR(?d) < ${DIED_BEFORE}) }`);
   for (const r of rows) {
     const id = qid(r.p.value); if (inSet.has(id)) continue;
-    picked.push({ id, a: qid(r.a.value), image: decodeURIComponent(qid(r.img.value)), links: +r.links.value }); inSet.add(id);
+    picked.push({ id, a: qid(r.a.value), image: decodeURIComponent(qid(r.img.value)), links: +r.links.value, ...(previousKind.has(id) ? { kind: previousKind.get(id) } : {}) }); inSet.add(id);
   }
 }
 
@@ -208,7 +242,7 @@ for (const o of picked) {
   if (!title || !x.al) continue;                       // nothing to ask about without both names
   const movement = x.ml || onlyMv(o.a);
   paintings.push({
-    id: o.id, title, artist: x.al, year: x.year ?? null, movement, ...(movement && !x.ml ? { movementOf: 'painter' } : {}), museum: placeOf.get(o.id).museum, ...(placeOf.get(o.id).country ? { country: placeOf.get(o.id).country } : {}), image: o.image,
+    id: o.id, ...(o.kind ? { kind: o.kind } : {}), title, artist: x.al, year: x.year ?? null, movement, ...(movement && !x.ml ? { movementOf: 'painter' } : {}), museum: placeOf.get(o.id).museum, ...(placeOf.get(o.id).country ? { country: placeOf.get(o.id).country } : {}), image: o.image,
     wiki: x.t ? 'https://en.wikipedia.org/wiki/' + encodeURIComponent(x.t.replace(/ /g, '_')) : null,
     // Commons serves a resized copy of any file through Special:FilePath
     thumb: 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(o.image) + '?width=900',

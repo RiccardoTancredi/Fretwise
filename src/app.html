@@ -8737,6 +8737,54 @@ const MV_SAME={'Baroque painting':'Baroque','Italian Baroque painting':'Baroque'
   'realism':'Realism','French Realism':'Realism','neoplasticism':'De Stijl','pointillism':'Neo-impressionism',
   'Florentine Renaissance art':'Renaissance','English Renaissance':'Renaissance','Italian Renaissance':'Renaissance'};
 const mvOf=x=>{ const m=x&&x.movement; if(!m) return ''; const c=MV_SAME[m]||m; return c[0].toUpperCase()+c.slice(1); };
+// the periods: Wikidata's hundred-odd movement names folded into twelve, most with their schools, so a round
+// can stay in one period and ask whose work it is among painters of the same time and place
+const P_PERIODS=[
+  {id:'got',name:'Gothic and Proto-Renaissance',when:'c. 1250–1420',schools:[['sie','Siena'],['intl','International Gothic']]},
+  {id:'ren',name:'Renaissance',when:'c. 1420–1520',schools:[['flo','Florence and central Italy'],['high','High Renaissance'],['ven','Venice'],['nor','Northern Renaissance']]},
+  {id:'man',name:'Mannerism',when:'c. 1520–1600',schools:[]},
+  {id:'bar',name:'Baroque',when:'c. 1600–1720',schools:[['ita','Italy: Caravaggio and after'],['fla','Flanders'],['dut','Dutch Golden Age'],['spa','Spain'],['cla','French classicism']]},
+  {id:'roc',name:'Rococo',when:'c. 1720–1780',schools:[]},
+  {id:'neo',name:'Neoclassicism',when:'c. 1760–1830',schools:[]},
+  {id:'rom',name:'Romanticism',when:'c. 1790–1850',schools:[['ger','German Romanticism'],['hud','Hudson River School']]},
+  {id:'rea',name:'Realism and the academies',when:'c. 1830–1900',schools:[['real','Realism'],['acad','Academic art and Orientalism']]},
+  {id:'pre',name:'Pre-Raphaelites, Symbolism and Art Nouveau',when:'c. 1848–1914',schools:[['praf','Pre-Raphaelites'],['sym','Symbolism'],['nouv','Art Nouveau and the Secessions']]},
+  {id:'imp',name:'Impressionism',when:'c. 1865–1895',schools:[]},
+  {id:'post',name:'Post-Impressionism',when:'c. 1885–1910',schools:[['neoimp','Pointillism and Divisionism'],['nab','Pont-Aven and the Nabis']]},
+  {id:'mod',name:'Early modern art',when:'c. 1900–1940',schools:[]},
+];
+const P_PERIOD=Object.fromEntries(P_PERIODS.map(x=>[x.id,x]));
+// movement name → [period, school]; a bare "Renaissance" or "Baroque" gets its school from the painter's other works
+const P_MV=(()=>{ const m={}, put=(p,sc,names)=>names.forEach(n=>{ m[n.toLowerCase()]=[p,sc]; });
+  put('got','',['Gothic art','Gothic painting','Trecento','Proto-Renaissance','Byzantine art']); put('got','sie',['Sienese school']); put('got','intl',['International Gothic','International Gothic art in Italy']);
+  put('ren','',['Renaissance','Italian Renaissance','Renaissance painting','Italian Renaissance painting']);
+  put('ren','flo',['Early Renaissance','Quattrocento','Florentine Renaissance art','renaissance humanism','Umbrian school']); put('ren','high',['High Renaissance']);
+  put('ren','ven',['Venetian school','Veronese school']); put('ren','nor',['Early Netherlandish painting','German Renaissance','Northern Renaissance','English Renaissance','Protestant Reformation']);
+  put('man','',['Mannerism']);
+  put('bar','',['Baroque','Baroque painting','Baroque art']); put('bar','ita',['Caravaggisti','Italian Baroque painting']); put('bar','fla',['Flemish Baroque painting']);
+  put('bar','dut',['Dutch Golden Age painting','Delft school']); put('bar','spa',['Spanish Baroque painting','Spanish Golden Age']); put('bar','cla',['Classicism','Classicist painting']);
+  put('roc','',['Rococo','Rococo painting','Rococo Revival']); put('neo','',['Neoclassicism','Neoclassical painting','neo-Pompeian','Neoclassical architecture']);
+  put('rom','',['Romanticism','Romantisme','Romantic painting','Post-romanticism','Troubadour style','Troubadour style painting']); put('rom','ger',['German Romanticism','Düsseldorf school of painting']); put('rom','hud',['Hudson River school']);
+  put('rea','real',['realism','French Realism','Naturalism','Barbizon school','Peredvizhniki','Macchiaioli']); put('rea','acad',['academic art','Orientalism','Orientalist painting','historicism']);
+  put('pre','praf',['Pre-Raphaelite Brotherhood','Aestheticism','fairy painting','Arts and Crafts movement']); put('pre','sym',['Symbolism','Russian symbolism','Tonalism','Les XX']); put('pre','nouv',['Art Nouveau','Vienna Secession','École de Nancy']);
+  put('imp','',['Impressionism']); put('post','',['Post-impressionism']); put('post','neoimp',['Neo-impressionism','pointillism','divisionism']); put('post','nab',['Pont-Aven School','Les Nabis']);
+  put('mod','',['Expressionism','Fauvism','cubism','Proto-Cubism','Cubo-Futurism','Futurism','Suprematism','abstract art','De Stijl','neoplasticism','The Blue Rider','modernism','modern art','School of Paris','Art Deco','naïve art','Regionalism']);
+  return m; })();
+// each work's period and school: its own movement; else the one most of the painter's works have; else
+// (period only) its date. Worked out once per collection
+let P_PER=null;
+function pPeriods(){
+  if(P_PER&&P_PER.data===PDATA) return P_PER;
+  const own=x=>P_MV[(x.movement||'').toLowerCase()]||null, by=new Map(), mostOf=(m)=>{ let b=null,n=0; m.forEach((c,k)=>{ if(c>n){ b=k; n=c; } }); return b; };
+  (PDATA||[]).forEach(x=>{ const o=own(x); if(!o) return; const a=by.get(x.artist)||{p:new Map(),s:new Map()}; a.p.set(o[0],(a.p.get(o[0])||0)+1); if(o[1]) a.s.set(o[0]+'|'+o[1],(a.s.get(o[0]+'|'+o[1])||0)+1); by.set(x.artist,a); });
+  const byYear=y=>y==null?'':y<1420?'got':y<1520?'ren':y<1600?'man':y<1720?'bar':y<1770?'roc':y<1800?'neo':'';
+  const map=new Map();
+  (PDATA||[]).forEach(x=>{ const o=own(x), a=by.get(x.artist); let p=o?o[0]:a?mostOf(a.p):byYear(x.year), sc=o?o[1]:'';
+    if(p&&!sc&&a){ let best='',n=0; a.s.forEach((c,k)=>{ const [pp,ss]=k.split('|'); if(pp===p&&c>n){ best=ss; n=c; } }); sc=best; }
+    if(p) map.set(x.id,{p,s:sc}); });
+  return P_PER={data:PDATA,map};
+}
+const pPeriodOf=x=>pPeriods().map.get(x.id)||null;
 // questions a work can be asked: the movement and the museum only where the data has them
 const pCanAsk=(x,k)=>k==='movement'?!!mvOf(x):k==='museum'?!!x.museum:true;
 // days to the next review by box: the next day, 3 days, a week, 16 days, 35 days, then three months
@@ -8808,15 +8856,24 @@ function paintOptions(x,kind){
     for(let t=0;ys.length<4&&t<200;t++){ const y=x.year+Math.round((Math.random()*2-1)*120); if(ok(y)) ys.push(y); }
     return ys.sort((a,b)=>a-b).map(String);
   }
-  // wrong titles: other works by the same painter first, then works of the same period
-  const same=shuffle(all.filter(p=>p.artist===x.artist&&p.title!==x.title));
-  const near=shuffle(all.filter(p=>p.artist!==x.artist&&p.title!==x.title)).sort((p,q)=>yearGap(p,x)-yearGap(q,x)).slice(0,12);
+  // wrong titles: other works by the same painter first, then works of the same period; of the same kind
+  // (sculptures with sculptures) wherever there are enough
+  const kindOk=p=>pNoun(p)===pNoun(x), byKind=l=>l.filter(kindOk).length>=3?l.filter(kindOk):l;
+  const same=shuffle(byKind(all.filter(p=>p.artist===x.artist&&p.title!==x.title)));
+  const near=shuffle(byKind(all.filter(p=>p.artist!==x.artist&&p.title!==x.title))).sort((p,q)=>yearGap(p,x)-yearGap(q,x)).slice(0,12);
   const titles=[]; same.concat(shuffle(near)).forEach(p=>{ if(titles.length<3&&titles.indexOf(p.title)<0) titles.push(p.title); });
   return shuffle([x.title].concat(titles));
 }
 const pAnswer=it=>it.kind==='artist'?it.x.artist:it.kind==='year'?String(it.x.year):it.kind==='museum'?it.x.museum:it.kind==='movement'?mvOf(it.x):it.x.title;
 const pRight=it=>it.pick!=null&&it.pick>=0&&it.opts[it.pick]===pAnswer(it);
 const P_QUESTION={artist:'Who painted this?',title:'What is this painting called?',year:'When was it painted?',museum:'Where does it hang today?',movement:'Which art movement or school is it?'};
+// a few works are sculptures, drawings or prints (Michelangelo, Leonardo, Mucha): the question says so
+const pNoun=x=>x&&x.kind||'painting';
+function pQuestion(it){
+  const n=pNoun(it.x); if(n==='painting') return P_QUESTION[it.kind];
+  return {artist:n==='sculpture'?'Who sculpted this?':n==='drawing'?'Who drew this?':'Who made this print?',title:`What is this ${n} called?`,year:'When was it made?',
+    museum:n==='sculpture'?'Where is it today?':'Where is it kept today?',movement:P_QUESTION.movement}[it.kind];
+}
 function pFeedback(cls,txt){ const el=$('pfeedback'); el.className='feedback'+(cls?' '+cls:''); el.textContent=txt; }
 function startPaint(list,mode){
   const pool=(list||pPool()).filter(x=>PS.kinds.some(k=>pCanAsk(x,k)));
@@ -8843,7 +8900,7 @@ function scorePaint(it,ok){
 function answerPaint(k){
   const it=PSN.items[PSN.i]; if(it.pick!=null) return;
   it.pick=k; const ok=pRight(it); if(ok) PSN.right++;
-  rememberExercise('paintings',{kind:'painting',title:P_QUESTION[it.kind],ok,work:it.x,answer:pAnswer(it),picked:it.opts[k]});
+  rememberExercise('paintings',{kind:'painting',title:pQuestion(it),ok,work:it.x,answer:pAnswer(it),picked:it.opts[k]});
   scorePaint(it,ok); pSave(); pStoreSession(); bump('paintings'); renderPaint();
 }
 function nextPaint(){
@@ -8968,7 +9025,7 @@ function galleryHtml(){
 const commonsPage=img=>'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(String(img||'').replace(/ /g,'_'));
 function pCaption(x){
   const where=x.museum?esc(x.museum)+(x.country?` (${esc(x.country)})`:''):'', mv=x.movement?esc(mvOf(x))+(x.movementOf==='painter'?' (the painter’s)':''):'';
-  return `<div class="pcap">${pStar(x.id)}<b>${esc(x.title)}</b><span>${esc(x.artist)}${x.year?`, ${x.year}`:''}</span>${where||mv?`<span>${[where,mv].filter(Boolean).join(' · ')}</span>`:''}<span><span class="tier">${esc(x.fame)}</span>${x.wiki?` · <a href="${esc(x.wiki)}" target="_blank" rel="noopener">Read about it</a>`:''}</span></div>`;
+  return `<div class="pcap">${pStar(x.id)}<b>${esc(x.title)}</b><span>${esc(x.artist)}${x.year?`, ${x.year}`:''}</span>${where||mv?`<span>${[where,mv].filter(Boolean).join(' · ')}</span>`:''}<span><span class="tier">${x.kind?esc(x.kind)+' · ':''}${esc(x.fame)}</span>${x.wiki?` · <a href="${esc(x.wiki)}" target="_blank" rel="noopener">Read about it</a>`:''}</span></div>`;
 }
 function renderPaint(){
   if(view!=='paint') return;
@@ -9003,7 +9060,7 @@ function renderPaint(){
   }else{
     const it=PSN.items[PSN.i], x=it.x, ans=pAnswer(it);
     eb.textContent=`${PSN.mode==='review'?'Review · ':PSN.mode==='new'?'New · ':''}Painting ${PSN.i+1} of ${PSN.items.length}`;
-    pr.textContent=P_QUESTION[it.kind];
+    pr.textContent=pQuestion(it);
     sc.textContent=`${PSN.right} right`;
     dots.innerHTML=PSN.items.map((o,k)=>`<span class="dot ${o.pick==null?(k===PSN.i?'cur':''):o.pick<0?'':(pRight(o)?'ok':'no')}"></span>`).join('');
     h+=`<figure class="pframe" style="margin:0"><span class="ploading">Loading the picture…</span><img class="wait" src="${esc(x.thumb)}" data-big="${esc(pBig(x))}" alt="${it.pick!=null?esc(x.title+' by '+x.artist):'A painting to identify'}" decoding="async"></figure>`;
@@ -9065,7 +9122,7 @@ $('pbody').addEventListener('click',e=>{
   else if(a==='nextw') pgStep(1);
   else if(a==='practise') startPaint(PG.ids.map(pWork));
   else if(a==='next') nextPaint();
-  else if(a==='skip'){ const it=PSN.items[PSN.i]; if(it.pick!=null) return; it.pick=-1; rememberExercise('paintings',{kind:'painting',title:P_QUESTION[it.kind],ok:null,work:it.x,answer:pAnswer(it),picked:'Skipped'}); nextPaint(); }
+  else if(a==='skip'){ const it=PSN.items[PSN.i]; if(it.pick!=null) return; it.pick=-1; rememberExercise('paintings',{kind:'painting',title:pQuestion(it),ok:null,work:it.x,answer:pAnswer(it),picked:'Skipped'}); nextPaint(); }
   else if(a==='quit'){ PSN=null; pStoreSession(); pFeedback('',''); renderPaint(); }
   else if(a==='retry') renderPaint();
 });
