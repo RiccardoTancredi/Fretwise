@@ -47,15 +47,57 @@ for (const group of chunks(painters, 80)) {
   }
 }
 
+// 2b) the periods this collection cares about most, painted the world over: the Renaissance first, then
+//     Romanticism, then Impressionism. Their painters (by movement on Wikidata, plus the great ones Wikidata
+//     gives no movement, such as Dürer, Masaccio, Mantegna, Friedrich) get every work that a few Wikipedias
+//     cover, up to a cap per painter, outside the cap of everyone else
+const PERIODS = [
+  { id: 'ren', cap: 100, movements: ['Q4692', 'Q1474884', 'Q1472236', 'Q610877', 'Q610687', 'Q131808', 'Q443153', 'Q2455000'],
+    painters: ['Q5580', 'Q5681', 'Q240737', 'Q8457', 'Q248615', 'Q8453', 'Q191423', 'Q368546', 'Q296265', 'Q5664', 'Q290407', 'Q8459', 'Q7814', 'Q17169', 'Q48319', 'Q130531', 'Q215251', 'Q346502', 'Q9319', 'Q102272', 'Q762', 'Q310973', 'Q7031', 'Q5811', 'Q5592', 'Q9440', 'Q5822', 'Q43270', 'Q5827', 'Q314275', 'Q5597', 'Q312617', 'Q5669', 'Q285423', 'Q47551', 'Q5581'] },
+  { id: 'rom', cap: 60, movements: ['Q37068'], painters: ['Q433434', 'Q216999', 'Q104884', 'Q33477', 'Q223725', 'Q5432', 'Q159758', 'Q159297', 'Q937096', 'Q166585', 'Q334001', 'Q184212'] },
+  { id: 'imp', cap: 60, movements: ['Q40415'], painters: ['Q175130', 'Q436844', 'Q105320', 'Q134741', 'Q737635', 'Q296', 'Q46373', 'Q1355820', 'Q607495', 'Q295144', 'Q173223', 'Q39931', 'Q40599'] },
+];
+const PERIOD_MIN = 5;
+const periodOf = new Map();
+for (const per of PERIODS) {
+  const rows = await sparql(`SELECT DISTINCT ?a WHERE { VALUES ?m { ${per.movements.map(m => 'wd:' + m).join(' ')} }
+    ?a wdt:P106 wd:Q1028181; wdt:P135 ?m; wikibase:sitelinks ?n. FILTER(?n >= 30) ?a wdt:P570 ?d. FILTER(YEAR(?d) < ${DIED_BEFORE}) }`);
+  for (const a of [...rows.map(b => qid(b.a.value)), ...per.painters]) if (!periodOf.has(a)) periodOf.set(a, per);
+}
+// the named ones are checked too: out of copyright only
+const periodPainters = [];
+for (const group of chunks([...periodOf.keys()], 150)) {
+  const rows = await sparql(`SELECT ?a WHERE { VALUES ?a { ${group.map(a => 'wd:' + a).join(' ')} } ?a wdt:P570 ?d. FILTER(YEAR(?d) < ${DIED_BEFORE}) }`);
+  periodPainters.push(...rows.map(b => qid(b.a.value)));
+}
+const picked = [], inSet = new Set();
+const periodWorks = new Map();
+for (const group of chunks([...new Set(periodPainters)], 60)) {
+  const rows = await sparql(`SELECT DISTINCT ?p ?a ?img ?links WHERE { VALUES ?a { ${group.map(a => 'wd:' + a).join(' ')} } ${KINDS}
+    ?p wdt:P170 ?a; wdt:P31 ?kind; wdt:P18 ?img; wikibase:sitelinks ?links. FILTER(?links >= ${PERIOD_MIN}) }`);
+  for (const b of rows) {
+    const id = qid(b.p.value), a = qid(b.a.value);
+    if (EXCLUDE.has(id)) continue;
+    if (!periodWorks.has(a)) periodWorks.set(a, new Map());
+    if (!periodWorks.get(a).has(id)) periodWorks.get(a).set(id, { id, a, image: decodeURIComponent(qid(b.img.value)), links: +b.links.value });
+  }
+}
+for (const [a, m] of periodWorks) {
+  for (const o of [...m.values()].sort((x, y) => y.links - x.links).slice(0, periodOf.get(a).cap)) {
+    if (inSet.has(o.id)) continue; picked.push(o); inSet.add(o.id);
+  }
+}
+console.log(`periods: ${picked.length} works by ${periodWorks.size} painters`);
+
 // 3) per painter: their best-known works, plus some much less covered ones (the "deep cuts")
 const byPainter = new Map();
 for (const o of works.values()) { if (!byPainter.has(o.a)) byPainter.set(o.a, []); byPainter.get(o.a).push(o); }
-const picked = [];
-for (const list of [...byPainter.values()].map(l => l.sort((x, y) => y.links - x.links)).sort((x, y) => y[0].links - x[0].links)) {
+let general = 0;
+for (const list of [...byPainter.values()].filter(l => !periodWorks.has(l[0].a)).map(l => l.sort((x, y) => y.links - x.links)).sort((x, y) => y[0].links - x[0].links)) {
   const top = list.slice(0, TOP), rest = list.slice(TOP), step = Math.max(1, rest.length / (PER_ARTIST - TOP));
   const spread = []; for (let i = rest.length - 1; i >= 0 && spread.length < PER_ARTIST - TOP; i -= step) spread.push(rest[Math.floor(i)]);
-  picked.push(...top, ...spread);
-  if (picked.length >= MAX) break;
+  for (const o of [...top, ...spread]) if (!inSet.has(o.id)) { picked.push(o); inSet.add(o.id); general++; }
+  if (general >= MAX) break;
 }
 
 // 3b) the great museums: their best-known works too, so the collection doesn't rest on the painters' fame
@@ -64,20 +106,24 @@ const MUSEUMS = ['Uffizi Gallery', 'Vatican Museums', 'Pinacoteca Vaticana', 'Ga
   "Gallerie dell'Accademia", 'Museo di Capodimonte', "Galleria Nazionale d'Arte Antica", 'Pinacoteca Ambrosiana', 'Accademia Carrara',
   'Galleria Doria Pamphilj', 'Capitoline Museums', 'Galleria Sabauda', 'Galleria Nazionale delle Marche', 'Louvre', "Musée d'Orsay",
   'Museo del Prado', 'Thyssen-Bornemisza Museum', 'National Gallery', 'Rijksmuseum', 'Mauritshuis', 'Kunsthistorisches Museum',
-  'Alte Pinakothek', 'Gemäldegalerie Alte Meister', 'Hermitage Museum', 'Royal Museums of Fine Arts of Belgium', 'Musée Condé', 'Louvre Museum', 'Galleria Palatina', 'Palazzo Pitti'];
+  'Alte Pinakothek', 'Gemäldegalerie Alte Meister', 'Hermitage Museum', 'Royal Museums of Fine Arts of Belgium', 'Musée Condé', 'Louvre Museum', 'Galleria Palatina', 'Palazzo Pitti',
+  "Musée de l'Orangerie", 'Musée Marmottan Monet', 'Metropolitan Museum of Art', 'Art Institute of Chicago', 'National Gallery of Art', 'Courtauld Gallery',
+  'Museum of Fine Arts, Boston', 'Tate Britain', 'Alte Nationalgalerie', 'Hamburger Kunsthalle', 'Städel Museum', 'Gemäldegalerie, Berlin'];
 const PER_MUSEUM = 15, PER_MUSEUM_OF = { 'Vatican Museums': 40 };   // the Vatican: the Raphael Rooms and the Sistine Chapel too
-const inSet = new Set(picked.map(o => o.id));
+// museums whose great works have no Wikipedia pages of their own (Monet's Water Lilies panels at the Orangerie):
+// every painting there by a painter already in the collection, however little covered
+const ANY_FAME = { "Musée de l'Orangerie": 0, 'Musée Marmottan Monet': 0 };
 const museums = await sparql(`SELECT DISTINCT ?m ?ml WHERE { VALUES ?ml { ${MUSEUMS.map(m => JSON.stringify(m) + '@en').join(' ')} } ?m rdfs:label ?ml; wdt:P17 []. }`);
 for (const b of museums) {
   const m = qid(b.m.value);
   const rows = await sparql(`SELECT DISTINCT ?p ?a ?img ?links WHERE { ${KINDS} ?p wdt:P195 wd:${m}; wdt:P31 ?kind; wdt:P170 ?a; wdt:P18 ?img; wikibase:sitelinks ?links.
-    FILTER(?links >= ${FAME_MIN}) ?a wdt:P570 ?d. FILTER(YEAR(?d) < ${DIED_BEFORE}) } ORDER BY DESC(?links) LIMIT 100`);
+    FILTER(?links >= ${ANY_FAME[b.ml.value] ?? FAME_MIN}) ?a wdt:P570 ?d. FILTER(YEAR(?d) < ${DIED_BEFORE}) } ORDER BY DESC(?links) LIMIT 100`);
   let added = 0;
   for (const r of rows) {
     const id = qid(r.p.value);
     if (inSet.has(id) || EXCLUDE.has(id)) continue;
     picked.push({ id, a: qid(r.a.value), image: decodeURIComponent(qid(r.img.value)), links: +r.links.value }); inSet.add(id);
-    if (++added >= (PER_MUSEUM_OF[b.ml.value] || PER_MUSEUM)) break;
+    if (++added >= (PER_MUSEUM_OF[b.ml.value] || (b.ml.value in ANY_FAME ? 30 : PER_MUSEUM))) break;
   }
   console.log(`${b.ml.value}: +${added}`);
 }
@@ -98,9 +144,12 @@ for (const group of chunks(previous.filter(id => !inSet.has(id) && !EXCLUDE.has(
 // 4) details for the chosen ones: English names, year, movement, museum, English Wikipedia article
 const info = new Map();
 for (const group of chunks(picked, 140)) {
-  const rows = await sparql(`SELECT ?p ?pl ?al ?year ?ml ?cl ?t WHERE { VALUES (?p ?a) { ${group.map(o => `(wd:${o.id} wd:${o.a})`).join(' ')} }
+  // a name may be kept only as the "mul" label (the same in every language), as Albrecht Dürer's is
+  const rows = await sparql(`SELECT ?p ?pl ?al ?plm ?alm ?year ?ml ?cl ?t WHERE { VALUES (?p ?a) { ${group.map(o => `(wd:${o.id} wd:${o.a})`).join(' ')} }
     OPTIONAL { ?p rdfs:label ?pl. FILTER(LANG(?pl) = "en") }
     OPTIONAL { ?a rdfs:label ?al. FILTER(LANG(?al) = "en") }
+    OPTIONAL { ?p rdfs:label ?plm. FILTER(LANG(?plm) = "mul") }
+    OPTIONAL { ?a rdfs:label ?alm. FILTER(LANG(?alm) = "mul") }
     OPTIONAL { ?p wdt:P571 ?inc. BIND(YEAR(?inc) AS ?year) }
     OPTIONAL { ?p wdt:P135 ?m. ?m rdfs:label ?ml. FILTER(LANG(?ml) = "en") }
     OPTIONAL { ?p wdt:P195 ?c. ?c rdfs:label ?cl. FILTER(LANG(?cl) = "en") }
@@ -108,6 +157,7 @@ for (const group of chunks(picked, 140)) {
   for (const b of rows) {
     const id = qid(b.p.value), x = info.get(id) || {};
     x.pl ??= b.pl?.value; x.al ??= b.al?.value; x.t ??= b.t?.value; x.ml ??= b.ml?.value;
+    x.plm ??= b.plm?.value; x.alm ??= b.alm?.value;
     if (b.cl && !x.cl) x.cl = b.cl.value.replace(/^Department of Paintings of the /, '');
     if (b.year && (x.year == null || +b.year.value < x.year)) x.year = +b.year.value;
     info.set(id, x);
@@ -153,6 +203,7 @@ const placeOf = await museumPlaces(picked, id => (info.get(id) || {}).cl || '');
 const paintings = [];
 for (const o of picked) {
   const x = info.get(o.id) || {};
+  x.al ??= x.alm; x.pl ??= x.plm;
   const title = (x.t || x.pl || '').replace(/\s*\([^)]*\)$/, '');   // drop Wikipedia's "(Manet)", "(painting)"
   if (!title || !x.al) continue;                       // nothing to ask about without both names
   const movement = x.ml || onlyMv(o.a);
