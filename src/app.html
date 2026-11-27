@@ -8743,7 +8743,7 @@ const MV_SAME={'Baroque painting':'Baroque','Italian Baroque painting':'Baroque'
   'Romantic painting':'Romanticism','German Romanticism':'Romanticism','Troubadour style painting':'Troubadour style','Orientalist painting':'Orientalism',
   'realism':'Realism','French Realism':'Realism','neoplasticism':'De Stijl','pointillism':'Neo-impressionism',
   'Florentine Renaissance art':'Renaissance','English Renaissance':'Renaissance','Italian Renaissance':'Renaissance'};
-const mvOf=x=>{ const m=x&&x.movement; if(!m) return ''; const c=MV_SAME[m]||m; return c[0].toUpperCase()+c.slice(1); };
+const mvRaw=x=>{ const m=x&&x.movement; if(!m) return ''; const c=MV_SAME[m]||m; return c[0].toUpperCase()+c.slice(1); };
 // the periods: Wikidata's hundred-odd movement names folded into twelve, most with their schools, so a round
 // can stay in one period and ask whose work it is among painters of the same time and place
 const P_PERIODS=[
@@ -8768,7 +8768,7 @@ const P_MV=(()=>{ const m={}, put=(p,sc,names)=>names.forEach(n=>{ m[n.toLowerCa
   put('ren','flo',['Early Renaissance','Quattrocento','Florentine Renaissance art','renaissance humanism','Umbrian school']); put('ren','high',['High Renaissance']);
   put('ren','ven',['Venetian school','Veronese school']); put('ren','nor',['Early Netherlandish painting','German Renaissance','Northern Renaissance','English Renaissance','Protestant Reformation']);
   put('man','',['Mannerism']);
-  put('bar','',['Baroque','Baroque painting','Baroque art']); put('bar','ita',['Caravaggisti','Italian Baroque painting']); put('bar','fla',['Flemish Baroque painting']);
+  put('bar','',['Baroque','Baroque painting','Baroque art']); put('bar','ita',['Caravaggisti','Italian Baroque painting','Baroque sculpture','Baroque architecture','Italian Baroque architecture','Roman Baroque']); put('bar','fla',['Flemish Baroque painting']);
   put('bar','dut',['Dutch Golden Age painting','Delft school']); put('bar','spa',['Spanish Baroque painting','Spanish Golden Age']); put('bar','cla',['Classicism','Classicist painting']);
   put('roc','',['Rococo','Rococo painting','Rococo Revival']); put('neo','',['Neoclassicism','Neoclassical painting','neo-Pompeian','Neoclassical architecture']);
   put('rom','',['Romanticism','Romantisme','Romantic painting','Post-romanticism','Troubadour style','Troubadour style painting']); put('rom','ger',['German Romanticism','Düsseldorf school of painting']); put('rom','hud',['Hudson River school']);
@@ -8786,14 +8786,29 @@ function pPeriods(){
   (PDATA||[]).forEach(x=>{ const o=own(x); if(!o) return; const a=by.get(x.artist)||{p:new Map(),s:new Map()}; a.p.set(o[0],(a.p.get(o[0])||0)+1); if(o[1]) a.s.set(o[0]+'|'+o[1],(a.s.get(o[0]+'|'+o[1])||0)+1); by.set(x.artist,a); });
   const byYear=y=>y==null?'':y<1420?'got':y<1520?'ren':y<1600?'man':y<1720?'bar':y<1770?'roc':y<1800?'neo':'';
   const map=new Map();
-  (PDATA||[]).forEach(x=>{ const o=own(x), a=by.get(x.artist); let p=o?o[0]:a?mostOf(a.p):byYear(x.year), sc=o?o[1]:'';
+  (PDATA||[]).forEach(x=>{ const o=own(x), a=by.get(x.artist); let p=o?o[0]:a?mostOf(a.p):byYear(x.year), sc=o?o[1]:'', src=o?'own':a?'artist':'year';
     if(p&&!sc&&a){ let best='',n=0; a.s.forEach((c,k)=>{ const [pp,ss]=k.split('|'); if(pp===p&&c>n){ best=ss; n=c; } }); sc=best; }
     // "Sienese school" also names Siena's painters of the 1400s and after: those are Renaissance
     if(p==='got'&&x.year!=null&&x.year>=1430){ p='ren'; sc='flo'; }
-    if(p) map.set(x.id,{p,s:sc}); });
+    if(p) map.set(x.id,{p,s:sc,src}); });
   return P_PER={data:PDATA,map};
 }
 const pPeriodOf=x=>pPeriods().map.get(x.id)||null;
+// the movement a question asks and the gallery groups by: the period's school, or the period; early modern art
+// keeps its own names (Fauvism, Cubism, Futurism…). Not for a work dated into a period with nothing else to go by
+const P_MV_NAME={got:{'':'Gothic and Proto-Renaissance',sie:'Sienese school',intl:'International Gothic'},
+  ren:{'':'Renaissance',flo:'Early Renaissance',high:'High Renaissance',ven:'Venetian Renaissance',nor:'Northern Renaissance'},
+  bar:{'':'Baroque',ita:'Italian Baroque',fla:'Flemish Baroque',dut:'Dutch Golden Age',spa:'Spanish Baroque',cla:'French classicism'},
+  rom:{'':'Romanticism',ger:'German Romanticism',hud:'Hudson River School'},rea:{'':'Realism and the academies',real:'Realism',acad:'Academic art'},
+  pre:{'':'Pre-Raphaelites and Symbolism',praf:'Pre-Raphaelites',sym:'Symbolism',nouv:'Art Nouveau'},post:{'':'Post-Impressionism',neoimp:'Pointillism and Divisionism',nab:'Pont-Aven and the Nabis'}};
+function mvOf(x){
+  if(!x) return ''; const v=PDATA&&pPeriodOf(x);
+  if(!v) return PDATA?'':mvRaw(x);
+  if(v.src==='year') return '';
+  if(v.p==='mod'){ const r=mvRaw(x); return r&&!/^modern/i.test(r)?(r==='The Blue Rider'?'Expressionism':r):'Early modern art'; }
+  const n=P_MV_NAME[v.p]; return n?(n[v.s]||n['']):P_PERIOD[v.p].name;
+}
+const mvDerived=x=>{ const v=PDATA&&pPeriodOf(x); return !!v&&v.src==='artist'; };
 const pInFocus=(x,f)=>{ const v=pPeriodOf(x); return !!v&&v.p===f.p&&(!f.s||v.s===f.s); };
 const pFocusName=f=>{ const P=P_PERIOD[f.p]; if(!P) return ''; const sc=f.s&&P.schools.find(z=>z[0]===f.s); return P.name+(sc?' · '+sc[1]:''); };
 // the Theory page: what each period is, its schools, and how to tell them apart (Italian names in brackets)
@@ -8832,7 +8847,7 @@ const P_THEORY={
   mod:{p:['The 1900s break with painting what the eye sees: <b>Fauvism</b> (Matisse, Derain: wild, unnatural colour), <b>Expressionism</b> (Kirchner, Munch, Kandinsky and Franz Marc of the Blue Rider: emotion through distortion), <b>Cubism</b> (Juan Gris: objects broken into planes and seen from many sides), <b>Futurism</b> (Boccioni: speed, machines, the modern city in motion), and abstraction (Kandinsky, Malevich’s Suprematism, Mondrian’s De Stijl).','Only painters who died more than 70 years ago are in the app, so Picasso, Braque, Dalí and Magritte are not here yet.']},
 };
 // questions a work can be asked: the movement and the museum only where the data has them
-const pCanAsk=(x,k)=>k==='movement'?!!mvOf(x):k==='museum'?!!x.museum:true;
+const pCanAsk=(x,k)=>k==='movement'?!!mvOf(x):k==='museum'?!!x.museum&&pNoun(x)!=='building':true;
 // days to the next review by box: the next day, 3 days, a week, 16 days, 35 days, then three months
 const P_DAYS=[0,1,3,7,16,35,90];
 // progress saved by the earlier version, with a box per question, becomes one box per work
@@ -8926,7 +8941,7 @@ const P_QUESTION={artist:'Who painted this?',title:'What is this painting called
 const pNoun=x=>x&&x.kind||'painting';
 function pQuestion(it){
   const n=pNoun(it.x); if(n==='painting') return P_QUESTION[it.kind];
-  return {artist:n==='sculpture'?'Who sculpted this?':n==='drawing'?'Who drew this?':'Who made this print?',title:`What is this ${n} called?`,year:'When was it made?',
+  return {artist:n==='sculpture'?'Who sculpted this?':n==='drawing'?'Who drew this?':n==='building'?'Who designed this building?':'Who made this print?',title:`What is this ${n} called?`,year:n==='building'?'When was it built?':'When was it made?',
     museum:n==='sculpture'?'Where is it today?':'Where is it kept today?',movement:P_QUESTION.movement}[it.kind];
 }
 function pFeedback(cls,txt){ const el=$('pfeedback'); el.className='feedback'+(cls?' '+cls:''); el.textContent=txt; }
@@ -9088,7 +9103,7 @@ function galleryHtml(){
 }
 const commonsPage=img=>'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(String(img||'').replace(/ /g,'_'));
 function pCaption(x){
-  const where=x.museum?esc(x.museum)+(x.country?` (${esc(x.country)})`:''):'', mv=x.movement?esc(mvOf(x))+(x.movementOf==='painter'?' (the painter’s)':''):'';
+  const where=x.museum?esc(x.museum)+(x.country?` (${esc(x.country)})`:''):'', mv=mvOf(x)?esc(mvOf(x))+(mvDerived(x)||x.movementOf==='painter'?' (the painter’s)':''):'';
   return `<div class="pcap">${pStar(x.id)}<b>${esc(x.title)}</b><span>${esc(x.artist)}${x.year?`, ${x.year}`:''}</span>${where||mv?`<span>${[where,mv].filter(Boolean).join(' · ')}</span>`:''}<span><span class="tier">${x.kind?esc(x.kind)+' · ':''}${esc(x.fame)}</span>${x.wiki?` · <a href="${esc(x.wiki)}" target="_blank" rel="noopener">Read about it</a>`:''}</span></div>`;
 }
 // whose work is it, among painters of one period: the period, its schools, and the Theory page

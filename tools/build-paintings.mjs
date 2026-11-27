@@ -15,7 +15,8 @@ const UA = { Accept: 'application/sparql-results+json', 'User-Agent': 'paintings
 const KINDS = 'VALUES ?kind { wd:Q3305213 wd:Q22669139 wd:Q134194 wd:Q99516640 wd:Q219423 }';
 const MAX = 900, PER_ARTIST = 12, TOP = 6, FAME_MIN = 6, PAINTER_MIN = 40;
 const DIED_BEFORE = new Date().getUTCFullYear() - 70;   // 2026: died in 1955 or earlier
-const EXCLUDE = new Set(['Q334138', 'Q326503']);        // explicit works, left out of a learning app
+const EXCLUDE = new Set(['Q334138', 'Q326503',         // explicit works, left out of a learning app
+  'Q4945054']);                                          // the Sleeping Hermaphroditus: antique; Bernini only made the mattress
 
 // too many queries in a row get a 429: wait as long as Wikidata asks (or longer each time), then try again
 async function sparql(q, tries = 6) {
@@ -107,17 +108,21 @@ const EXTRA = [
   { a: 'Q762', kind: 'sculpture', classes: SCULPTURE, min: 0, cap: 5 },
   { a: 'Q146691', kind: null, min: 0, cap: 50 },
   { a: 'Q146691', kind: 'print', classes: PRINT, min: 0, cap: 30 },
+  // Bernini's sculptures, fountains and tombs, and the buildings he and Borromini designed (architect: P84)
+  { a: 'Q160538', kind: 'sculpture', classes: [...SCULPTURE, 'Q483453', 'Q381885', 'Q56055312'], min: 3, cap: 50, born: 1598 },
+  { a: 'Q160538', kind: 'building', prop: 'P84', any: true, min: 3, cap: 15, born: 1598 },
+  { a: 'Q123150', kind: 'building', prop: 'P84', any: true, min: 3, cap: 20, born: 1599 },
 ];
 for (const e of EXTRA) {
-  const what = e.classes ? `VALUES ?t { ${e.classes.map(c => 'wd:' + c).join(' ')} } ?p wdt:P31 ?t.` : `${KINDS} ?p wdt:P31 ?kind.`;
-  const rows = await sparql(`SELECT DISTINCT ?p ?img ?links WHERE { ${what} ?p wdt:P170 wd:${e.a}; wdt:P18 ?img; wikibase:sitelinks ?links.
+  const what = e.any ? '' : e.classes ? `VALUES ?t { ${e.classes.map(c => 'wd:' + c).join(' ')} } ?p wdt:P31 ?t.` : `${KINDS} ?p wdt:P31 ?kind.`;
+  const rows = await sparql(`SELECT DISTINCT ?p ?img ?links WHERE { ${what} ?p wdt:${e.prop || 'P170'} wd:${e.a}; wdt:P18 ?img; wikibase:sitelinks ?links.
     FILTER(?links >= ${e.min}) ${e.classes ? 'FILTER NOT EXISTS { ?p wdt:P31 wd:Q3305213 }' : ''}
     FILTER NOT EXISTS { VALUES ?lost { ${LOST} } ?p wdt:P31 ?lost } }`);
   const seen = new Set(); let n = 0;
   for (const b of rows.sort((x, y) => +y.links.value - +x.links.value)) {
     const id = qid(b.p.value); if (seen.has(id)) continue; seen.add(id);
     if (EXCLUDE.has(id) || inSet.has(id)) continue;
-    picked.push({ id, a: e.a, image: decodeURIComponent(qid(b.img.value)), links: +b.links.value, ...(e.kind ? { kind: e.kind } : {}) }); inSet.add(id);
+    picked.push({ id, a: e.a, image: decodeURIComponent(qid(b.img.value)), links: +b.links.value, ...(e.kind ? { kind: e.kind } : {}), ...(e.born ? { born: e.born } : {}) }); inSet.add(id);
     if (++n >= e.cap) break;
   }
   console.log(`${e.a} ${e.kind || 'painting'}: +${n}`);
@@ -242,7 +247,7 @@ for (const o of picked) {
   if (!title || !x.al) continue;                       // nothing to ask about without both names
   const movement = x.ml || onlyMv(o.a);
   paintings.push({
-    id: o.id, ...(o.kind ? { kind: o.kind } : {}), title, artist: x.al, year: x.year ?? null, movement, ...(movement && !x.ml ? { movementOf: 'painter' } : {}), museum: placeOf.get(o.id).museum, ...(placeOf.get(o.id).country ? { country: placeOf.get(o.id).country } : {}), image: o.image,
+    id: o.id, ...(o.kind ? { kind: o.kind } : {}), title, artist: x.al, year: o.born && x.year != null && x.year < o.born + 12 ? null : x.year ?? null, movement, ...(movement && !x.ml ? { movementOf: 'painter' } : {}), museum: placeOf.get(o.id).museum, ...(placeOf.get(o.id).country ? { country: placeOf.get(o.id).country } : {}), image: o.image,
     wiki: x.t ? 'https://en.wikipedia.org/wiki/' + encodeURIComponent(x.t.replace(/ /g, '_')) : null,
     // Commons serves a resized copy of any file through Special:FilePath
     thumb: 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(o.image) + '?width=900',
