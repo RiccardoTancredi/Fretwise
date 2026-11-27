@@ -109,14 +109,20 @@ const EXTRA = [
   { a: 'Q146691', kind: null, min: 0, cap: 50 },
   { a: 'Q146691', kind: 'print', classes: PRINT, min: 0, cap: 30 },
   // Bernini's sculptures, fountains and tombs, and the buildings he and Borromini designed (architect: P84)
-  { a: 'Q160538', kind: 'sculpture', classes: [...SCULPTURE, 'Q483453', 'Q381885', 'Q56055312'], min: 3, cap: 50, born: 1598 },
+  { a: 'Q160538', kind: 'sculpture', classes: [...SCULPTURE, 'Q483453', 'Q381885', 'Q56055312'], min: 3, cap: 50, born: 1598, antique: true },
+  // Canova's sculptures (Venus Victrix at the Borghese, Cupid and Psyche, the Three Graces…), tombs and groups
+  { a: 'Q5547', kind: 'sculpture', any: true, min: 2, cap: 40, born: 1757, antique: true },
   { a: 'Q160538', kind: 'building', prop: 'P84', any: true, min: 3, cap: 15, born: 1598 },
   { a: 'Q123150', kind: 'building', prop: 'P84', any: true, min: 3, cap: 20, born: 1599 },
 ];
+// dates Wikidata has wrong, so the rules above would misread them: Cupid and Psyche is dated 174 there
+const YEAR_FIX = { Q517408: 1793 };
 for (const e of EXTRA) {
   const what = e.any ? '' : e.classes ? `VALUES ?t { ${e.classes.map(c => 'wd:' + c).join(' ')} } ?p wdt:P31 ?t.` : `${KINDS} ?p wdt:P31 ?kind.`;
+  // antique: a sculpture dated before the artist was born is an antique they restored, not their work
   const rows = await sparql(`SELECT DISTINCT ?p ?img ?links WHERE { ${what} ?p wdt:${e.prop || 'P170'} wd:${e.a}; wdt:P18 ?img; wikibase:sitelinks ?links.
-    FILTER(?links >= ${e.min}) ${e.classes ? 'FILTER NOT EXISTS { ?p wdt:P31 wd:Q3305213 }' : ''}
+    FILTER(?links >= ${e.min}) ${e.kind ? 'FILTER NOT EXISTS { ?p wdt:P31 wd:Q3305213 }' : ''}
+    ${e.antique ? `FILTER NOT EXISTS { ?p wdt:P571 ?inc. FILTER(YEAR(?inc) < ${e.born}) FILTER(?p NOT IN (${Object.keys(YEAR_FIX).map(q => 'wd:' + q).join(', ')})) }` : ''}
     FILTER NOT EXISTS { VALUES ?lost { ${LOST} } ?p wdt:P31 ?lost } }`);
   const seen = new Set(); let n = 0;
   for (const b of rows.sort((x, y) => +y.links.value - +x.links.value)) {
@@ -197,7 +203,7 @@ for (const group of chunks(picked, 140)) {
     const id = qid(b.p.value), x = info.get(id) || {};
     x.pl ??= b.pl?.value; x.al ??= b.al?.value; x.t ??= b.t?.value; x.ml ??= b.ml?.value;
     x.plm ??= b.plm?.value; x.alm ??= b.alm?.value;
-    if (b.cl && !x.cl) x.cl = b.cl.value.replace(/^Department of Paintings of the /, '');
+    if (b.cl && !x.cl) x.cl = b.cl.value.replace(/^Department of (?:Paintings|Sculptures) of the /, '');
     if (b.year && (x.year == null || +b.year.value < x.year)) x.year = +b.year.value;
     info.set(id, x);
   }
@@ -217,7 +223,7 @@ async function museumPlaces(list, museumOf) {
     for (const b of rows) {
       if (b.ended.value === 'true' || /^concept of unknown value/.test(b.cl.value)) continue;
       const id = qid(b.p.value); if (!cands.has(id)) cands.set(id, []);
-      cands.get(id).push({ museum: b.cl.value.replace(/^Department of Paintings of the /, ''), country: b.col ? COUNTRY_NAME[b.col.value] || b.col.value : '' });
+      cands.get(id).push({ museum: b.cl.value.replace(/^Department of (?:Paintings|Sculptures) of the /, ''), country: b.col ? COUNTRY_NAME[b.col.value] || b.col.value : '' });
     }
     for (const o of group) {
       const c = cands.get(o.id) || [], named = museumOf(o.id);
@@ -247,7 +253,7 @@ for (const o of picked) {
   if (!title || !x.al) continue;                       // nothing to ask about without both names
   const movement = x.ml || onlyMv(o.a);
   paintings.push({
-    id: o.id, ...(o.kind ? { kind: o.kind } : {}), title, artist: x.al, year: o.born && x.year != null && x.year < o.born + 12 ? null : x.year ?? null, movement, ...(movement && !x.ml ? { movementOf: 'painter' } : {}), museum: placeOf.get(o.id).museum, ...(placeOf.get(o.id).country ? { country: placeOf.get(o.id).country } : {}), image: o.image,
+    id: o.id, ...(o.kind ? { kind: o.kind } : {}), title, artist: x.al, year: YEAR_FIX[o.id] ?? (o.born && x.year != null && x.year < o.born + 12 ? null : x.year ?? null), movement, ...(movement && !x.ml ? { movementOf: 'painter' } : {}), museum: placeOf.get(o.id).museum, ...(placeOf.get(o.id).country ? { country: placeOf.get(o.id).country } : {}), image: o.image,
     wiki: x.t ? 'https://en.wikipedia.org/wiki/' + encodeURIComponent(x.t.replace(/ /g, '_')) : null,
     // Commons serves a resized copy of any file through Special:FilePath
     thumb: 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(o.image) + '?width=900',
