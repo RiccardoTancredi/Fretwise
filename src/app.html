@@ -337,6 +337,13 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .pcard .pct{display:flex;flex-direction:column;gap:2px;min-width:0}
 .pcard .pct b{font-family:var(--font-display);font-size:1.15rem;font-weight:800}
 .pcard .pct span{font-size:.85rem;color:var(--muted)}
+.pcard.period{flex-direction:column;align-items:stretch;margin-top:8px}
+.pper{display:flex;flex-direction:column;gap:8px} .pper select{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:8px 10px;font:inherit} .pper .row{display:flex;gap:8px;flex-wrap:wrap}
+.ptheory{display:flex;flex-direction:column;gap:12px;margin-top:10px}
+.ptper{border:1px solid var(--line);border-radius:14px;background:var(--surface-2);padding:12px 14px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.ptper h3{margin:0;font-family:var(--font-display);font-size:1.15rem} .ptper h3 .mono{font-size:.8rem;color:var(--muted);font-weight:400;margin-left:6px}
+.ptper p{margin:0;line-height:1.5} .ptsch{border-left:3px solid var(--line);padding-left:10px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.ptwho{font-size:.85rem;color:var(--muted)}
 .pcard .btn{flex-shrink:0}
 .pcard.review{background:color-mix(in srgb,var(--warn) 15%,var(--surface));border-color:color-mix(in srgb,var(--warn) 60%,var(--line))}
 .pcard.review .btn:not(:disabled){background:var(--warn);border-color:var(--warn);color:#2a1a00}
@@ -8741,7 +8748,7 @@ const mvOf=x=>{ const m=x&&x.movement; if(!m) return ''; const c=MV_SAME[m]||m; 
 // can stay in one period and ask whose work it is among painters of the same time and place
 const P_PERIODS=[
   {id:'got',name:'Gothic and Proto-Renaissance',when:'c. 1250–1420',schools:[['sie','Siena'],['intl','International Gothic']]},
-  {id:'ren',name:'Renaissance',when:'c. 1420–1520',schools:[['flo','Florence and central Italy'],['high','High Renaissance'],['ven','Venice'],['nor','Northern Renaissance']]},
+  {id:'ren',name:'Renaissance',when:'c. 1420–1520',schools:[['flo','Early Renaissance'],['high','High Renaissance'],['ven','Venice'],['nor','Northern Renaissance']]},
   {id:'man',name:'Mannerism',when:'c. 1520–1600',schools:[]},
   {id:'bar',name:'Baroque',when:'c. 1600–1720',schools:[['ita','Italy: Caravaggio and after'],['fla','Flanders'],['dut','Dutch Golden Age'],['spa','Spain'],['cla','French classicism']]},
   {id:'roc',name:'Rococo',when:'c. 1720–1780',schools:[]},
@@ -8781,10 +8788,49 @@ function pPeriods(){
   const map=new Map();
   (PDATA||[]).forEach(x=>{ const o=own(x), a=by.get(x.artist); let p=o?o[0]:a?mostOf(a.p):byYear(x.year), sc=o?o[1]:'';
     if(p&&!sc&&a){ let best='',n=0; a.s.forEach((c,k)=>{ const [pp,ss]=k.split('|'); if(pp===p&&c>n){ best=ss; n=c; } }); sc=best; }
+    // "Sienese school" also names Siena's painters of the 1400s and after: those are Renaissance
+    if(p==='got'&&x.year!=null&&x.year>=1430){ p='ren'; sc='flo'; }
     if(p) map.set(x.id,{p,s:sc}); });
   return P_PER={data:PDATA,map};
 }
 const pPeriodOf=x=>pPeriods().map.get(x.id)||null;
+const pInFocus=(x,f)=>{ const v=pPeriodOf(x); return !!v&&v.p===f.p&&(!f.s||v.s===f.s); };
+const pFocusName=f=>{ const P=P_PERIOD[f.p]; if(!P) return ''; const sc=f.s&&P.schools.find(z=>z[0]===f.s); return P.name+(sc?' · '+sc[1]:''); };
+// the Theory page: what each period is, its schools, and how to tell them apart (Italian names in brackets)
+const P_THEORY={
+  got:{p:['Painting at the end of the Middle Ages: gold backgrounds, flat and elongated figures, the Byzantine icon still close behind. In Florence around 1300 <b>Giotto</b> gives bodies weight, space depth and faces real feeling: the first step towards the Renaissance (hence <i>Proto-Renaissance</i>).'],
+    s:{sie:'<b>Siena</b> (<i>scuola senese</i>): Duccio, Simone Martini, the Lorenzetti brothers. Line, colour and gold matter more than Giotto’s solid volumes: graceful, precious, still Gothic.',
+       intl:'<b>International Gothic</b> (c. 1375–1430), shared by the courts of Europe: elegant figures, flowing drapery, rich costumes, plants and animals in fine detail. Gentile da Fabriano, Pisanello, the Limbourg brothers.'}},
+  ren:{p:['The “rebirth” (<i>Rinascimento</i>) of ancient Greece and Rome. Painters learn linear perspective, anatomy and light, and set people in measured, believable space. Behind it is <b>humanism</b> (<i>umanesimo</i>): the culture that puts man and classical learning at the centre. It is the background of the whole period, not a style of its own, so here it counts as early Renaissance.','Names you will meet: <i>Early Renaissance</i>, <i>Quattrocento</i> (the 1400s) and <i>Florentine Renaissance</i> are the same first phase, centred on Florence; the <i>High Renaissance</i> is the short peak around 1490–1520.'],
+    s:{flo:'<b>Early Renaissance</b> (<i>primo Rinascimento</i>, the 1400s), led by Florence: Masaccio, Fra Angelico, Paolo Uccello, Piero della Francesca, Botticelli, Ghirlandaio, Perugino; beyond Tuscany Mantegna in Padua and Mantua, Antonello da Messina. Clear drawing (<i>disegno</i>), sharp outlines, geometric space, even daylight; tempera on panel and fresco.',
+       high:'<b>High Renaissance</b> (<i>Rinascimento maturo</i>, c. 1490–1520, Florence, Milan, Rome): Leonardo, Michelangelo, Raphael, Fra Bartolomeo, Andrea del Sarto. Balance and grandeur: pyramid-shaped groups, calm ideal faces, Leonardo’s soft shading (<i>sfumato</i>), Michelangelo’s powerful bodies.',
+       ven:'<b>Venice</b> (<i>scuola veneziana</i>): Giovanni Bellini, Giorgione, Titian, Lotto, then Tintoretto and Veronese. Colour (<i>colore</i>) rather than outline: oil on canvas, warm golden light, soft atmosphere, landscapes that set the mood. To tell Florence from Venice: Florence draws, Venice paints with colour.',
+       nor:'<b>Northern Renaissance</b> (Flanders, Germany, England): Jan van Eyck, Rogier van der Weyden, Memling, Bosch, Bruegel; Dürer, Cranach, Holbein. Oil glazes and microscopic detail (fabrics, metal, reflections), sharp realism in portraits, less interest in antiquity; Dürer brings the Italian ideas north.'}},
+  man:{p:['<i>Manierismo</i> (c. 1520–1600), after Raphael’s death and the Sack of Rome: the calm balance gives way to artifice. Bodies are stretched and twisted (the <i>figura serpentinata</i>), colours turn sharp and unnatural, space gets crowded or unstable, poses are elegant and strange. Pontormo, Rosso Fiorentino, Parmigianino, Bronzino; El Greco carries it to Spain. Late Michelangelo and Tintoretto are close to it.','Tell it from the High Renaissance: Raphael is calm and balanced, a Mannerist painting is restless, cool and over-refined.']},
+  bar:{p:['The 1600s: drama and movement for the Catholic Church and the courts. Strong light against deep shadow (<i>chiaroscuro</i>, at its darkest <i>tenebrism</i>), diagonals, bodies caught in action, real people and real emotion.'],
+    s:{ita:'<b>Italy: Caravaggio and after</b>: Caravaggio, Artemisia and Orazio Gentileschi, Ribera in Naples and the <i>caravaggisti</i>. Black backgrounds, one hard beam of light, ordinary faces for saints. Next to them, the Carracci and Guido Reni keep a more classical, idealised line.',
+       fla:'<b>Flanders</b>: Rubens, van Dyck, Jordaens. Energy and abundance: swirling compositions, glowing flesh, rich colour; van Dyck’s elegant portraits of the nobility.',
+       dut:'<b>Dutch Golden Age</b>: Rembrandt, Vermeer, Frans Hals, Jan Steen, Ruisdael. A Protestant market of merchants, not churches: portraits, quiet interiors, landscapes, still lifes. Vermeer’s calm window light, Rembrandt’s golden shadows, Hals’s quick strokes.',
+       spa:'<b>Spain</b> (the <i>Siglo de Oro</i>): Velázquez, Zurbarán, Murillo, Ribera. Sober, devout realism; Velázquez’s free brushwork and court portraits, Zurbarán’s still monks, Murillo’s soft sweetness.',
+       cla:'<b>French classicism</b>: Poussin and Claude Lorrain, mostly working in Rome. Order and reason against Baroque excess: antique subjects, measured gestures, ideal landscapes in golden light.'}},
+  roc:{p:['The 1700s in its lightest mood (from <i>rocaille</i>, shellwork): pastel colours, curves, feathery brushwork, love and leisure of the aristocracy. Watteau’s <i>fêtes galantes</i>, Boucher, Fragonard; in Venice Tiepolo’s bright skies. Compared with the Baroque: grace instead of drama, play instead of faith.']},
+  neo:{p:['<i>Neoclassicismo</i> (c. 1760–1830), after the digs at Herculaneum and Pompeii: back to Greek and Roman ideals. Clear outlines, smooth invisible brushwork, calm frieze-like compositions, heroes and moral examples. Jacques-Louis David, Ingres, Angelica Kauffman (and Canova in sculpture).','Against the Rococo: virtue instead of pleasure. Against Romanticism, which comes next: reason and line instead of feeling and colour.']},
+  rom:{p:['Feeling over reason (c. 1790–1850): the sublime power of nature, storms and ruins, history and nations, the exotic, dreams and nightmares. Looser brushwork, dramatic light and colour. Delacroix and Géricault in France, Goya in Spain, Turner and Constable in England, Hayez in Italy.','Tell Turner from Constable: Turner dissolves everything in light and storm, Constable paints the real English countryside, clouds and all.'],
+    s:{ger:'<b>German Romanticism</b>: Caspar David Friedrich, Philipp Otto Runge. Silent, spiritual landscapes, mist and moonlight, small figures seen from behind gazing at the infinite.',
+       hud:'<b>Hudson River School</b>: Thomas Cole, Frederic Church, Albert Bierstadt. The American wilderness as a promised land: vast luminous panoramas, mountains, sunsets.'}},
+  rea:{p:['The middle and late 1800s, two opposite answers to the same world.'],
+    s:{real:'<b>Realism</b>: Courbet, Millet, Daumier, the Barbizon landscape painters; the Russian <i>Peredvizhniki</i> (Repin) and the Italian <i>Macchiaioli</i> (Fattori). Ordinary people, work and the countryside, painted as they are, without idealising them.',
+       acad:'<b>Academic art and Orientalism</b>: Bouguereau, Cabanel, Gérôme, Alma-Tadema. The taste of the official Salons: flawless finish, idealised mythology and history, and <i>Orientalism</i>, an imagined, theatrical Middle East and North Africa.'}},
+  pre:{p:['From the mid-1800s to the First World War, painters turn away from plain reality towards beauty, myth and the inner world.'],
+    s:{praf:'<b>Pre-Raphaelites</b> (England, from 1848): Rossetti, Millais, Holman Hunt, then Burne-Jones and Waterhouse. Painting “as before Raphael”: bright jewel colours, every leaf in detail, medieval legends, poems and pale long-haired women.',
+       sym:'<b>Symbolism</b>: Gustave Moreau, Odilon Redon, Arnold Böcklin, Puvis de Chavannes. Dreams, myths, death and the soul: ideas suggested rather than shown.',
+       nouv:'<b>Art Nouveau and the Secessions</b> (c. 1890–1914): Alphonse Mucha, Gustav Klimt and the Vienna Secession. Flowing whiplash lines, flowers, decorative women, gold; art that is also posters, books and design.'}},
+  imp:{p:['Paris, 1860s–1890s: painting outdoors (<i>en plein air</i>) to catch the passing moment: light on water, smoke, snow, crowds. Visible broken brushstrokes, bright colours placed side by side, coloured shadows, modern life of boulevards, cafés and railways. Monet, Renoir, Pissarro, Sisley, Degas, Berthe Morisot, Mary Cassatt, Caillebotte; Manet opens the way.','Telling them apart: Monet chases light, often in series (haystacks, cathedrals, water lilies); Renoir paints warm, happy figures with soft skin; Sisley and Pissarro calm landscapes (Pissarro also villages and Paris streets); Degas draws, indoors, dancers and off-centre crops; Morisot and Cassatt intimate scenes of women and children.']},
+  post:{p:['After Impressionism (c. 1885–1910), each painter goes his own way to add structure or emotion: Cézanne builds nature out of geometric planes, Van Gogh paints feeling with thick swirling strokes, Gauguin flat bright colours and symbols, Seurat dots, Toulouse-Lautrec the nightlife of Paris.'],
+    s:{neoimp:'<b>Pointillism and Divisionism</b>: Seurat, Signac; in Italy Segantini and Pellizza da Volpedo. Small dots or strokes of pure colour that mix in the eye: calm, scientific, luminous.',
+       nab:'<b>Pont-Aven and the Nabis</b>: Gauguin and Émile Bernard in Brittany, then Bonnard, Vuillard, Sérusier. Flat areas of colour with dark outlines (<i>cloisonnism</i>), decorative patterns, quiet interiors.'}},
+  mod:{p:['The 1900s break with painting what the eye sees: <b>Fauvism</b> (Matisse, Derain: wild, unnatural colour), <b>Expressionism</b> (Kirchner, Munch, Kandinsky and Franz Marc of the Blue Rider: emotion through distortion), <b>Cubism</b> (Juan Gris: objects broken into planes and seen from many sides), <b>Futurism</b> (Boccioni: speed, machines, the modern city in motion), and abstraction (Kandinsky, Malevich’s Suprematism, Mondrian’s De Stijl).','Only painters who died more than 70 years ago are in the app, so Picasso, Braque, Dalí and Magritte are not here yet.']},
+};
 // questions a work can be asked: the movement and the museum only where the data has them
 const pCanAsk=(x,k)=>k==='movement'?!!mvOf(x):k==='museum'?!!x.museum:true;
 // days to the next review by box: the next day, 3 days, a week, 16 days, 35 days, then three months
@@ -8823,8 +8869,17 @@ function pickRound(pool,n){
   return shuffle(out);
 }
 const yearGap=(a,b)=>(a.year==null||b.year==null)?150:Math.abs(a.year-b.year);
-function paintOptions(x,kind){
+function paintOptions(x,kind,focus){
   const all=PDATA;
+  if(kind==='artist'&&focus){
+    // a period round: painters of the same school if there are enough, else of the same period, nearest in time
+    const yrs=new Map(); all.forEach(p=>{ if(p.year!=null&&pInFocus(p,{p:focus.p})){ const a=yrs.get(p.artist)||[]; a.push(p.year); yrs.set(p.artist,a); } });
+    const v=pPeriodOf(x)||{}, inSchool=new Set(all.filter(p=>v.s&&pInFocus(p,{p:v.p,s:v.s})).map(p=>p.artist)); inSchool.delete(x.artist);
+    const pool=[...(inSchool.size>=3?inSchool:new Set(all.filter(p=>pInFocus(p,{p:focus.p})).map(p=>p.artist)))].filter(a=>a!==x.artist);
+    const mid=a=>{ const l=yrs.get(a); return l?l.reduce((s,y)=>s+y,0)/l.length:null; };
+    const near=shuffle(pool.map(a=>({a,d:x.year==null||mid(a)==null?100:Math.abs(mid(a)-x.year)}))).sort((p,q)=>p.d-q.d).slice(0,8);
+    if(near.length>=3) return shuffle([x.artist].concat(shuffle(near).slice(0,3).map(o=>o.a)));
+  }
   if(kind==='artist'){
     // wrong answers from painters of about the same time, so the style doesn't give it away
     const yrs=new Map(); all.forEach(p=>{ if(p.year!=null){ const a=yrs.get(p.artist)||[]; a.push(p.year); yrs.set(p.artist,a); } });
@@ -8887,6 +8942,15 @@ function startPaint(list,mode){
   PSN={phase:'ask',mode:mode||'',day:romeDay(),i:0,right:0,items:items.map(x=>{ const kind=pKindFor(x); return {x,kind,opts:paintOptions(x,kind),pick:null}; })};
   pStoreSession(); pFeedback('',''); preloadP(0); preloadP(1); renderPaint();
 }
+// a period round: works of one period (and school), always asking whose work it is
+function startPeriod(f){
+  f=f||PS.per; if(!f||!P_PERIOD[f.p]) return;
+  const pool=pPool().filter(x=>pInFocus(x,f)), artists=new Set(pool.map(x=>x.artist));
+  if(artists.size<4){ pFeedback('info','Too few painters here for a round: choose a broader group.'); return; }
+  PG=null; const items=pickRound(pool,Math.min(goalFor('paintings'),pool.length));
+  PSN={phase:'ask',mode:'period',focus:{p:f.p,s:f.s||''},day:romeDay(),i:0,right:0,items:items.map(x=>({x,kind:'artist',opts:paintOptions(x,'artist',f),pick:null}))};
+  pStoreSession(); pFeedback('',''); preloadP(0); preloadP(1); renderPaint(); scrollTo(0,0);
+}
 function preloadP(i){ const it=PSN&&PSN.items[i]; if(it){ const im=new Image(); im.decoding='async'; im.src=it.x.thumb; } }
 // one answer about one work: a miss sends it back to box 0, a right answer on a review day moves it up
 function scorePaint(it,ok){
@@ -8906,7 +8970,7 @@ function answerPaint(k){
 function nextPaint(){
   PSN.i++;
   if(PSN.i>=PSN.items.length){ PSN.phase='done'; const n=PSN.items.filter(o=>o.pick>=0).length; if(n){ PS.hist.push({t:Date.now(),n,ok:PSN.right}); pSave(); } }
-  else{ const it=PSN.items[PSN.i]; if(PS.kinds.some(k=>pCanAsk(it.x,k))){ it.kind=pKindFor(it.x); it.opts=paintOptions(it.x,it.kind); } preloadP(PSN.i+1); }
+  else{ const it=PSN.items[PSN.i]; if(!PSN.focus&&PS.kinds.some(k=>pCanAsk(it.x,k))){ it.kind=pKindFor(it.x); it.opts=paintOptions(it.x,it.kind); } preloadP(PSN.i+1); }
   pStoreSession(); renderPaint();
 }
 function restorePaint(){
@@ -9027,6 +9091,25 @@ function pCaption(x){
   const where=x.museum?esc(x.museum)+(x.country?` (${esc(x.country)})`:''):'', mv=x.movement?esc(mvOf(x))+(x.movementOf==='painter'?' (the painter’s)':''):'';
   return `<div class="pcap">${pStar(x.id)}<b>${esc(x.title)}</b><span>${esc(x.artist)}${x.year?`, ${x.year}`:''}</span>${where||mv?`<span>${[where,mv].filter(Boolean).join(' · ')}</span>`:''}<span><span class="tier">${x.kind?esc(x.kind)+' · ':''}${esc(x.fame)}</span>${x.wiki?` · <a href="${esc(x.wiki)}" target="_blank" rel="noopener">Read about it</a>`:''}</span></div>`;
 }
+// whose work is it, among painters of one period: the period, its schools, and the Theory page
+function pPeriodCardHtml(){
+  const f=PS.per&&P_PERIOD[PS.per.p]?PS.per:{p:'ren',s:''}, P=P_PERIOD[f.p], pool=pPool();
+  const count=g=>pool.filter(x=>pInFocus(x,g)).length;
+  return `<div class="pcard period"><div class="pct"><b>Who painted it? By period</b><span>Painters of the same time and place side by side, to tell them apart</span></div>
+    <div class="pper"><select data-pper aria-label="Period">${P_PERIODS.map(x=>`<option value="${x.id}" ${x.id===f.p?'selected':''}>${esc(x.name)} · ${count({p:x.id})}</option>`).join('')}</select>
+    ${P.schools.length?`<div class="chips"><button type="button" class="chip" data-pschool="" aria-pressed="${!f.s}">All</button>${P.schools.map(([id,n])=>`<button type="button" class="chip" data-pschool="${id}" aria-pressed="${f.s===id}">${esc(n)} · ${count({p:f.p,s:id})}</button>`).join('')}</div>`:''}
+    <div class="row"><button type="button" class="btn primary" data-pact="period">Practise ${Math.min(goalFor('paintings'),count(f))}</button><button type="button" class="btn quiet" data-pact="theory">About the periods</button></div></div></div>`;
+}
+function pTheoryHtml(){
+  const pool=PDATA||[], top=g=>{ const m=new Map(); pool.forEach(x=>{ if(pInFocus(x,g)) m.set(x.artist,(m.get(x.artist)||0)+1); }); return [...m].sort((a,b)=>b[1]-a[1]).slice(0,8).map(a=>a[0]); };
+  let h=`<div class="hint">The museums’ databases use dozens of names for styles and schools; here they are folded into twelve periods, most with the schools worth telling apart. Dates are approximate: periods overlap, and painters move between them.</div><div class="ptheory">`;
+  P_PERIODS.forEach(P=>{ const T=P_THEORY[P.id]||{p:[],s:{}};
+    h+=`<section class="ptper"><h3>${esc(P.name)} <span class="mono">${esc(P.when)}</span></h3>${T.p.map(x=>`<p>${x}</p>`).join('')}`;
+    if(!P.schools.length){ const t=top({p:P.id}); if(t.length) h+=`<div class="ptwho">In the app: ${t.map(esc).join(', ')}</div>`; }
+    P.schools.forEach(([id])=>{ const t=top({p:P.id,s:id}); h+=`<div class="ptsch"><p>${(T.s||{})[id]||''}</p>${t.length?`<div class="ptwho">In the app: ${t.map(esc).join(', ')}</div>`:''}<button type="button" class="btn sm" data-pgo="${P.id}|${id}">Practise this school</button></div>`; });
+    h+=`<button type="button" class="btn sm" data-pgo="${P.id}|">Practise ${esc(P.name)}</button></section>`; });
+  return h+`</div><div class="actions"><button type="button" class="btn quiet" data-pact="back">Back</button></div>`;
+}
 function renderPaint(){
   if(view!=='paint') return;
   updateReviewButtons();
@@ -9041,7 +9124,8 @@ function renderPaint(){
     renderPaintSide(); return;
   }
   restorePaint();
-  if(PG) h=galleryHtml();
+  if(PG&&PG.src==='theory'){ eb.textContent='Paintings'; pr.textContent='Periods and schools'; sc.textContent=''; h=pTheoryHtml(); }
+  else if(PG) h=galleryHtml();
   else if(!PSN||PSN.phase==='done'){
     const d=PSN&&PSN.phase==='done'?PSN:null, pool=pPool(), today=pDayResults(romeDay());
     eb.textContent='Paintings'; sc.textContent='';
@@ -9054,12 +9138,13 @@ function renderPaint(){
       <div class="pcard new"><div class="pct"><b>Learn new</b><span>${fresh?`${fresh} works you haven’t seen`:'You’ve seen every work in this group'}</span></div><button type="button" class="btn big${due?'':' primary'}" data-pact="new" ${fresh?'':'disabled'}>${fresh?`See ${Math.min(n,fresh)} new`:'Nothing new'}</button></div>
       <div class="pcard done"><div class="pct"><b>Known</b><span>${known} known of ${seen} seen</span></div><button type="button" class="btn quiet" data-pgal="known" ${known?'':'disabled'}>See them</button></div>
     </div>`;
+    h+=pPeriodCardHtml();
     h+=`<div class="wactions">${seen?'<button type="button" class="btn quiet" data-pgal="all">Your gallery</button>':''}<button type="button" class="btn quiet" data-pgal="fav">★ Favorites · ${pGalleryIds('fav').length}</button>${pDayResults(romeDay()).length?`<button type="button" class="btn quiet" data-pgal="day:${romeDay()}">Today · ${pDayResults(romeDay()).length}</button>`:''}</div>`;
     if(d) h+=`<div class="hint">Tap a work to look at it again. This round stays here until midnight.</div>`;
     h+=`<div class="hint">Review brings back the works due today, missed ones first; Learn new shows works you haven’t seen. Each time a work comes back it asks the next of your questions about it. A work is known once it’s been right on three review days in a row. Pictures from Wikimedia Commons (public domain); facts from Wikidata.</div>`;
   }else{
     const it=PSN.items[PSN.i], x=it.x, ans=pAnswer(it);
-    eb.textContent=`${PSN.mode==='review'?'Review · ':PSN.mode==='new'?'New · ':''}Painting ${PSN.i+1} of ${PSN.items.length}`;
+    eb.textContent=`${PSN.mode==='review'?'Review · ':PSN.mode==='new'?'New · ':PSN.focus?pFocusName(PSN.focus)+' · ':''}${PSN.i+1} of ${PSN.items.length}`;
     pr.textContent=pQuestion(it);
     sc.textContent=`${PSN.right} right`;
     dots.innerHTML=PSN.items.map((o,k)=>`<span class="dot ${o.pick==null?(k===PSN.i?'cur':''):o.pick<0?'':(pRight(o)?'ok':'no')}"></span>`).join('');
@@ -9102,6 +9187,7 @@ function openPaintings(){
   if(PSN&&PSN.day!==romeDay()) PSN=null;
   PG=null; pFeedback('',''); renderPaint();
 }
+$('pbody').addEventListener('change',e=>{ if(e.target.matches('[data-pper]')){ PS.per={p:e.target.value,s:''}; pStore(); renderPaint(); } });
 $('pbody').addEventListener('click',e=>{
   const o=e.target.closest('[data-popt]'); if(o){ answerPaint(+o.dataset.popt); return; }
   const g=e.target.closest('[data-pgal]'); if(g){ openGallery(g.dataset.pgal); return; }
@@ -9113,7 +9199,11 @@ $('pbody').addEventListener('click',e=>{
   const pv=e.target.closest('[data-pview]'); if(pv){ subPush(); PG.i=+pv.dataset.pview; renderPaint(); scrollTo(0,0); return; }
   const im=e.target.closest('.pframe img[data-big]'); if(im){ openLightbox(im.src,im.dataset.big,im.alt); return; }
   const pr=e.target.closest('[data-pround]'); if(pr){ openRoundWork(+pr.dataset.pround); return; }
+  const sch=e.target.closest('[data-pschool]'); if(sch){ PS.per={p:(PS.per&&P_PERIOD[PS.per.p]?PS.per.p:'ren'),s:sch.dataset.pschool}; pStore(); renderPaint(); return; }
+  const go=e.target.closest('[data-pgo]'); if(go){ const [pp,ss]=go.dataset.pgo.split('|'); PS.per={p:pp,s:ss}; pStore(); startPeriod(PS.per); return; }
   const b=e.target.closest('[data-pact]'); if(!b) return; const a=b.dataset.pact;
+  if(a==='period'){ startPeriod(PS.per&&P_PERIOD[PS.per.p]?PS.per:{p:'ren',s:''}); return; }
+  if(a==='theory'){ subPush(); PG={src:'theory',ids:[],i:null}; pFeedback('',''); renderPaint(); scrollTo(0,0); return; }
   if(a==='start') startPaint();
   else if(a==='review') startPaint(null,'review');
   else if(a==='new') startPaint(null,'new');
