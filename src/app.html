@@ -518,6 +518,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .pthumb.unseen img{opacity:.55;filter:grayscale(.4)}
 .pthumb .seenmark{position:absolute;top:10px;left:10px;padding:2px 7px;border-radius:999px;background:var(--good);color:var(--on-good);font-size:.68rem;font-style:normal;font-weight:700}
 .pby{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pgq{width:100%;max-width:340px;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:inherit;font:inherit}
 .pgroups{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
 .pgroup{display:flex;flex-direction:column;gap:4px;padding:8px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);font:inherit;color:inherit;text-align:left;cursor:pointer}
 .pgroup:hover{border-color:var(--accent)}
@@ -688,6 +689,8 @@ mark.v-gap::after{content:'';position:absolute;left:50%;bottom:-.3em;transform:t
 .rsym{font-family:var(--font-display);font-weight:800;font-size:clamp(2.2rem,8vw,3rem);line-height:1.05}
 .rdet{color:var(--muted)}
 .rsong{margin-top:6px;font-size:.92rem;color:var(--muted)} .rsong b{color:var(--ink);font-weight:700}
+.rsongnote{margin-top:12px;padding:10px 12px;border:1px dashed var(--line);border-radius:14px;display:flex;flex-direction:column;gap:8px;align-items:flex-start;font-size:.95rem}
+.rsongnt{display:flex;align-items:center;gap:6px;font-weight:700;color:var(--muted)} .rsongnt svg{width:18px;height:18px}
 .rsongs{display:flex;flex-direction:column;gap:10px;margin-top:10px}
 .rsongrow{border:1px solid var(--line);border-radius:14px;background:var(--surface-2);padding:10px 12px;display:flex;flex-direction:column;gap:6px}
 .rsonghead{font-family:var(--font-display);font-size:1.02rem} .rsonghead b{font-family:var(--font-mono);margin-right:4px}
@@ -8079,6 +8082,14 @@ function rmOptHtml(s,o,cls,dis){
 // songs for an interval, going up or down: "Like …" under an interval card's answer
 const rmSongName=([t,by])=>`<b>${esc(t)}</b>${by?` <span>(${esc(by)})</span>`:''}`;
 function rmSongLine(id,dir){ const l=(RM_IV_SONGS[id]||{})[dir]; return l&&l.length?`<div class="rsong">${dir==='up'?'Going up':'Going down'}, like ${l.slice(0,2).map(rmSongName).join(' or ')}</div>`:''; }
+// after a wrong interval, at the foot of the page: songs for the right interval, and for the one you heard
+// instead, each with a button that plays it from C, so the two tunes can be set side by side in your head
+function rmSongNoteHtml(right,yours,dir){
+  const row=(id,lead)=>{ const iv=RM_IVI[id], l=(RM_IV_SONGS[id]||{})[dir]; if(!iv||!l||!l.length) return '';
+    return `<div class="rsongdir"><button type="button" class="btn sm" data-rmivplay="${id}|${dir}">▶ ${esc(id)}</button><span>${lead} ${/^[aeiou]/.test(iv.name)?'an':'a'} <b>${esc(iv.name)}</b>, ${dir==='up'?'going up':'going down'}: like ${l.map(rmSongName).join(' · ')}</span></div>`; };
+  const a=row(right,'It was'), b=yours!==right?row(yours,'You said'):'';
+  return a||b?`<div class="rsongnote"><div class="rsongnt">${RM_ICON.ear} Songs to remember it</div>${a}${b}<button type="button" class="btn quiet sm" data-rmsongs>All the interval songs</button></div>`:'';
+}
 function rmAnswerHtml(c,ex){
   if(c.kind==='note') return `<div class="rsym">${esc(c.answer)}</div><div class="rdet">${esc(c.name)} · ${rmClefName(c.clef)} · ${c.ledger?`${c.ledger} ledger ${c.ledger===1?'line':'lines'} ${c.where}`:'on the staff'}</div>`;
   if(c.kind==='ear'&&ex.cols){ const s=RM_SET[c.set];
@@ -8125,6 +8136,7 @@ function rmTrainHtml(){
       +`<div class="ropts${set.how==='prog'||set.how==='scale'?' two':set.opts.length>6?' many':''}" role="group" aria-label="Answers">${set.opts.map(o=>rmOptHtml(set,o,shown?(o===c.ans?' good':o===RT.pick?' bad':''):'',shown)).join('')}</div>`
       +(wrong?`<div class="rplay"><button type="button" class="btn rbad" data-rmplay="yours">▶ Yours: ${esc(rmOptName(set,RT.pick,c.q))}</button><button type="button" class="btn rgood" data-rmplay="right">▶ Right: ${esc(c.title)}</button></div>`:'')
       +(shown?`<button type="button" class="btn primary" data-rmact="next">Next</button>`:'')+`</div>`;
+    if(wrong&&['up','down','together'].includes(set.how)) h+=rmSongNoteHtml(c.ans,RT.pick,set.how==='down'?'down':'up');
   }else if(c.kind==='theory'||c.kind==='key'){
     const L=RM_LESSON[c.lesson];
     h+=`<div class="wcard vcard rcard rtcard"><div class="rset">${RM_ICON.book} ${c.kind==='key'?esc(set.name):'Theory · lesson '+L.n}</div>`+rmQuizHtml(c,RT.order,shown?RT.pick:null)
@@ -8746,7 +8758,7 @@ const pPool=()=>(PDATA||[]).filter(x=>PS.fame==='all'||x.fame===PS.fame);
 // only on request. Any right answer may be a lucky guess, so only an answer given when the work is due
 // moves it up a box, and a work counts as known after three right answers on three review days.
 const P_ALL=['artist','title','movement','museum'];
-const P_KIND_NAME={artist:'Painter',title:'Title',movement:'Movement',museum:'Where it hangs',year:'Date'};
+const P_KIND_NAME={artist:'Artist',title:'Title',movement:'Movement',museum:'Where it hangs',year:'Date'};
 // Wikidata names the same movement several ways; one name each, so a right answer never has a near-twin
 const MV_SAME={'Baroque painting':'Baroque','Italian Baroque painting':'Baroque','Spanish Baroque painting':'Baroque','Neoclassical painting':'Neoclassicism',
   'Romantic painting':'Romanticism','German Romanticism':'Romanticism','Troubadour style painting':'Troubadour style','Orientalist painting':'Orientalism',
@@ -9104,6 +9116,18 @@ function pStatusHtml(v){
     +`<div class="vstat"><span>${pKnown(v)?'Known: right on three review days in a row.':`${v.b} of 3 review days right`}</span><span>${pDue(v)?'Due: comes back in your next round':'Next review '+inDays(v.due)}</span><span>Last seen ${ago(v.last)}</span></div>`;
 }
 const dayLabel=d=>{ const t=romeDay(), y=romeDay(Date.now()-DAY); return d===t?'Today':d===y?'Yesterday':new Date(d+'T12:00:00Z').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'}); };
+// the painters (or movements) as cards; a search looks through all of them, seen or not, and matches any
+// word of the name from its start, so “canova”, “bernini” or “gian” all find their artist
+function pGroupListHtml(by){
+  const groups=pGroups(by), q=String(PG.q||'').trim().toLowerCase();
+  const plain=t=>t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const hit=g=>{ const n=plain(g.name), w=plain(q); return !w||n.split(/[\s'’.-]+/).some(p=>p.startsWith(w))||n.startsWith(w)||(w.length>3&&n.includes(w)); };
+  const shown=q?groups.filter(hit):PG.all?groups:groups.filter(g=>g.seen);
+  $('pscore').textContent=`${shown.length} ${by==='artist'?(shown.length===1?'artist':'artists'):(shown.length===1?'movement':'movements')}`;
+  if(!shown.length) return `<div class="hint">${q?`No ${by==='artist'?'artist':'movement'} by that name.`:'You haven’t seen any works yet: play a round, or choose “All”.'}</div>`;
+  return `<div class="pgroups">${shown.map(g=>{ const pics=g.ids.filter(id=>PS.p[id]).concat(g.ids.filter(id=>!PS.p[id])).slice(0,3).map(id=>pWork(id));
+    return `<button type="button" class="pgroup${g.seen?'':' unseen'}" data-pgrp="${by}:${esc(g.name)}"><span class="pgpics">${pics.map(x=>`<img src="${esc(pSmall(x))}" alt="" loading="lazy" decoding="async">`).join('')}</span><b>${esc(g.name)}</b><small>${g.seen?`${g.seen} seen of ${g.ids.length}`:`${g.ids.length} ${g.ids.length===1?'work':'works'}, none seen yet`}</small></button>`; }).join('')}</div>`;
+}
 function galleryHtml(){
   const eb=$('peyebrow'), pr=$('pprompt'), sc=$('pscore'); let h='';
   const day=PG.src.indexOf('day:')===0?PG.src.slice(4):null;
@@ -9122,18 +9146,16 @@ function galleryHtml(){
     h+=`<div class="pcredit">Image: <a href="${commonsPage(x.image)}" target="_blank" rel="noopener">Wikimedia Commons</a></div>`;
     return h;
   }
-  const by=pBy(PG.src), gm=/^(artist|mv):(.*)$/.exec(PG.src), kindName=k=>k==='artist'?'painter':'movement';
+  const by=pBy(PG.src), gm=/^(artist|mv):(.*)$/.exec(PG.src), kindName=k=>k==='artist'?'artist':'movement';
   eb.textContent='Your gallery'+(by==='status'&&PG.src!=='fav'&&PS.fame!=='all'?' · '+FAME.find(o=>o[0]===PS.fame)[1]:'');
-  pr.textContent=gm?gm[2]:/^by:/.test(PG.src)?(by==='artist'?'By painter':'By movement'):day?`${dayLabel(day)}: the works you saw`:PG.src==='fav'?'Your favorite works':PG.src==='all'?'Works you’ve seen':PG.src==='right'?'Right last time, not known yet':PG.src==='known'?'Works you know':'Works to revisit';
-  h+=`<div class="row pby"><span class="hint">Organize by</span><div class="chips">${[['status','Progress'],['date','Date'],['artist','Painter'],['mv','Movement']].map(o=>`<button type="button" class="chip" data-pby="${o[0]}" aria-pressed="${by===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
+  pr.textContent=gm?gm[2]:/^by:/.test(PG.src)?(by==='artist'?'By artist':'By movement'):day?`${dayLabel(day)}: the works you saw`:PG.src==='fav'?'Your favorite works':PG.src==='all'?'Works you’ve seen':PG.src==='right'?'Right last time, not known yet':PG.src==='known'?'Works you know':'Works to revisit';
+  h+=`<div class="row pby"><span class="hint">Organize by</span><div class="chips">${[['status','Progress'],['date','Date'],['artist','Artist'],['mv','Movement']].map(o=>`<button type="button" class="chip" data-pby="${o[0]}" aria-pressed="${by===o[0]}">${o[1]}</button>`).join('')}</div></div>`;
   if(/^by:/.test(PG.src)){
     // the groups: the ones with works you've seen first, the others too if asked for
-    const groups=pGroups(by), shown=PG.all?groups:groups.filter(g=>g.seen);
-    sc.textContent=`${shown.length} ${by==='artist'?(shown.length===1?'painter':'painters'):(shown.length===1?'movement':'movements')}`;
+    const groups=pGroups(by);
     h+=`<div class="row"><div class="chips"><button type="button" class="chip" data-pall="0" aria-pressed="${!PG.all}">With works you’ve seen · ${groups.filter(g=>g.seen).length}</button><button type="button" class="chip" data-pall="1" aria-pressed="${!!PG.all}">All · ${groups.length}</button></div></div>`;
-    h+=shown.length?`<div class="pgroups">${shown.map(g=>{ const pics=g.ids.filter(id=>PS.p[id]).concat(g.ids.filter(id=>!PS.p[id])).slice(0,3).map(id=>pWork(id));
-      return `<button type="button" class="pgroup${g.seen?'':' unseen'}" data-pgrp="${by}:${esc(g.name)}"><span class="pgpics">${pics.map(x=>`<img src="${esc(pSmall(x))}" alt="" loading="lazy" decoding="async">`).join('')}</span><b>${esc(g.name)}</b><small>${g.seen?`${g.seen} seen of ${g.ids.length}`:`${g.ids.length} ${g.ids.length===1?'work':'works'}, none seen yet`}</small></button>`; }).join('')}</div>`
-      :`<div class="hint">You haven’t seen any works yet: play a round, or choose “All”.</div>`;
+    h+=`<div class="row"><input type="search" id="pgq" class="pgq" placeholder="${by==='artist'?'Find an artist, e.g. Canova':'Find a movement'}" value="${esc(PG.q||'')}" autocomplete="off" aria-label="Find by name"></div>`;
+    h+=`<div id="pglist">${pGroupListHtml(by)}</div>`;
     h+=`<div class="actions"><button type="button" class="btn quiet" data-pact="back">Back</button></div>`;
     return h;
   }
@@ -9264,12 +9286,13 @@ function openPaintings(){
   if(PSN&&PSN.day!==romeDay()) PSN=null;
   PG=null; pFeedback('',''); renderPaint();
 }
+$('pbody').addEventListener('input',e=>{ if(e.target.id==='pgq'&&PG){ PG.q=e.target.value; const l=$('pglist'); if(l) l.innerHTML=pGroupListHtml(pBy(PG.src)); } });
 $('pbody').addEventListener('change',e=>{ if(e.target.matches('[data-pper]')){ PS.per={p:e.target.value,s:''}; pStore(); renderPaint(); } });
 $('pbody').addEventListener('click',e=>{
   const o=e.target.closest('[data-popt]'); if(o){ answerPaint(+o.dataset.popt); return; }
   const g=e.target.closest('[data-pgal]'); if(g){ openGallery(g.dataset.pgal); return; }
   const by=e.target.closest('[data-pby]'); if(by&&PG){ const k=by.dataset.pby, days=pDays();
-    PG.src=k==='date'?(days.length?'day:'+days[0]:'all'):k==='artist'?'by:artist':k==='mv'?'by:mv':'all'; PG.all=false; PG.ids=pGalleryIds(PG.src); PG.i=null; renderPaint(); return; }
+    PG.src=k==='date'?(days.length?'day:'+days[0]:'all'):k==='artist'?'by:artist':k==='mv'?'by:mv':'all'; PG.all=false; PG.q=''; PG.ids=pGalleryIds(PG.src); PG.i=null; renderPaint(); return; }
   const gr=e.target.closest('[data-pgrp]'); if(gr&&PG){ subPush(); PG.src=gr.dataset.pgrp; PG.all=false; PG.ids=pGalleryIds(PG.src); PG.i=null; renderPaint(); scrollTo(0,0); return; }
   const pa=e.target.closest('[data-pall]'); if(pa&&PG){ PG.all=pa.dataset.pall==='1'; PG.ids=pGalleryIds(PG.src); renderPaint(); return; }
   const pf=e.target.closest('[data-pfav]'); if(pf){ const id=pf.dataset.pfav; favSet(PS.fav,id,!favOn(PS.fav,id)); pSave(); pKeepFav(); renderPaint(); return; }
