@@ -201,6 +201,15 @@ for (const group of chunks(previous.filter(id => !inSet.has(id) && !EXCLUDE.has(
   }
 }
 
+// 3d) a work with several pictures on Wikidata comes back with any one of them: the one shown before stays
+//     while Wikidata still lists it, so the picture someone has been learning doesn't change under them
+const stillListed = new Set();
+for (const group of chunks(picked.filter(o => previousImage.has(o.id) && previousImage.get(o.id) !== o.image).map(o => o.id), 150)) {
+  const rows = await sparql(`SELECT ?p ?img WHERE { VALUES ?p { ${group.map(id => 'wd:' + id).join(' ')} } ?p wdt:P18 ?img. }`);
+  for (const r of rows) { const id = qid(r.p.value); if (decodeURIComponent(qid(r.img.value)) === previousImage.get(id)) stillListed.add(id); }
+}
+for (const o of picked) if (stillListed.has(o.id)) o.image = previousImage.get(o.id);
+
 // 4) details for the chosen ones: English names, year, movement, museum, English Wikipedia article
 const info = new Map();
 for (const group of chunks(picked, 140)) {
