@@ -3466,9 +3466,9 @@
    "movement": "High Renaissance",
    "museum": "Sistine Chapel",
    "country": "Vatican City",
-   "image": "Sistine Chapel ceiling, Creation of Adam.jpg",
+   "image": "Michelangelo, Separation of the Earth from the Waters 00.jpg",
    "wiki": null,
-   "thumb": "https://commons.wikimedia.org/wiki/Special:FilePath/Sistine%20Chapel%20ceiling%2C%20Creation%20of%20Adam.jpg?width=900",
+   "thumb": "https://commons.wikimedia.org/wiki/Special:FilePath/Michelangelo%2C%20Separation%20of%20the%20Earth%20from%20the%20Waters%2000.jpg?width=900",
    "fame": "deep cut"
   },
   {
@@ -21531,19 +21531,6 @@
    "fame": "deep cut"
   },
   {
-   "id": "Q521680",
-   "title": "Perla di Modena",
-   "artist": "Giulio Romano",
-   "year": 1518,
-   "movement": "High Renaissance",
-   "museum": "Galleria Estense",
-   "country": "Italy",
-   "image": "Raffaello Ritratto di donna.jpg",
-   "wiki": "https://en.wikipedia.org/wiki/Perla_di_Modena",
-   "thumb": "https://commons.wikimedia.org/wiki/Special:FilePath/Raffaello%20Ritratto%20di%20donna.jpg?width=900",
-   "fame": "deep cut"
-  },
-  {
    "id": "Q28680785",
    "title": "Woman with a Mirror",
    "artist": "Giulio Romano",
@@ -22399,9 +22386,9 @@
    "movement": "French Realism",
    "museum": "Musée d'Orsay",
    "country": "France",
-   "image": "The Thimes - geograph.org.uk - 2011287.jpg",
+   "image": "Gustave Caillebotte - The Floor Planers - Google Art Project.jpg",
    "wiki": "https://en.wikipedia.org/wiki/Les_raboteurs_de_parquet",
-   "thumb": "https://commons.wikimedia.org/wiki/Special:FilePath/The%20Thimes%20-%20geograph.org.uk%20-%202011287.jpg?width=900",
+   "thumb": "https://commons.wikimedia.org/wiki/Special:FilePath/Gustave%20Caillebotte%20-%20The%20Floor%20Planers%20-%20Google%20Art%20Project.jpg?width=900",
    "fame": "known"
   },
   {
@@ -30071,19 +30058,6 @@
    "fame": "deep cut"
   },
   {
-   "id": "Q2626926",
-   "kind": "sculpture",
-   "title": "Hercules",
-   "artist": "Michelangelo",
-   "year": 1492,
-   "movement": "Italian Renaissance",
-   "museum": "",
-   "image": "Rubens, copia dell'ercole di michelangelo, louvre.jpg",
-   "wiki": null,
-   "thumb": "https://commons.wikimedia.org/wiki/Special:FilePath/Rubens%2C%20copia%20dell'ercole%20di%20michelangelo%2C%20louvre.jpg?width=900",
-   "fame": "deep cut"
-  },
-  {
    "id": "Q768337",
    "kind": "sculpture",
    "title": "Bearded Slave",
@@ -30122,20 +30096,6 @@
    "image": "Crocifisso attribuito a Michelangelo2.jpg",
    "wiki": null,
    "thumb": "https://commons.wikimedia.org/wiki/Special:FilePath/Crocifisso%20attribuito%20a%20Michelangelo2.jpg?width=900",
-   "fame": "deep cut"
-  },
-  {
-   "id": "Q1774735",
-   "kind": "sculpture",
-   "title": "Saint Paul",
-   "artist": "Michelangelo",
-   "year": 1503,
-   "movement": "High Renaissance",
-   "museum": "Siena Cathedral",
-   "country": "Italy",
-   "image": "Michelangelo.St Peter.Duomo di Siena.jpg",
-   "wiki": null,
-   "thumb": "https://commons.wikimedia.org/wiki/Special:FilePath/Michelangelo.St%20Peter.Duomo%20di%20Siena.jpg?width=900",
    "fame": "deep cut"
   },
   {
@@ -31686,19 +31646,6 @@
    "fame": "deep cut"
   },
   {
-   "id": "Q60591741",
-   "kind": "print",
-   "title": "Gismonda",
-   "artist": "Alphonse Mucha",
-   "year": 1895,
-   "movement": "",
-   "museum": "",
-   "image": "Alfons Mucha - 1894 - Gismonda.jpg",
-   "wiki": null,
-   "thumb": "https://commons.wikimedia.org/wiki/Special:FilePath/Alfons%20Mucha%20-%201894%20-%20Gismonda.jpg?width=900",
-   "fame": "deep cut"
-  },
-  {
    "id": "Q125374996",
    "kind": "print",
    "title": "Médée",
@@ -31827,19 +31774,6 @@
    "image": "Mucha-job.jpg",
    "wiki": null,
    "thumb": "https://commons.wikimedia.org/wiki/Special:FilePath/Mucha-job.jpg?width=900",
-   "fame": "deep cut"
-  },
-  {
-   "id": "Q125143006",
-   "kind": "print",
-   "title": "Benedictine",
-   "artist": "Alphonse Mucha",
-   "year": 1898,
-   "movement": "",
-   "museum": "",
-   "image": "Mucha-Bénédictine-1898.jpg",
-   "wiki": null,
-   "thumb": "https://commons.wikimedia.org/wiki/Special:FilePath/Mucha-B%C3%A9n%C3%A9dictine-1898.jpg?width=900",
    "fame": "deep cut"
   },
   {
@@ -32819,20 +32753,6 @@
    "fame": "deep cut"
   },
   {
-   "id": "Q5033460",
-   "kind": "sculpture",
-   "title": "Canova Lions",
-   "artist": "Antonio Canova",
-   "year": 1860,
-   "movement": "Neoclassicism",
-   "movementOf": "painter",
-   "museum": "",
-   "image": "USA-Corcoran Gallery of Art2.jpg",
-   "wiki": "https://en.wikipedia.org/wiki/Canova_Lions",
-   "thumb": "https://commons.wikimedia.org/wiki/Special:FilePath/USA-Corcoran%20Gallery%20of%20Art2.jpg?width=900",
-   "fame": "deep cut"
-  },
-  {
    "id": "Q110400211",
    "kind": "sculpture",
    "title": "Standing Psyche and Love",
@@ -33024,19 +32944,6 @@
    "fame": "famous"
   },
   {
-   "id": "Q463400",
-   "kind": "building",
-   "title": "Piazza Navona",
-   "artist": "Gian Lorenzo Bernini",
-   "year": null,
-   "movement": "Baroque",
-   "museum": "",
-   "image": "Paolo Monti - Servizio fotografico (Roma, 1966) - BEIC 6329173.jpg",
-   "wiki": "https://en.wikipedia.org/wiki/Piazza_Navona",
-   "thumb": "https://commons.wikimedia.org/wiki/Special:FilePath/Paolo%20Monti%20-%20Servizio%20fotografico%20(Roma%2C%201966)%20-%20BEIC%206329173.jpg?width=900",
-   "fame": "famous"
-  },
-  {
    "id": "Q1136614",
    "kind": "building",
    "title": "Palazzo Barberini",
@@ -33048,20 +32955,6 @@
    "wiki": "https://en.wikipedia.org/wiki/Palazzo_Barberini",
    "thumb": "https://commons.wikimedia.org/wiki/Special:FilePath/PalaisBarberini-Facade%20avant%20du%20palais.JPG?width=900",
    "fame": "famous"
-  },
-  {
-   "id": "Q2266081",
-   "kind": "building",
-   "title": "Galleria Nazionale d'Arte Antica",
-   "artist": "Gian Lorenzo Bernini",
-   "year": 1893,
-   "movement": "Baroque",
-   "movementOf": "painter",
-   "museum": "",
-   "image": "Palazzo corsini alla lungara, facciata lato giardino 01.JPG",
-   "wiki": "https://en.wikipedia.org/wiki/Galleria_Nazionale_d'Arte_Antica",
-   "thumb": "https://commons.wikimedia.org/wiki/Special:FilePath/Palazzo%20corsini%20alla%20lungara%2C%20facciata%20lato%20giardino%2001.JPG?width=900",
-   "fame": "known"
   },
   {
    "id": "Q1354667",

@@ -16,7 +16,22 @@ const KINDS = 'VALUES ?kind { wd:Q3305213 wd:Q22669139 wd:Q134194 wd:Q99516640 w
 const MAX = 900, PER_ARTIST = 12, TOP = 6, FAME_MIN = 6, PAINTER_MIN = 40;
 const DIED_BEFORE = new Date().getUTCFullYear() - 70;   // 2026: died in 1955 or earlier
 const EXCLUDE = new Set(['Q334138', 'Q326503',         // explicit works, left out of a learning app
-  'Q4945054']);                                          // the Sleeping Hermaphroditus: antique; Bernini only made the mattress
+  'Q4945054',                                            // the Sleeping Hermaphroditus: antique; Bernini only made the mattress
+  'Q463400', 'Q2266081',                                 // Piazza Navona and Palazzo Corsini: not designed by Bernini
+  'Q5033460',                                            // the Corcoran's lions: 19th-century copies of Canova's
+  'Q521680',                                             // "Perla di Modena": its picture is a portrait, not the work
+  'Q1774735',                                            // Michelangelo's Saint Paul: its picture is his Saint Peter
+  'Q2626926']);                                          // Michelangelo's Hercules: lost; the picture is Rubens's copy
+// pictures Wikidata has wrong (checked by eye): the right file on Commons
+const IMAGE_FIX = {
+  Q1766454: 'Gustave Caillebotte - The Floor Planers - Google Art Project.jpg',   // was a photo of a farm in Surrey
+  Q3955632: 'Michelangelo, Separation of the Earth from the Waters 00.jpg',       // was the whole ceiling, with the Creation of Adam
+};
+// a file name says what it shows more often than not: does it name the work or its artist?
+const plain = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const nameWords = t => plain(t).split(/[^a-z0-9]+/).filter(w => w.length >= 4 && !/^(with|from|the|and|della|dello|des|les|der|die|das|van|von|portrait|painting)$/.test(w));
+const namesWork = (file, title, artist) => { const f = plain(file); return [...nameWords(title), ...nameWords(artist)].some(w => f.includes(w)); };
+const looksLikePhoto = file => /geograph\.org\.uk|^(img|dsc|dscn|pict|p\d{6,})[_ -]?\d/i.test(plain(file));
 
 // too many queries in a row get a 429: wait as long as Wikidata asks (or longer each time), then try again
 async function sparql(q, tries = 6) {
@@ -175,8 +190,8 @@ for (const b of museums) {
 
 // 3c) works already in the collection stay (while still out of copyright, with a picture), so a rebuild
 //     never takes away a painting someone has been learning
-let previous = []; const previousKind = new Map();
-try { previous = JSON.parse(await readFile(new URL('../data/paintings.json', import.meta.url), 'utf8')).paintings.map(x => { if (x.kind) previousKind.set(x.id, x.kind); return x.id; }); } catch (e) {}
+let previous = []; const previousKind = new Map(), previousImage = new Map();
+try { previous = JSON.parse(await readFile(new URL('../data/paintings.json', import.meta.url), 'utf8')).paintings.map(x => { if (x.kind) previousKind.set(x.id, x.kind); previousImage.set(x.id, x.image); return x.id; }); } catch (e) {}
 for (const group of chunks(previous.filter(id => !inSet.has(id) && !EXCLUDE.has(id)), 150)) {
   const rows = await sparql(`SELECT ?p ?a ?img ?links WHERE { VALUES ?p { ${group.map(id => 'wd:' + id).join(' ')} }
     ?p wdt:P170 ?a; wdt:P18 ?img; wikibase:sitelinks ?links. ?a wdt:P570 ?d. FILTER(YEAR(?d) < ${DIED_BEFORE}) }`);
@@ -245,13 +260,25 @@ for (const group of chunks([...new Set(picked.map(o => o.a))], 150)) {
 const onlyMv = a => { const m = painterMv.get(a); return m && m.size === 1 ? [...m][0] : ''; };
 const placeOf = await museumPlaces(picked, id => (info.get(id) || {}).cl || '');
 
-const paintings = [];
+const paintings = [], usedImage = new Set();
+// when two Wikidata items share one picture (one poster, two items), the better-known one keeps it
+const imageOwner = new Map();
+for (const o of picked) { const img = IMAGE_FIX[o.id] || o.image, w = imageOwner.get(img); if (!w || o.links > w.links) imageOwner.set(img, o); }
 for (const o of picked) {
   const x = info.get(o.id) || {};
   x.al ??= x.alm; x.pl ??= x.plm;
   const title = (x.t || x.pl || '').replace(/\s*\([^)]*\)$/, '');   // drop Wikipedia's "(Manet)", "(painting)"
   if (!title || !x.al) continue;                       // nothing to ask about without both names
   const movement = x.ml || onlyMv(o.a);
+  // Wikidata's picture can change under us, sometimes to the wrong one (a farm instead of Caillebotte's
+  // Floor Planers): a new picture is taken only if its file name names the work or its artist; otherwise
+  // the one checked before stays. A new work whose picture looks like someone's holiday photo is left out
+  const before = previousImage.get(o.id);
+  if (IMAGE_FIX[o.id]) o.image = IMAGE_FIX[o.id];
+  else if (before && before !== o.image && !namesWork(o.image, title, x.al)) { console.log(`kept the earlier picture of ${o.id} ${title}: not ${o.image}`); o.image = before; }
+  else if (!before && looksLikePhoto(o.image) && !namesWork(o.image, title, x.al)) { console.log(`left out ${o.id} ${title}: its picture ${o.image} looks unrelated`); continue; }
+  if (usedImage.has(o.image) || imageOwner.get(o.image) && imageOwner.get(o.image) !== o && imageOwner.get(o.image).image === o.image) continue;   // the same picture twice
+  usedImage.add(o.image);
   paintings.push({
     id: o.id, ...(o.kind ? { kind: o.kind } : {}), title, artist: x.al, year: YEAR_FIX[o.id] ?? (o.born && x.year != null && x.year < o.born + 12 ? null : x.year ?? null), movement, ...(movement && !x.ml ? { movementOf: 'painter' } : {}), museum: placeOf.get(o.id).museum, ...(placeOf.get(o.id).country ? { country: placeOf.get(o.id).country } : {}), image: o.image,
     wiki: x.t ? 'https://en.wikipedia.org/wiki/' + encodeURIComponent(x.t.replace(/ /g, '_')) : null,
